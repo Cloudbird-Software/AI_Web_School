@@ -267,3 +267,10 @@ make bootstrap
 - **PostgreSQL**: 16-alpine
 - **Redis**: 7-alpine
 - **MinIO**: latest
+
+## 刻意未覆盖项（延迟计划）
+
+- **无头 Chromium**（渲染管线）：W2 交付域开发时引入（渲染 Worker），W0/W1 不需要。
+- **SymPy**（数学验算）：W2 校验域数学包验算时引入，W0/W1 不需要。
+- **生产依赖 `requirements.txt` / `pyproject.toml`**：归 T-W1-001 交付。
+- 镜像已按 digest 锁定（docker-compose.yml），升级镜像属显式变更，需同步验证本地与 CI。

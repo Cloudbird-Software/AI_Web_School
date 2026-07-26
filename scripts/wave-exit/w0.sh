@@ -30,7 +30,8 @@ import yaml, glob
 for f in glob.glob(".github/workflows/*.yml"): yaml.safe_load(open(f, encoding="utf-8"))
 EOF
 
-# 7. 最小链路演示（占位实现：W0 的 demo 目标）
+# 7. 最小链路演示（OPC §6.1：创建题目记录→过门（占位验证器）→查询）+ 测试套件
+python scripts/demo-w0-min-link.py >/dev/null 2>&1 && ok "最小链路（建题→过门→查询）" || die "最小链路失败"
 python -m pytest tests/ -q >/dev/null 2>&1 && ok "测试套件绿" || die "测试套件红"
 
 echo ""
