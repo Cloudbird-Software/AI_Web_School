@@ -14,6 +14,7 @@ required_fields:
   - id               # 全局唯一标识（snake_case），注册后不可变更语义
   - name             # 中文名（教研工作台显示）
   - status           # active（现役）| reserved（预留注册不实现）
+  - summary          # 用途与关键约束一句话说明
   - response_schema  # 作答采集 schema（JSON Schema draft 2020-12 子集）
   - render_component # 在线渲染组件（平台注册表组件名，学科包不得替换）
   - paper_spec       # 纸卷呈现规范（离线渲染出口必须遵守）
@@ -77,7 +78,7 @@ types:
     render_component: platform/InlineBlanks
     paper_spec: 下划线空位，长度按学段包配置
     scoring_input: "{ blanks: { blank_id: string } } → 逐空判分，支持分项计分"
-    compatible_scorers: [exact_match, keypoint_hit]
+    compatible_scorers: [exact_match, keypoint_hit, math_equivalence]
 
   - id: numeric_blank
     name: 数值填空（含单位/比较）
@@ -172,7 +173,7 @@ types:
             properties:
               step_id: { type: string }
               response:
-                description: 该步的内嵌作答，其 schema 由步骤声明的交互类型决定（single_choice/text_blank/numeric_blank 之一）
+                description: "该步的内嵌作答，其 schema 由步骤声明的交互类型决定。首年有意收敛为 single_choice/text_blank/numeric_blank 三选一（结构化录入保证评分确定性，架构 v2 §4.5 降级决策）；multi_choice 等其余类型后续按需评审开放"
                 type: object
       additionalProperties: false
     render_component: platform/StepWizard

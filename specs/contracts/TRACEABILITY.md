@@ -54,3 +54,27 @@
 | 退役是状态不是删除 | §2.2「退役是状态不是删除」；R-Q-26 | — |
 | 题组 ≤6 | §4.4 约束目录「题组≤6」；R-Z-06 | — |
 | gate_certificate 表结构不在本卡 | §4.3（属校验签发账/W1 状态机契约） | 任务卡 non_goals：状态机契约 W1 |
+
+---
+
+## 5. 修订记录（v1.1，ADR-0002 · 专家审查裁决）
+
+> 来源：双专家独立审查反馈（2026-07-26）。两条阻断级问题 + 两条内部矛盾全部采纳；歧义点 5–10 全部裁决；小问题全部修复。本次修订经人类预批准，人类签署后生效。
+
+| # | 问题 | 裁决 | 落点 |
+|---|---|---|---|
+| 1 | material 无版本表，违反 D1「Item/Material/Corpus 全版本化」 | **补 `material_version` 表**：素材与 Item 同构（身份+不可变版本两段式），题组/题目引用 `material_version_id` | item-model §1/§2.4/§7 |
+| 2 | `drawing_operation.compatible_scorers` 含 `stepwise_rubric`，但后者 input_contract 未声明——双向断裂 | **补 input_contract**（架构矩阵 B.1「操作题=作图操作×分步+人确认」证明该组合存在）；**双向闭合新增为契约测试**（机器校验，不再依赖人肉） | scorer.yaml；tests/contract/registries/ |
+| 3 | `rerun_of` 放在不可变的 scoring_trace 中，永远写不进 | 从 response_event §3 结构中删除；**`rerun_of` 属 score_run 独立表**（W1 数据域契约，本行登记归属） | response_event §3/§6 |
+| 4 | `duration_ms`/`session_id` 必填与纸卷回录（S2）冲突，逼链路造数据 | 双双改**可空**：NULL=未知/无会话；禁止填 0 或伪造会话（耗时是健康度监控维度）；S2 批次标识放 `source_ref.batch_id` | response_event §1/§5 |
+| 5 | `current_version_id` 语义未定义 | 定义为**最新 published 版本指针**；仅发布事务可更新（W1 触发器兜底），应用层直写触发审计告警 | item-model §2.1/§6.3 |
+| 6 | `gate_certificate_id` 列字段与 lineage 双存 | **列字段为唯一真源**，lineage 内不再重复存储 | item-model §2.2/§2.2.2 |
+| 7 | C/D 级 id 非内容寻址，同内容可得不同 id | **升级为内容寻址**（§3 公式二：H(canonical 内容快照)）；重复内容入库作去重提示而非拒绝——D3 精神扩展至 C/D | item-model §3 |
+| 8 | 状态机 quarantined 失败后去向不明 | **无回边**：失败版本永久留存（审计证据），修改=新 draft 版本 | item-model §4.2 |
+| 9 | `rendered_snapshot` 可空但它是门受检对象 | **进入 quarantined 前必填**（W1 以 CHECK/触发器承载） | item-model §2.2 |
+| 10 | keypoint_hit 正则方言未指定，重放可复现性风险 | **锁定 Python re 子集**（禁后向引用/原子组/条件断言等实现相关特性） | scorer.yaml keypoint_hit |
+| 11 | scorer_version flow mapping 跨行断裂（编辑事故） | 已修为一行 | scorer.yaml |
+| 12 | item↔item_version 循环 FK、response_event 分区 PK 含分区键 | 补实现注记（DEFERRABLE/后加约束；PK=(event_id, created_at)） | item-model §6；response_event §2 |
+| 13 | stepwise_process 子步骤仅三种交互——有意或遗漏？ | **有意收敛**（首年结构化录入保证评分确定性），契约已注明 | interaction.yaml stepwise_process |
+| 14 | summary 全条目都有但未进 required_fields | 双注册表 required_fields 均补 summary | 双 yaml |
+| 15 | item-model 的 objective/lineage 只有示例无机器 schema | **补齐 JSON Schema**（§5.1/§5.2，含多知识点模式、A/B 级 params 必填等约束） | item-model §5 |

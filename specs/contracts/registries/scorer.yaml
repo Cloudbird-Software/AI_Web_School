@@ -45,14 +45,13 @@ unified_contract:
       evidence:
         type: object
         description: 评分证据（命中点/步骤判定明细/量规逐维理由），供审计与教研抽检
-      scorer_version: { type: string, description: "评分器版本（含代码 digest；重判时据此写平行 score_run）"
-      }
+      scorer_version: { type: string, description: "评分器版本（含代码 digest；重判时据此写平行 score_run）" }
   versioning_rule: |
     评分逻辑版本化（宪法 D6 / R-D-05）：新版本评分器重放历史作答时写平行 score_run，
     原始 response_event 序列永不变更；增量重判防成本爆炸（评审报告 D4 决策）。
 
 # 每种评分器的必备字段
-required_fields: [id, name, status, deterministic, input_contract, params_schema, notes]
+required_fields: [id, name, status, summary, deterministic, input_contract, params_schema, notes]
 
 scorers:
   - id: exact_match
@@ -91,7 +90,7 @@ scorers:
     status: active
     deterministic: true
     summary: 结构化步骤 rubric：综合题拆有序步骤，每步独立判分、独立知识点归因（R-Q-15；架构 v2 §4.5）。
-    input_contract: stepwise_process 的作答
+    input_contract: stepwise_process / drawing_operation 的作答
     params_schema:
       type: object
       required: [steps]
@@ -126,7 +125,7 @@ scorers:
             required: [id, patterns, score]
             properties:
               id: { type: string }
-              patterns: { type: array, items: { type: string }, description: 命中模式（关键词/正则/同义组，逐版本化） }
+              patterns: { type: array, items: { type: string }, description: "命中模式（关键词/正则/同义组，逐版本化）。正则方言锁定：Python re 子集——禁用后向引用、原子组、条件断言等实现相关特性，保证跨版本重放（R-D-05）行为一致" }
               score: { type: number }
               error_type_id: { type: string, description: 未命中时可推断的错误类型（可空） }
         min_pass: { type: number, description: 通过分数线（可空） }

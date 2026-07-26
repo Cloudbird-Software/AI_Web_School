@@ -10,8 +10,10 @@ CONTRACT = Path("specs/contracts/events/response_event.md")
 
 CORE_FIELDS = [
     "event_id", "student_alias_id", "item_version_id", "scene", "raw_payload",
-    "duration_ms", "scoring_trace", "error_inferences", "session_id", "created_at",
+    "scoring_trace", "error_inferences", "created_at",
 ]
+# ADR-0002 #4：纸卷回录（S2）无真实耗时/会话——可空但字段必须存在（NULL=未知，禁止伪造）
+NULLABLE_FIELDS = ["duration_ms", "session_id"]
 
 
 def text():
@@ -38,11 +40,21 @@ def test_json_schema_parseable():
 
 
 def test_core_fields_required():
-    """R-D-02：每条作答必须记录题目身份与版本、场景、耗时、评分、错误推断。"""
+    """R-D-02：每条作答必须记录题目身份与版本、场景、评分、错误推断。"""
     schema = extract_json_schema()
     for field in CORE_FIELDS:
         assert field in schema["required"], f"required 缺 {field}"
         assert field in schema["properties"], f"properties 缺 {field}"
+
+
+def test_paperless_fields_nullable_but_present():
+    """ADR-0002 #4：duration_ms/session_id 可空（NULL=未知）但必须存在且允许 null。"""
+    schema = extract_json_schema()
+    for field in NULLABLE_FIELDS:
+        assert field in schema["properties"], f"properties 缺 {field}"
+        assert field not in schema["required"], f"{field} 不应必填（纸卷回录场景）"
+        t = schema["properties"][field]["type"]
+        assert "null" in (t if isinstance(t, list) else [t]), f"{field} 必须允许 null"
 
 
 def test_scene_enum():

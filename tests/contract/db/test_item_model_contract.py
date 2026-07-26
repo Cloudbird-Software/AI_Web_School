@@ -16,7 +16,9 @@ def text():
 
 def test_file_exists_and_tables_defined():
     t = text()
-    for table in ("item", "item_version", "item_template", "item_template_version", "material", "item_group", "corpus_asset"):
+    for table in ("item", "item_version", "item_template", "item_template_version",
+                  "material", "material_version", "material_license",
+                  "item_group", "corpus_asset", "corpus_version"):
         assert table in t, f"缺表定义 {table}"
 
 
@@ -57,3 +59,23 @@ def test_append_only_and_retire_not_delete():
     t = text()
     assert "永不" in t
     assert "退役" in t
+
+
+def test_material_versioned_two_segment():
+    """D1 全版本化（ADR-0002 #1）：素材必须是身份+版本两段式，引用指向 material_version_id。"""
+    t = text()
+    assert "material_version_id" in t
+    assert "material_version" in t
+    # 素材与 Item 同构的声明必须在场
+    assert "material_version 是不可变内容快照" in t or "身份+不可变版本" in t
+
+
+def test_machine_schemas_present():
+    """ADR-0002 #15：objective/lineage 必须有机器可校验 JSON Schema（§5）。"""
+    import json
+    import re
+    t = text()
+    blocks = re.findall(r"## 5\..*?```json\n(.*?)```", t, re.S)
+    assert len(blocks) >= 2, "§5 至少含 objective 与 lineage 两个 JSON Schema"
+    for b in blocks:
+        json.loads(b)  # 必须可解析

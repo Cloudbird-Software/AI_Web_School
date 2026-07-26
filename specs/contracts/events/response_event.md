@@ -16,11 +16,11 @@
 | item_version_id | text | ✅ | 作答题目版本（A/B 级实例=内容寻址哈希，D3） | §4.7、§2.2 |
 | scene | enum | ✅ | `practice` / `diagnosis` / `measurement`——分场景独立统计禁止混估（D5） | §4.7、§4.7 参数标定 |
 | raw_payload | jsonb | ✅ | **原始作答载荷**（作答内容本身，非仅存对错，R-D-01）；结构由交互类型 response_schema 保证 | §4.7 |
-| duration_ms | integer | ✅ | 作答耗时（毫秒）；健康度监控维度之一 | §4.7「耗时」 |
+| duration_ms | integer | 可空 | 作答耗时（毫秒）；**NULL=未知**（纸卷回录 S2 无真实耗时，禁止填 0 冒充——耗时是健康度监控维度，§4.7） | §4.7「耗时」 |
 | scoring_trace | jsonb | ✅ | 评分轨迹，结构见 §3 | §4.7「评分轨迹」 |
 | error_inferences | jsonb | ✅ | 错误类型推断数组，结构见 §4（可为空数组） | §4.7「错误推断」 |
 | testlet_id | text | 可空 | 题组/testlet id（题组内相关性统计用，R-Z-06） | §4.7、§4.4 |
-| session_id | uuid | ✅ | 作答会话 id（复习排程/会话分析用） | §4.7 |
+| session_id | uuid | 可空 | 作答会话 id（复习排程/会话分析用）；**NULL=无会话**（纸卷录入场景；S2 回录的批次标识放 `source_ref.batch_id`，勿伪造会话） | §4.7 |
 | audio_play_events | jsonb | 可空 | 音频播放行为（播放次数/时长/限次策略命中），音频题必填 | §4.7「播放行为」 |
 | source_ref | jsonb | 可空 | 来源追溯：`{paper_id, placement_token}`（静态卷 S2）或 `{assembly_run_id}`（在线 S3/S4）；A4 入水口 | §4.6 追溯链 |
 | created_at | timestamptz | ✅ | 事件时间戳（UTC），分区键 | §4.7 |
@@ -31,6 +31,8 @@
 2. **按月分区**：以 `created_at` 为分区键；分区创建走 Alembic 迁移，禁止手工 DDL（X7）。
 3. **每日增量归档**：导出 Parquet 至对象存储 + schema 注册表登记——十年可用的本质是原始数据不依赖单一厂商的开放归档（§4.7）。
 4. **场景不可为空、不可混估**：下游估计器按 `scene` 独立取数（D5）；`practice` 场景数据因暴露偏差仅用于粗校准与差题预警（评审报告 D4）。
+
+**实现注记（W1 迁移必读）**：按月分区表的主键必须含分区键——PK 为 `(event_id, created_at)`；`event_id` 的全局唯一性由应用层 ULID/uuid 生成保证；被引用需求（score_run 指向事件）以 `(event_id, created_at)` 复合键或事件归档快照承载。
 
 ## 3. scoring_trace 结构（评分轨迹）
 
@@ -43,13 +45,12 @@
     "recognition": 0.0,
     "scoring": 1.0,
     "note": "四层置信度之识别与评分层；推断层在 error_inferences[].confidence，掌握层在掌握度估计，禁止混为单一 AI 置信度（§4.5）"
-  },
-  "rerun_of": null
+  }
 }
 ```
 
 - `scorer_id` 必须是 `registries/scorer.yaml` 中注册的 id（D4 注册表纪律）。
-- 重判（R-D-05）：新 scorer 版本重放历史事件时**写平行 score_run**，原 `scoring_trace` 不变；`rerun_of` 记录原始 score_run 引用；增量重判防成本爆炸（评审报告 D4）。
+- 重判（R-D-05）：新 scorer 版本重放历史事件时**写平行 score_run，原 `scoring_trace` 不变**。`score_run` 是独立表（重判结果账），其结构含 `rerun_of`（指向原始事件/score_run 的引用）——**`rerun_of` 属于 score_run，不属于 response_event**（本表 append-only，原轨迹永不可改）。score_run 表结构归 W1 数据域契约（见 TRACEABILITY 登记）；增量重判防成本爆炸（评审报告 D4）。
 
 ## 4. error_inferences 结构（错误推断）
 
@@ -72,14 +73,14 @@
 ```json
 {
   "type": "object",
-  "required": ["event_id", "student_alias_id", "item_version_id", "scene", "raw_payload", "duration_ms", "scoring_trace", "error_inferences", "session_id", "created_at"],
+  "required": ["event_id", "student_alias_id", "item_version_id", "scene", "raw_payload", "scoring_trace", "error_inferences", "created_at"],
   "properties": {
     "event_id": { "type": "string", "format": "uuid" },
     "student_alias_id": { "type": "string", "format": "uuid" },
     "item_version_id": { "type": "string", "minLength": 1 },
     "scene": { "enum": ["practice", "diagnosis", "measurement"] },
     "raw_payload": { "type": "object" },
-    "duration_ms": { "type": "integer", "minimum": 0 },
+    "duration_ms": { "type": ["integer", "null"], "minimum": 0 },
     "scoring_trace": {
       "type": "object",
       "required": ["scorer_id", "scorer_version", "confidence"],
@@ -109,7 +110,7 @@
       }
     },
     "testlet_id": { "type": ["string", "null"] },
-    "session_id": { "type": "string", "format": "uuid" },
+    "session_id": { "type": ["string", "null"], "format": "uuid" },
     "audio_play_events": { "type": ["array", "null"] },
     "source_ref": { "type": ["object", "null"] },
     "created_at": { "type": "string", "format": "date-time" }
@@ -127,5 +128,6 @@
 | D6 估计器可替换 | §3 重判规则（平行 score_run，原序列不动） |
 | D7 PII 隔离 | 仅 `student_alias_id`，无直接标识 |
 | R-D-01 原始保存 | `raw_payload` 存作答内容本身 |
-| R-D-02 全要素 | §1 字段表（身份/场景/耗时/评分/推断） |
-| R-D-05 可重判 | §3 scoring_trace 版本与重判规则 |
+| R-D-02 全要素 | §1 字段表（身份/场景/耗时/评分/推断）；纸卷回录场景的耗时/会话以 NULL 表达未知而非伪造 |
+| R-D-05 可重判 | §3 scoring_trace 版本与重判规则（平行 score_run 独立表，原序列不动） |
+| §6 附记 | score_run 表结构归 W1 数据域契约（含 `rerun_of` 引用），本契约不重复定义 |
