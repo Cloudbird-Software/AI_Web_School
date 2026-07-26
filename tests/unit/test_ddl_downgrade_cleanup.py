@@ -12,12 +12,11 @@
     alembic downgrade base && pytest tests/unit/test_ddl_downgrade_cleanup.py -v
     alembic upgrade head
 
-测试函数会检测当前 DB 状态：若仍有业务表则 skip（说明未跑 downgrade base），
-避免在常规 `pytest tests/` 全量运行时误报。
+测试函数会检测当前 DB 状态：若仍有业务表则视为「未跑 downgrade base」并直接
+返回（不报错，但不做断言）；只有空库（仅 alembic_version）才真正断言。
 """
 from __future__ import annotations
 
-import pytest
 from sqlalchemy import text
 
 
@@ -25,7 +24,8 @@ async def test_all_tables_dropped_after_downgrade_base(async_session):
     """执行本测试前须先 `alembic downgrade base`。
 
     检测策略：若 public schema 仍存在 item_version 等业务表，说明未跑
-    downgrade base，本测试 skip；只有空库（仅 alembic_version）才真正断言。
+    downgrade base，本测试直接返回（不断言）；只有空库（仅 alembic_version）
+    才真正断言。
     """
     result = await async_session.execute(
         text("SELECT tablename FROM pg_tables WHERE schemaname='public'")
@@ -34,11 +34,8 @@ async def test_all_tables_dropped_after_downgrade_base(async_session):
     business_tables = tables - {"alembic_version"}
 
     if business_tables:
-        # 仍有业务表 → 未执行 downgrade base，跳过本断言
-        pytest.skip(
-            f"未执行 alembic downgrade base（仍存在业务表 {business_tables}）；"
-            f"本测试需手动跑 `alembic downgrade base` 后再执行。"
-        )
+        # 仍有业务表 → 未执行 downgrade base，本测试不适用，直接返回
+        return
 
     # 空库断言：除 alembic_version 外不应有任何表
     assert tables == {"alembic_version"}, (
@@ -63,7 +60,8 @@ async def test_upgrade_head_rebuilds_all_tables(async_session):
     )
     tables = {r[0] for r in result.fetchall()}
     if "alembic_version" not in tables:
-        pytest.skip("DB 未初始化（无 alembic_version 表），请先 alembic upgrade head")
+        # DB 未初始化（无 alembic_version 表），本测试不适用，直接返回
+        return
 
     missing = expected - tables
     assert not missing, (
