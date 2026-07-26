@@ -78,3 +78,4 @@
 | 13 | stepwise_process 子步骤仅三种交互——有意或遗漏？ | **有意收敛**（首年结构化录入保证评分确定性），契约已注明 | interaction.yaml stepwise_process |
 | 14 | summary 全条目都有但未进 required_fields | 双注册表 required_fields 均补 summary | 双 yaml |
 | 15 | item-model 的 objective/lineage 只有示例无机器 schema | **补齐 JSON Schema**（§5.1/§5.2，含多知识点模式、A/B 级 params 必填等约束） | item-model §5 |
+| 16 | §2.5 corpus_version 行缺状态机/门字段，与 §2.4 material_version 不对齐（v1.1 修订时本行遗漏） | **补字段** `status`（同 §4 状态机四态）/ `gate_certificate_id`（唯一真源，纪律同 §2.2）/ `published_at` / `retired_at`，与 §2.4 material_version 对齐（v1.1.1） | item-model §2.5 |

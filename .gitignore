@@ -8,3 +8,7 @@ dist/
 tests/model-bench/results/
 .DS_Store
 worktrees/
+
+# T-W1-001: pip install -e . 生成的元数据（不入库）
+*.egg-info/
+.eggs/

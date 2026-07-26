@@ -1,0 +1,65 @@
+# T-W1-001 项目骨架与依赖落地
+# 宪法 X8：新依赖须说明理由并更新锁定文件
+# - fastapi：W2 起 API 路由基于 FastAPI（W1 仅安装，不写路由）
+# - sqlalchemy[asyncio]：核心域 ORM（含 asyncio 扩展，配合 asyncpg）
+# - pydantic>=2：契约 schema 校验（v2 用 model_config、替换 v1 Config）
+# - asyncpg：SQLAlchemy 异步驱动（tests/conftest.py 的 async_session 使用）
+# - psycopg：alembic env.py 同步驱动（W0 已用，保留为运行时依赖）
+# - alembic：唯一 DDL 入口（W0 已用，保留为运行时依赖）
+# - pyyaml：注册表 YAML 解析（W0 已用，保留为运行时依赖）
+# - ulid-py：契约规定 C/D 级 item_id/material_id 用 ULID（全局唯一 id 生成，
+#   替代 uuid4 hex 冒充——W1 修复包 P7）
+
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "muti-platform"
+version = "0.1.0"
+description = "小学语数英个性化练习平台：母题/实例→校验门→组卷→渲染→作答→评分→参数标定的数据飞轮"
+readme = "README.md"
+requires-python = ">=3.12"
+license = { text = "Proprietary" }
+authors = [{ name = "muti-platform team" }]
+
+dependencies = [
+    "fastapi>=0.115",
+    "sqlalchemy[asyncio]>=2.0",
+    "pydantic>=2",
+    "asyncpg>=0.29",
+    "psycopg>=3.1",
+    "alembic>=1.13",
+    "pyyaml>=6.0",
+    "ulid-py>=1.1",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8",
+    "pip-tools>=7.4",  # 用于 pip-compile 锁定依赖（X8：新依赖须说明理由）
+]
+
+[tool.setuptools]
+# src 作为扁平包导入（import src.core.models），不启用 src-layout
+packages = [
+    "src",
+    "src.core",
+    "src.core.models",
+    "src.core.events",
+    "src.core.gate",
+    "src.core.content",
+    "src.registry",
+]
+
+[tool.setuptools.package-dir]
+"" = "."
+"src" = "src"
+"src.core" = "src/core"
+"src.core.models" = "src/core/models"
+"src.core.events" = "src/core/events"
+"src.core.gate" = "src/core/gate"
+"src.core.content" = "src/core/content"
+"src.registry" = "src/registry"
+
+# pytest 配置统一在 pytest.ini（已存在，避免双源配置冲突）

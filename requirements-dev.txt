@@ -1,5 +1,9 @@
 # 开发依赖（锁定版本；新依赖须说明理由并更新本文件——宪法 X8）
+# T-W1-001：新增 pip-tools（用于 pip-compile 锁定 requirements.txt；运行时不需要）
+# T-W1-001：新增 pytest-asyncio（async_session fixture 与 W1+ ORM/写入服务单测需要）
 pytest==9.1.1
+pytest-asyncio==1.4.0
 pyyaml==6.0.3
 alembic==1.18.5
 psycopg[binary]==3.3.4
+pip-tools==7.4.1
