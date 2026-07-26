@@ -1,0 +1,7 @@
+# 行尾纪律：脚本/构建/CI 文件强制 LF（Windows checkout 下 CRLF 会使 bash 脚本与 Makefile 崩溃）
+*           text=auto
+*.sh        text eol=lf
+Makefile    text eol=lf
+tools/opc   text eol=lf
+*.yml       text eol=lf
+*.yaml      text eol=lf
