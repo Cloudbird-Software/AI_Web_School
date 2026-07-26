@@ -12,6 +12,9 @@ jobs:
         with: {python-version: "3.12"}
       - run: pip install -r requirements-dev.txt
 
+      - name: 准备 .env（CI 无密钥，示例值仅供本地容器）
+        run: cp .env.example .env
+
       - name: 全栈地基启动
         run: docker compose up -d --wait
 
@@ -32,6 +35,6 @@ jobs:
         uses: actions/github-script@v7
         with:
           script: |
-            github.rest.issues.create({owner, repo,
+            github.rest.issues.create({owner: context.repo.owner, repo: context.repo.repo,
               title: `🔴 Nightly 失败 ${new Date().toISOString().slice(0,10)}`,
               body: "见 Actions 日志。按宪法 P4：红灯为全项目最高优先级。"})
