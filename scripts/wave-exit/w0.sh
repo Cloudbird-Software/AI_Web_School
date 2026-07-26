@@ -27,7 +27,7 @@ make migrate-check >/dev/null 2>&1 && ok "迁移可逆演练" || die "迁移演�
 # 6. CI 配置存在且语法可解析
 python - <<'EOF' && ok "CI workflow 语法" || die "CI workflow 语法错误"
 import yaml, glob
-for f in glob.glob(".github/workflows/*.yml"): yaml.safe_load(open(f))
+for f in glob.glob(".github/workflows/*.yml"): yaml.safe_load(open(f, encoding="utf-8"))
 EOF
 
 # 7. 最小链路演示（占位实现：W0 的 demo 目标）
