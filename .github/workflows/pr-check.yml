@@ -17,7 +17,7 @@ jobs:
 
       - name: 泄密扫描（X3）
         run: |
-          ! git diff origin/main...HEAD | grep -inE '(api[_-]?key|secret|password|token)\s*[:=]\s*[A-Za-z0-9_\-]{16,}' \
+          ! git diff origin/main...HEAD | grep -inE '(api[_-]?key|secret|password|token)\s*[:=]\s*["'"'"']?[A-Za-z0-9_\-]{16,}' \
             || { echo "❌ 疑似密钥进入仓库"; exit 1; }
 
       - name: 反测试削弱（X1）
@@ -39,4 +39,5 @@ jobs:
         with: {python-version: "3.12"}
       - run: pip install -r requirements-dev.txt
       - run: python -m pytest tests/contract tests/golden -q
+      - run: if [ -d tests/unit ]; then python -m pytest tests/unit -q; fi
       - run: GOLDEN_PATH_QUICK=1 python -m pytest tests/golden-path -q

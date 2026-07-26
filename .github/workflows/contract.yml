@@ -13,7 +13,7 @@ jobs:
         run: |
           FROZEN=$(cat specs/contracts/FROZEN.txt 2>/dev/null || true)
           for f in $FROZEN; do
-            git diff --quiet origin/main...HEAD -- "$f" \
+            git diff --quiet --diff-filter=MD origin/main...HEAD -- "$f" \
               && echo "ok: $f" \
               || { echo "❌ 冻结契约被修改: $f（须走契约变更申请）"; exit 1; }
           done

@@ -16,10 +16,11 @@ if git rev-parse --verify main >/dev/null 2>&1 && [ "$(git branch --show-current
   [ "$SKIPS" -eq 0 ] || { echo "❌ 检测到新增 skip/xfail ${SKIPS} 处（违反 X1）"; exit 1; }
 fi
 
-# 3. 通用门禁：契约测试 + 黄金数据集 + 黄金路径快版
+# 3. 通用门禁：契约测试 + 黄金数据集 + 黄金路径快版 + 单元测试（若存在）
 python -m pytest tests/contract -q || { echo "❌ 契约测试"; exit 1; }
 python -m pytest tests/golden -q || { echo "❌ 黄金数据集"; exit 1; }
 GOLDEN_PATH_QUICK=1 python -m pytest tests/golden-path -q || { echo "❌ 黄金路径(快版)"; exit 1; }
+[ ! -d tests/unit ] || python -m pytest tests/unit -q || { echo "❌ 单元测试"; exit 1; }
 
 # 4. 任务专属验收：任务卡 acceptance 段指定的脚本（若存在）
 SPECIFIC=$(grep -E '^\s*accept_script:' "$CARD" | awk '{print $2}' || true)
