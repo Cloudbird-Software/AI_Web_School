@@ -1,0 +1,250 @@
+# 交互类型注册表契约（平台级，冻结候选）
+# 来源：架构 v2 §2.3「双类型注册表」、§2.1 题型能力矩阵 V1 维度
+# 纪律（宪法 D4）：学科包只能复用与参数化本表中的交互类型，禁止私造作答结构；
+# 新增类型须平台评审注册。本文件由 contract-watch 强制只增不改。
+registry: interaction
+contract_version: "1.0.0"
+status: frozen-candidate   # 人类逐行审查批准后转为 frozen
+source_sections:
+  - "架构v2 §2.3 交互类型注册表"
+  - "架构v2 §2.1 V1 作答交互类型（12 种：10 现役 + 2 预留）"
+
+# 每种交互类型的必备字段（平台契约，任何注册项不得缺项）
+required_fields:
+  - id               # 全局唯一标识（snake_case），注册后不可变更语义
+  - name             # 中文名（教研工作台显示）
+  - status           # active（现役）| reserved（预留注册不实现）
+  - response_schema  # 作答采集 schema（JSON Schema draft 2020-12 子集）
+  - render_component # 在线渲染组件（平台注册表组件名，学科包不得替换）
+  - paper_spec       # 纸卷呈现规范（离线渲染出口必须遵守）
+  - scoring_input    # 评分输入契约：交给评分器的规范化结构说明
+  - compatible_scorers # 允许搭配的评分器 id（见 scorer.yaml）
+
+types:
+  - id: single_choice
+    name: 单选
+    status: active
+    summary: 从有限选项中选择一项。判断题=本类型的参数化预设（options 固定为 对/错 两项），不单独注册（依据架构 v2 §2.3 正文 10 种清单，矩阵表「单选/多选/判断」中判断归入单选族）。
+    response_schema:
+      type: object
+      required: [selected]
+      properties:
+        selected:
+          type: string
+          description: 被选中的 option_id
+      additionalProperties: false
+    render_component: platform/RadioGroup
+    paper_spec: 选项纵向排列，A/B/C/D 圈选标记；判断题呈现为「（ ）」括号打勾
+    scoring_input: "{ selected: option_id } → 评分器按 option_id 判定正误并查 error_bindings"
+    compatible_scorers: [exact_match]
+    presets:
+      - id: true_false
+        name: 判断题
+        config: { options: [{id: "true", label: "对"}, {id: "false", label: "错"}] }
+
+  - id: multi_choice
+    name: 多选
+    status: active
+    summary: 从有限选项中选择多项；漏选/错选的给分策略由评分参数声明（非交互职责）。
+    response_schema:
+      type: object
+      required: [selected]
+      properties:
+        selected:
+          type: array
+          items: { type: string }
+          uniqueItems: true
+          description: 被选中的 option_id 集合（无序）
+      additionalProperties: false
+    render_component: platform/CheckboxGroup
+    paper_spec: 选项纵向排列并注明「多选」
+    scoring_input: "{ selected: [option_id...] } → 与正确集合比对（全对/部分给分见 scorer 参数）"
+    compatible_scorers: [exact_match]
+
+  - id: text_blank
+    name: 文本填空（多空）
+    status: active
+    summary: 一题多个文本空位，每空独立作答独立判分。
+    response_schema:
+      type: object
+      required: [blanks]
+      properties:
+        blanks:
+          type: object
+          additionalProperties: { type: string }
+          description: "blank_id → 填写文本（原始字符串，规范化由评分器负责）"
+      additionalProperties: false
+    render_component: platform/InlineBlanks
+    paper_spec: 下划线空位，长度按学段包配置
+    scoring_input: "{ blanks: { blank_id: string } } → 逐空判分，支持分项计分"
+    compatible_scorers: [exact_match, keypoint_hit]
+
+  - id: numeric_blank
+    name: 数值填空（含单位/比较）
+    status: active
+    summary: 答案为数值的填空；数值以规范化分数/十进制字符串表示，禁止浮点直接比较（呼应架构 v2 §D2 定点/分数运算决策）。
+    response_schema:
+      type: object
+      required: [blanks]
+      properties:
+        blanks:
+          type: object
+          additionalProperties:
+            type: object
+            required: [value]
+            properties:
+              value: { type: string, description: "规范化数值字符串：整数、有限小数或 'a/b' 分数" }
+              unit: { type: string, description: "单位 id（题目声明需要单位时必填）" }
+      additionalProperties: false
+    render_component: platform/NumericInput
+    paper_spec: 下划线空位 + 可选单位提示
+    scoring_input: "{ blanks: { blank_id: { value, unit? } } } → 数值/数学等价判定，容差与单位换算规则在 scorer 参数"
+    compatible_scorers: [exact_match, math_equivalence]
+
+  - id: matching
+    name: 匹配连线
+    status: active
+    summary: 左右两列建立一一对应关系。
+    response_schema:
+      type: object
+      required: [pairs]
+      properties:
+        pairs:
+          type: array
+          items:
+            type: object
+            required: [left_id, right_id]
+            properties:
+              left_id: { type: string }
+              right_id: { type: string }
+      additionalProperties: false
+    render_component: platform/MatchBoard
+    paper_spec: 左右两列印刷，学生画线连接
+    scoring_input: "{ pairs: [{left_id, right_id}] } → 逐对判定，支持分项计分"
+    compatible_scorers: [exact_match]
+
+  - id: ordering
+    name: 排序
+    status: active
+    summary: 将乱序元素排成正确序列（句子排序/步骤排序/标序号）。
+    response_schema:
+      type: object
+      required: [sequence]
+      properties:
+        sequence:
+          type: array
+          items: { type: string }
+          description: 学生给出的 element_id 全排列
+      additionalProperties: false
+    render_component: platform/SortableList
+    paper_spec: 乱序元素编号 + 填写序号位
+    scoring_input: "{ sequence: [element_id...] } → 与标准序列比对（全序/部分位置分见 scorer 参数）"
+    compatible_scorers: [exact_match]
+
+  - id: short_answer
+    name: 简答
+    status: active
+    summary: 有限长度自由文本作答（一句话至几句话）。
+    response_schema:
+      type: object
+      required: [text]
+      properties:
+        text: { type: string, maxLength: 2000 }
+      additionalProperties: false
+    render_component: platform/ShortAnswerBox
+    paper_spec: 横线作答区，行数按学段包配置
+    scoring_input: "{ text } → 关键点命中/量规评分"
+    compatible_scorers: [keypoint_hit, ai_rubric, human_confirm]
+
+  - id: stepwise_process
+    name: 分步过程
+    status: active
+    summary: 综合题拆为有序步骤，每步单独作答、单独标注知识点、单独判分（R-Q-15）；首年输入形态为结构化分步录入/答题区（架构 v2 §4.5 降级决策）。
+    response_schema:
+      type: object
+      required: [steps]
+      properties:
+        steps:
+          type: array
+          items:
+            type: object
+            required: [step_id, response]
+            properties:
+              step_id: { type: string }
+              response:
+                description: 该步的内嵌作答，其 schema 由步骤声明的交互类型决定（single_choice/text_blank/numeric_blank 之一）
+                type: object
+      additionalProperties: false
+    render_component: platform/StepWizard
+    paper_spec: 固定答题框 + 页面定位标记；拍照仅作「识别建议+人确认」录入提效（不承诺手写全自动判分）
+    scoring_input: "{ steps: [{step_id, response}] } → 逐步调用子评分器，汇总步骤分；步骤级知识点归因"
+    compatible_scorers: [stepwise_rubric]
+
+  - id: writing
+    name: 写作
+    status: active
+    summary: 长文本产出（作文/看图写话/书面表达/造句），按量规分维度评分。
+    response_schema:
+      type: object
+      required: [text]
+      properties:
+        text: { type: string, maxLength: 10000 }
+      additionalProperties: false
+    render_component: platform/WritingEditor
+    paper_spec: 方格纸/横线作答区（语文学科包提供田字格组件）
+    scoring_input: "{ text } → AI 维度量规评分（四步上线：基准验证→影子→抽检→灰度）"
+    compatible_scorers: [ai_rubric, human_confirm]
+
+  - id: drawing_operation
+    name: 作图操作（简化）
+    status: active
+    summary: 结构化元素点选/涂色/连线作图，非自由画笔（架构 v2 §2.3 简化决策）。
+    response_schema:
+      type: object
+      required: [elements]
+      properties:
+        elements:
+          type: array
+          items:
+            type: object
+            required: [element_id, state]
+            properties:
+              element_id: { type: string }
+              state:
+                type: string
+                description: "元素状态枚举（如 selected/colored/unselected），取值域由题目交互参数声明"
+      additionalProperties: false
+    render_component: platform/DrawingBoard
+    paper_spec: 印刷图形 + 学生涂画标记，批改按结构化区域判定
+    scoring_input: "{ elements: [{element_id, state}] } → 与目标状态集比对"
+    compatible_scorers: [exact_match, stepwise_rubric, human_confirm]
+
+  - id: handwriting_copy
+    name: 书写抄写（预留）
+    status: reserved
+    summary: 写字/抄写类题型。首年不实现在线采集，以「拍照上传 + 人确认兜底」过渡（架构 v2 §2.3、开放项 12）。
+    response_schema:
+      type: object
+      required: [photo_ref]
+      properties:
+        photo_ref: { type: string, description: 对象存储中的照片引用 }
+      additionalProperties: false
+    render_component: platform/PhotoUpload
+    paper_spec: 田字格/四线三格书写区
+    scoring_input: "{ photo_ref } → 人确认队列（首年不做自动书写评分）"
+    compatible_scorers: [human_confirm]
+
+  - id: oral
+    name: 口语（预留）
+    status: reserved
+    summary: 口语作答。注册接口预留，首年不实现（架构 v2 §1.3 取舍表：ASR 口语评分首年不做）。
+    response_schema:
+      type: object
+      required: [audio_ref]
+      properties:
+        audio_ref: { type: string, description: 对象存储中的音频引用 }
+      additionalProperties: false
+    render_component: platform/AudioRecorder
+    paper_spec: 二维码扫码录音（预留形态）
+    scoring_input: "{ audio_ref } → ASR 口语评分器（预留）"
+    compatible_scorers: [asr_oral, human_confirm]

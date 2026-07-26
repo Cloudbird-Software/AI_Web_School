@@ -1,0 +1,191 @@
+# 评分器注册表契约（平台级，冻结候选）
+# 来源：架构 v2 §2.3「双类型注册表」、§4.5 评分域
+# 纪律（宪法 D4）：作答结构与评分结构只能来自平台注册表；学科包只能复用与参数化；
+# 新增评分器须平台评审注册。本文件由 contract-watch 强制只增不改。
+registry: scorer
+contract_version: "1.0.0"
+status: frozen-candidate   # 人类逐行审查批准后转为 frozen
+source_sections:
+  - "架构v2 §2.3 评分器注册表"
+  - "架构v2 §2.1 V2 评分模式（7 种：6 现役 + 1 预留）"
+  - "架构v2 §4.5 评分域：注册表 + 分层置信度"
+
+# ── 统一评分契约（所有评分器必须遵守，架构 v2 §2.3 原文）──
+unified_contract:
+  signature: "score(response, item_version, params) -> ScoreResult"
+  inputs:
+    response: 学生作答，结构由交互类型的 response_schema 保证
+    item_version: 题目不可变快照（含 scoring_ref 指向的本评分器与参数）
+    params: 评分参数（答案程序/量规/关键点表，随 ItemVersion 版本化）
+  output_schema:
+    type: object
+    required: [dimension_scores, error_inferences, confidence, evidence, scorer_version]
+    properties:
+      dimension_scores:
+        type: object
+        additionalProperties: { type: number }
+        description: "维度分：{ dimension_id: score }；客观题单维度（correct: 0|1），开放题多维度（R-Q-07）"
+      error_inferences:
+        type: array
+        items:
+          type: object
+          required: [error_type_id, confidence, rule_version]
+          properties:
+            error_type_id: { type: string }
+            confidence: { type: number, minimum: 0, maximum: 1 }
+            rule_version: { type: string, description: 推断规则版本（真实数据修正时递增，历史可重放） }
+        description: 错误类型推断；「选某项」是证据非因果（架构 v2 §4.5）
+      confidence:
+        type: object
+        required: [scoring]
+        properties:
+          scoring: { type: number, minimum: 0, maximum: 1 }
+          recognition: { type: number, minimum: 0, maximum: 1, description: 图像识别置信度（仅拍照链路） }
+        description: 置信度四层分离纪律：识别/评分/推断/掌握各自独立记录，禁止混为单一「AI 置信度」（架构 v2 §4.5）
+      evidence:
+        type: object
+        description: 评分证据（命中点/步骤判定明细/量规逐维理由），供审计与教研抽检
+      scorer_version: { type: string, description: "评分器版本（含代码 digest；重判时据此写平行 score_run）"
+      }
+  versioning_rule: |
+    评分逻辑版本化（宪法 D6 / R-D-05）：新版本评分器重放历史作答时写平行 score_run，
+    原始 response_event 序列永不变更；增量重判防成本爆炸（评审报告 D4 决策）。
+
+# 每种评分器的必备字段
+required_fields: [id, name, status, deterministic, input_contract, params_schema, notes]
+
+scorers:
+  - id: exact_match
+    name: 精确匹配
+    status: active
+    deterministic: true
+    summary: 与标准答案精确比对；支持多空分项计分、序号、匹配对（架构 v2 §4.5 客观题）。
+    input_contract: single_choice / multi_choice / text_blank / numeric_blank / matching / ordering / drawing_operation 的作答
+    params_schema:
+      type: object
+      required: [answer]
+      properties:
+        answer: { description: "标准答案结构，形态随交互类型（option_id / 集合 / 逐空映射 / 序列）" }
+        partial_credit: { type: object, description: 多选/多空/多对的分项给分规则（缺省全对才得分） }
+        normalization: { type: object, description: "文本规范化：去空白/大小写/全半角规则" }
+    notes: 数学语义等价不得用本评分器做字符串匹配，必须走 math_equivalence（架构 v2 §4.5）
+
+  - id: math_equivalence
+    name: 数学等价
+    status: active
+    deterministic: true
+    summary: 符号比较判定数学等价：分数化简、单位换算、数值容差（架构 v2 §4.5）；双实现独立验算防生成器自证（§4.3）。
+    input_contract: numeric_blank / text_blank（数学表达式）的作答
+    params_schema:
+      type: object
+      required: [answer_expr]
+      properties:
+        answer_expr: { type: string, description: 标准答案表达式（安全表达式语言子集） }
+        equivalence_rules: { type: array, items: { type: string }, description: "启用的等价规则：fraction_reduce / unit_convert / decimal_tolerance 等" }
+        tolerance: { type: string, description: 数值容差（规范化小数字符串，禁止浮点字面量） }
+        unit_table_ref: { type: string, description: 单位换算表（学科包语料库版本引用） }
+    notes: 实现为 SymPy 独立服务，与实例化引擎不共享代码（架构 v2 §4.3 验算三层之双实现）
+
+  - id: stepwise_rubric
+    name: 分步给分
+    status: active
+    deterministic: true
+    summary: 结构化步骤 rubric：综合题拆有序步骤，每步独立判分、独立知识点归因（R-Q-15；架构 v2 §4.5）。
+    input_contract: stepwise_process 的作答
+    params_schema:
+      type: object
+      required: [steps]
+      properties:
+        steps:
+          type: array
+          items:
+            type: object
+            required: [step_id, scorer, scorer_params, max_score]
+            properties:
+              step_id: { type: string }
+              scorer: { type: string, description: 步骤级子评分器 id（本注册表现役确定性评分器） }
+              scorer_params: { type: object }
+              max_score: { type: number }
+              kp: { type: array, description: 步骤级知识点标注（与题目级 objective 并存） }
+    notes: 首年输入形态为结构化分步录入/答题区，把评分收敛为确定性问题（架构 v2 §4.5 降级决策）
+
+  - id: keypoint_hit
+    name: 关键点命中
+    status: active
+    deterministic: true
+    summary: 关键词/要点 + 规则判定（简答/句式转换/阅读要点题）。
+    input_contract: short_answer / text_blank 的作答
+    params_schema:
+      type: object
+      required: [keypoints]
+      properties:
+        keypoints:
+          type: array
+          items:
+            type: object
+            required: [id, patterns, score]
+            properties:
+              id: { type: string }
+              patterns: { type: array, items: { type: string }, description: 命中模式（关键词/正则/同义组，逐版本化） }
+              score: { type: number }
+              error_type_id: { type: string, description: 未命中时可推断的错误类型（可空） }
+        min_pass: { type: number, description: 通过分数线（可空） }
+    notes: 关键点表随 ItemVersion 版本化；命中率数据回流用于关键点表修订
+
+  - id: ai_rubric
+    name: AI 维度量规
+    status: active
+    deterministic: false
+    summary: 量规即数据（维度+锚点描述+分值带，学科包定义、随题版本化）；强模型按量规打分+逐维理由（架构 v2 §4.5）。
+    input_contract: writing / short_answer 的作答
+    params_schema:
+      type: object
+      required: [rubric]
+      properties:
+        rubric:
+          type: object
+          required: [dimensions]
+          properties:
+            dimensions:
+              type: array
+              items:
+                type: object
+                required: [id, name, anchors, score_bands]
+                properties:
+                  id: { type: string }
+                  name: { type: string }
+                  anchors: { type: array, items: { type: string }, description: 锚点描述（各档行为样例） }
+                  score_bands: { type: array, description: 分值带 }
+                  error_type_rules: { type: array, description: "维度得分模式 → 错误类型规则表" }
+        model_tier: { type: string, enum: [L2, L3], description: AI 总线档位（L2 强模型 / L3 双模型或 AI+人工复核） }
+    notes: |
+      上线四步（架构 v2 §4.5）：公开基准验证 → 影子运行 → 抽检伴随 → 灰度；
+      学段化抽检率（低段更高）；结论带置信度呈现、不输出排名（宪法 D8）；
+      低置信自动转 human_confirm 队列。
+    cost_note: 每次调用经 AI 能力总线记台账，成本归集到 item_revision（架构 v2 §4.8）
+
+  - id: human_confirm
+    name: 人确认兜底
+    status: active
+    deterministic: false
+    summary: 低置信作答汇聚人工队列，与抽检共用教研工作台（架构 v2 §4.5）。
+    input_contract: 任何交互类型的作答（通常由其他评分器的低置信输出触发）
+    params_schema:
+      type: object
+      properties:
+        queue: { type: string, description: 人工队列 id }
+        sla_hours: { type: number }
+        guideline_ref: { type: string, description: 人工判定指引文档引用 }
+    notes: 人确认结论回流作为验证器阈值与评分器调优数据集（架构 v2 §4.3 抽检回流）
+
+  - id: asr_oral
+    name: ASR 口语评分（预留）
+    status: reserved
+    deterministic: false
+    summary: 注册接口预留，首年不实现（架构 v2 §1.3：技术成熟度与成本不匹配；初高中扩展时再启用，见 OPC 方案 §8.1）。
+    input_contract: oral 的作答（预留）
+    params_schema:
+      type: object
+      properties:
+        rubric_ref: { type: string }
+    notes: 预留不实现；首年英语口语题型以听力+笔试覆盖
