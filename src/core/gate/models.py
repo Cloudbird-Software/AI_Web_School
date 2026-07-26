@@ -29,24 +29,16 @@ from sqlalchemy import (
 )
 from sqlalchemy.dialects.postgresql import ENUM as PG_ENUM
 from sqlalchemy.dialects.postgresql import JSONB
-from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
+from sqlalchemy.orm import Mapped, mapped_column, relationship
+
+from src.core.models._base import Base
 
 
 # ────────────────────────────────────────────────────────────────────
-# ORM 基类
-# ────────────────────────────────────────────────────────────────────
-# 为什么单独 Base 而非复用 src/core/models/_base.py：T-W1-003 的 ORM 基类
-# 在另一分支，T-W1-006 仅依赖 T-W1-001/002（见任务卡 depends_on）；为本表
-# 自带最小 Base 避免跨分支依赖。后续 T-W1-003 合入后可统一。
-class _GateBase(DeclarativeBase):
-    """校验域 ORM 基类。"""
-
-
-# ────────────────────────────────────────────────────────────────────
-# ORM 模型
+# ORM 模型（统一使用 src/core/models/_base.py 的 Base，T-W1-003 已合入同分支）
 # ────────────────────────────────────────────────────────────────────
 
-class GateCertificate(_GateBase):
+class GateCertificate(Base):
     """§4.3 门证书：签发后只增不改；item_version.gate_certificate_id 的合法来源.
 
     ORM 层仅暴露 INSERT/SELECT——本类不提供 update/delete 类方法。
@@ -79,7 +71,7 @@ class GateCertificate(_GateBase):
         )
 
 
-class GateRun(_GateBase):
+class GateRun(Base):
     """§4.3 一次校验运行记录：策略版本/验证器/判定/证据/成本.
 
     ORM 层仅暴露 INSERT/SELECT——本类不提供 update/delete 类方法。
@@ -128,7 +120,7 @@ class GateRun(_GateBase):
         )
 
 
-class GateVerdict(_GateBase):
+class GateVerdict(Base):
     """§4.3 验证器判定结果明细：一次 run 可有多条 verdict（多步骤/多规则）.
 
     ORM 层仅暴露 INSERT/SELECT——本类不提供 update/delete 类方法。

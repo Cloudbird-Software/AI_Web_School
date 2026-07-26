@@ -71,7 +71,8 @@ async def record_event(
 
     Args:
         session: 异步 SQLAlchemy 会话。
-        event_id: 事件唯一 id（应用层 uuid4/ULID 生成；全局唯一性由应用层保证，
+        event_id: 事件唯一 id（应用层 ULID 生成——ulid.new() 的 128 位值可无损
+            转 UUID 入本列；全局唯一性由应用层保证，
             契约 §2 实现注记——分区表 PK 为 (event_id, created_at)）。
         student_alias_id: 匿名学生 id（D7 PII 只在保险库 schema，本表只存 alias）。
         item_version_id: 作答题目版本（A/B 级实例=内容寻址哈希，D3）。

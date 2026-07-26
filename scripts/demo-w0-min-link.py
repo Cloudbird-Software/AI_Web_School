@@ -33,22 +33,27 @@ def main() -> int:
         f"user={os.environ['POSTGRES_USER']} password={os.environ['POSTGRES_PASSWORD']}"
     )
     with psycopg.connect(dsn) as conn, conn.cursor() as cur:
-        # ① 创建一条题目记录（占位 item 表）
-        cur.execute("INSERT INTO item DEFAULT VALUES RETURNING id;")
+        # ① 创建一条题目记录（W1 0002 后的 item 表：item_id/pack_id/tier 必填）
+        import ulid
+        item_id = str(ulid.new())
+        cur.execute(
+            "INSERT INTO item (item_id, pack_id, tier) VALUES (%s, 'platform', 'C') RETURNING item_id;",
+            (item_id,),
+        )
         item_id = cur.fetchone()[0]
-        print(f"1. 创建题目记录: item.id = {item_id}")
+        print(f"1. 创建题目记录: item.item_id = {item_id}")
 
-        # ② 过门（占位验证器：记录存在且 id 为正整数）
-        cur.execute("SELECT id FROM item WHERE id = %s;", (item_id,))
+        # ② 过门（占位验证器：记录存在且 id 非空）
+        cur.execute("SELECT item_id FROM item WHERE item_id = %s;", (item_id,))
         row = cur.fetchone()
-        assert row and row[0] > 0, "占位验证器 FAIL：记录不存在或 id 非法"
+        assert row and row[0], "占位验证器 FAIL：记录不存在或 id 非法"
         print(f"2. 过门（占位验证器）: PASS（gate=placeholder-validator）")
 
         # ③ 查询（链路回读）
-        cur.execute("SELECT id, created_at FROM item WHERE id = %s;", (item_id,))
+        cur.execute("SELECT item_id, created_at FROM item WHERE item_id = %s;", (item_id,))
         got = cur.fetchone()
         assert got and got[0] == item_id, "查询回读 FAIL"
-        print(f"3. 查询回读: id={got[0]}, created_at={got[1]}")
+        print(f"3. 查询回读: item_id={got[0]}, created_at={got[1]}")
 
     print("MIN-LINK PASS：创建 → 过门 → 查询 链路全通")
     return 0

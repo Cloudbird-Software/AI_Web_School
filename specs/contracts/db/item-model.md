@@ -3,7 +3,7 @@
 > **地位**：全系统只有一个内容资产域（宪法 A1）；内容版本账只增不改（D1：**Item/Material/Corpus 全版本化**）。
 > **来源**：架构 v2 §2.2「统一内容模型」、附录 A 数据模型清单；评审报告 D1/D2/D3 决策；需求 R-Q-20/21/22/26。
 > **范围**：Item 族（身份/版本/谱系）+ 母题 + 素材（含版本）+ 题组 + 语料库的结构契约。本文件为结构冻结文本，W1 经 Alembic 迁移落地为真实 DDL。
-> 契约版本：1.1.0（ADR-0002 修订）｜ 状态：frozen-candidate（人类逐行审查批准后转 frozen）
+> 契约版本：1.1.1（corpus_version 补门字段对齐 material_version）｜ 状态：frozen-candidate（人类逐行审查批准后转 frozen）
 
 ## 1. 模型总览
 
@@ -142,7 +142,7 @@ CorpusAsset ── CorpusVersion（语料库：版本化、带许可、带谱系
 |---|---|---|
 | item_group | item_group_id PK, material_version_id FK, item_version_ids text[], ordered bool, testlet bool | 题组 ≤6 题（R-Z-06）；组内顺序可定义；引用素材版本（非素材身份），保证可回溯 |
 | corpus_asset | asset_id PK, kind, pack_id, current_version_id FK, created_at | 语料库身份（字/词/篇/句/词表/音标/函数/图库） |
-| corpus_version | version_id PK（内容寻址 digest）, asset_id FK, content_ref, license_id FK, lineage, status, created_at | 语料库版本：版本化、带许可、带谱系；被生产线与校验门共同消费（架构 v2 §4.1 B 线）；digest 进实例寻址链（§3 公式一） |
+| corpus_version | version_id PK（内容寻址 digest）, asset_id FK, content_ref, license_id FK, lineage, status, gate_certificate_id, published_at, retired_at, created_at | 语料库版本：版本化、带许可、带谱系；被生产线与校验门共同消费（架构 v2 §4.1 B 线）；digest 进实例寻址链（§3 公式一）。`status` 同 §4 状态机四态（draft/quarantined/published/retired）；`gate_certificate_id` 为门证书唯一真源（纪律同 §2.2，lineage 内不重复存储）；`published_at`/`retired_at` 语义同 §2.2——与 §2.4 material_version 对齐（v1.1.1 补，原为 v1.1 修订时本行遗漏） |
 
 ## 3. 身份与内容寻址规则（D3；评审报告 D2）
 

@@ -23,6 +23,7 @@ import uuid
 from datetime import datetime, timezone
 from typing import Any, Optional
 
+import ulid
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.core.models.content_addressing import (
@@ -50,14 +51,13 @@ class GateEnforcementError(ValueError):
 # ────────────────────────────────────────────────────────────────────
 
 def _new_id(prefix: str = "") -> str:
-    """生成 ULID 替代品（uuid4 hex）.
+    """生成 ULID（ulid-py）.
 
-    为什么不用 ulid 库：项目依赖未锁定 ulid（T-W1-001 未引入）；
-    uuid4 hex 128 位足够唯一，且 Python 标准库自带。
-    C/D 级 item_id 契约规定用 ULID，但 ORM 列是 text 不强校验格式；
-    后续生产线接入时替换为真正的 ULID。
+    契约规定 C/D 级 item_id/material_id 用 ULID（W1 修复包 P7 落地）：
+    ULID 128 位、词典序可排序、26 字符 Crockford base32 文本形式，
+    与 ORM text 列兼容。
     """
-    return prefix + uuid.uuid4().hex
+    return prefix + str(ulid.new())
 
 
 def _compute_item_version_id(version_data: dict) -> str:

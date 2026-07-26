@@ -3,17 +3,19 @@
 宪法 D1：corpus_version 行永不 UPDATE/DELETE；
 宪法 D3：version_id = 内容寻址 digest，进入 §3 公式一的 corpus_digests 链。
 
-列与 alembic/versions/0002_item_model.py::_create_corpus_version 逐字对齐：
+列与 alembic/versions/0002_item_model.py::_create_corpus_version
++ alembic/versions/0005_append_only_unify.py（P8 补门字段）逐字对齐：
 - version_id text PK（内容寻址 digest）
 - asset_id text NOT NULL FK→corpus_asset
 - content_ref text NOT NULL（对象存储引用）
 - license_id text NOT NULL FK→material_license（语料库同样受 R-Q-18 许可约束）
 - lineage jsonb NOT NULL（生产谱系，同 §2.2.2 结构）
-- status item_version_status_enum NOT NULL（与 item_version/material_version 共用 enum）
+- status item_version_status_enum NOT NULL server_default 'draft'
+  （与 item_version/material_version 共用 enum；默认值由迁移 0005 补）
+- gate_certificate_id text nullable（唯一真源；迁移 0005 补，对齐 material_version）
+- published_at timestamptz nullable（DB CHECK 强制非空必伴随 gate_certificate_id）
+- retired_at timestamptz nullable
 - created_at timestamptz NOT NULL server_default now()
-
-注：corpus_version 当前无 published_at/retired_at/gate_certificate_id 字段
-（迁移 0002 未建）；如未来需要，由后续迁移补字段，本 ORM 同步增列。
 """
 from __future__ import annotations
 
@@ -56,6 +58,13 @@ class CorpusVersion(Base):
     status: Mapped[str] = mapped_column(
         item_version_status_enum, nullable=False
     )
+    gate_certificate_id: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    published_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    retired_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         nullable=False,
@@ -83,6 +92,9 @@ class CorpusVersionPydantic(BaseModel):
     license_id: str
     lineage: Lineage
     status: Literal["draft", "quarantined", "published", "retired"]
+    gate_certificate_id: Optional[str] = None
+    published_at: Optional[datetime] = None
+    retired_at: Optional[datetime] = None
     created_at: Optional[datetime] = None
 
 
