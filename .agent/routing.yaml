@@ -1,0 +1,46 @@
+# 模型路由表（v1：2026-07-26 按实测更新；基准赛后由 tools/bench/route.py 生成建议）
+version: 1
+updated: 2026-07-26
+
+tiers:
+  T0: main-session                  # S 级：契约/架构/裁决/疑难——当前由主对话（人类面前的本会话）承担；无独立 API key
+  T1: deepseek/deepseek-v4-pro      # M 级：模块实现/测试（key 已实测连通 2026-07-26）
+  T2: deepseek/deepseek-v4-flash    # W 级：文书/机械/转换（key 已实测连通 2026-07-26）
+
+# ──────────────────────────────────────────────────────────────
+# 调度模式：trae-delegate（人类 2026-07-26 指令，临时规则）
+#
+# 当前人类在 Trae 持有约 80 次绿通额度。额度用尽前：
+#   1. M 级 / W 级任务（代码类）：主对话（T0）不直接实现，
+#      而是产出【完整可派发提示词】（角色 prompt + 任务卡路径 + 规格路径 +
+#      验收命令 + 禁止事项）交给人类，由人类在 Trae 同项目内派发执行。
+#   2. 非代码类工作（文件处理/格式转换/文书整理）：单独标注"Trae-work 可承接"，
+#      人类可使用 Trae work 专属绿通执行。
+#   3. S 级任务（架构/契约/裁决/疑难）：仍由主对话直接承担。
+#   4. 每次派发须在遥测记录：delegated_to=trae。
+#
+# 额度用尽后：人类通知主对话，由主对话把 dispatch.mode 改回 api-direct，
+# M/W 级任务改经 LiteLLM 直调 T1/T2 模型执行。届时删除本节临时规则。
+# ──────────────────────────────────────────────────────────────
+dispatch:
+  mode: trae-delegate               # trae-delegate | api-direct
+  trae_quota_note: "约 80 次绿通（2026-07-26 起）；耗尽后人类通知，改回 api-direct"
+  levels_via_trae: [M, W]           # 绿通期间 M/W 级走 Trae
+  non_code_via_trae_work: true      # 非代码文件处理可走 Trae work 专属绿通
+  levels_via_main_session: [S]      # S 级由主对话承担
+
+rules:
+  verifier_family_isolation: true    # Verifier 与 Builder 必须不同模型家族
+  verifier_tier_floor: builder       # Verifier 梯队 ≥ Builder 梯队
+  fallback_chain: [T1, T0]           # LiteLLM 故障切换顺序
+
+budgets:
+  per_task: {T0: 800k, T1: 400k, T2: 150k}   # token 硬上限
+  total_hard_cap_cny: 150000                  # 全程预算硬顶（80% 告警）——示例值，待人类确认真实预算
+  t0_share_max: 0.15
+
+telemetry_min_n: 20                   # 路由降权的最小样本量
+
+bench:
+  suite: tests/model-bench/suite.yaml
+  rerun_cadence_days: 60

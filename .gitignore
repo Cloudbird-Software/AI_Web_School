@@ -1,0 +1,10 @@
+.env
+__pycache__/
+*.pyc
+.venv/
+node_modules/
+dist/
+.agent/telemetry/*.jsonl
+tests/model-bench/results/
+.DS_Store
+worktrees/

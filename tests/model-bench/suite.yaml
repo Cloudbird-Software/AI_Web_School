@@ -1,0 +1,5 @@
+# 模型基准赛任务集清单（题目本体按 README §1 实现后在此登记）
+version: 1
+categories: {A: 规格理解, B: 代码实现, C: 缺陷修复, D: 测试编写, E: 精确输出, F: 长上下文检索}
+tasks_per_category: 5
+repeats: 3

@@ -1,0 +1,37 @@
+name: nightly
+on:
+  schedule: [{cron: "0 17 * * *"}]   # 每日 01:00 北京
+  workflow_dispatch:
+
+jobs:
+  full-integration:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: "3.12"}
+      - run: pip install -r requirements-dev.txt
+
+      - name: 全栈地基启动
+        run: docker compose up -d --wait
+
+      - name: 迁移可逆演练（upgrade→downgrade→upgrade）
+        run: make migrate-check
+
+      - name: 种子数据重灌 + 黄金数据集回归
+        run: python -m pytest tests/golden -q
+
+      - name: 黄金路径全量（30 题型）
+        run: python -m pytest tests/golden-path -q
+
+      - name: 契约测试全量
+        run: python -m pytest tests/contract -q
+
+      - name: 失败即创建 issue（红灯置顶）
+        if: failure()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.issues.create({owner, repo,
+              title: `🔴 Nightly 失败 ${new Date().toISOString().slice(0,10)}`,
+              body: "见 Actions 日志。按宪法 P4：红灯为全项目最高优先级。"})

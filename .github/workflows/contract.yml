@@ -1,0 +1,23 @@
+name: contract-watch
+on:
+  pull_request:
+    paths: ["specs/contracts/**", "src/**"]
+
+jobs:
+  contract-drift:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 0}
+      - name: 冻结契约变更检测（P5）
+        run: |
+          FROZEN=$(cat specs/contracts/FROZEN.txt 2>/dev/null || true)
+          for f in $FROZEN; do
+            git diff --quiet origin/main...HEAD -- "$f" \
+              && echo "ok: $f" \
+              || { echo "❌ 冻结契约被修改: $f（须走契约变更申请）"; exit 1; }
+          done
+      - uses: actions/setup-python@v5
+        with: {python-version: "3.12"}
+      - run: pip install -r requirements-dev.txt
+      - run: python -m pytest tests/contract -q

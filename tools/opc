@@ -1,0 +1,117 @@
+#!/usr/bin/env python3
+"""opc — OPC 开发操作系统 CLI（无第三方依赖）
+用法:
+  python tools/opc new-task --wave w1 --title "..."   生成任务卡骨架
+  python tools/opc board                               校验任务板（owner 互斥/依赖存在）
+  python tools/opc dispatch T-W1-001 [--dry-run]       渲染 Builder prompt 并打印派发命令
+  python tools/opc dashboard                           从遥测 JSONL 生成指标摘要
+"""
+import argparse, glob, json, os, re, sys, datetime
+
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+def read(p):
+    with open(os.path.join(ROOT, p), encoding="utf-8") as f: return f.read()
+
+def find_card(tid):
+    hits = glob.glob(os.path.join(ROOT, "tasks", "**", f"{tid}.md"), recursive=True)
+    return hits[0] if hits else None
+
+def parse_card(path):
+    txt = read(os.path.relpath(path, ROOT))
+    def field(k, default=""):
+        m = re.search(rf"^{k}:\s*(.+)$", txt, re.M)
+        return m.group(1).strip() if m else default
+    return {"raw": txt, "id": field("id"), "title": field("title"),
+            "owner_module": field("owner_module"), "model_floor": field("model_floor", "T1"),
+            "token_budget": field("token_budget", "400k"),
+            "depends_on": re.findall(r"T-\w+-\d+", field("depends_on"))}
+
+def routing():
+    import yaml  # 可选依赖；缺失时用内置默认
+    try:
+        with open(os.path.join(ROOT, ".agent/routing.yaml"), encoding="utf-8") as f:
+            return yaml.safe_load(f)
+    except Exception:
+        return {"tiers": {"T0": "anthropic/claude-sonnet", "T1": "deepseek/deepseek-chat", "T2": "zhipu/glm-4-flash"}}
+
+def cmd_new_task(a):
+    tpl = read("tasks/templates/task-card.md")
+    seq = len(glob.glob(os.path.join(ROOT, "tasks", a.wave, "*.md"))) + 1
+    tid = f"T-{a.wave.upper()}-{seq:03d}"
+    out = tpl.replace("<wave>", a.wave.upper()).replace("<seq>", f"{seq:03d}").replace("<一句话目标>", a.title)
+    os.makedirs(os.path.join(ROOT, "tasks", a.wave), exist_ok=True)
+    p = os.path.join(ROOT, "tasks", a.wave, f"{tid}.md")
+    with open(p, "w", encoding="utf-8") as f: f.write(out)
+    print(f"✅ 已生成 {p}（请补 spec/owner_module/non_goals 后挂到 board.md）")
+
+def cmd_board(_):
+    cards = [parse_card(p) for p in glob.glob(os.path.join(ROOT, "tasks", "**", "T-*.md"), recursive=True)]
+    ids = {c["id"] for c in cards}
+    errors = []
+    owners = {}
+    for c in cards:
+        if not c["owner_module"]: errors.append(f"{c['id']}: 缺 owner_module")
+        for d in c["depends_on"]:
+            if d not in ids: errors.append(f"{c['id']}: 依赖 {d} 不存在")
+    board = read("tasks/board.md")
+    doing = re.findall(r"\|\s*(T-\w+-\d+)\s*\|[^|]*\|[^|]*\|[^|]*\|$", board, re.M)
+    for c in cards:
+        if c["id"] in doing and c["owner_module"]:
+            if c["owner_module"] in owners:
+                errors.append(f"owner 冲突: {c['id']} 与 {owners[c['owner_module']]} 同占 {c['owner_module']}")
+            owners[c["owner_module"]] = c["id"]
+    print("❌ " + "\n❌ ".join(errors) if errors else f"✅ 任务板校验通过（{len(cards)} 张卡）")
+    sys.exit(1 if errors else 0)
+
+def cmd_dispatch(a):
+    p = find_card(a.task_id)
+    if not p: print(f"❌ 未找到 {a.task_id}"); sys.exit(1)
+    card = parse_card(p)
+    model = routing()["tiers"].get(card["model_floor"], "?")
+    role = read(".agent/roles/builder.md").replace("{{TASK_CARD_PATH}}", os.path.relpath(p, ROOT))
+    prompt_path = os.path.join(ROOT, "tasks", ".outbox", f"{card['id']}-builder-prompt.md")
+    os.makedirs(os.path.dirname(prompt_path), exist_ok=True)
+    with open(prompt_path, "w", encoding="utf-8") as f:
+        f.write(read(".agent/rules/core.md") + "\n\n---\n\n" + role)
+    print(f"任务卡: {card['id']}  模型梯队: {card['model_floor']} → {model}  预算: {card['token_budget']}")
+    print(f"prompt 已渲染: {os.path.relpath(prompt_path, ROOT)}")
+    print("\n派发命令（二选一，在独立 git worktree 中执行）:")
+    print(f"  git worktree add worktrees/{card['id'].lower()} -b task/{card['id'].lower()}")
+    print(f"  claude -p \"$(cat {os.path.relpath(prompt_path, ROOT)})\" --max-turns 30   # Claude Code")
+    print(f"  opencode run -m {model} \"$(cat {os.path.relpath(prompt_path, ROOT)})\"      # OpenCode/国产模型")
+    if not a.dry_run:
+        print("\n(dry-run 默认不实际执行；确认后去掉 --dry-run 并自行执行上述命令)")
+
+def cmd_dashboard(_):
+    files = glob.glob(os.path.join(ROOT, ".agent/telemetry", "events-*.jsonl"))
+    rows = [json.loads(l) for f in files for l in open(f, encoding="utf-8") if l.strip()]
+    if not rows: print("暂无遥测数据"); return
+    merged = [r for r in rows if r.get("merged")]
+    cost = sum(r.get("cost_cny", 0) for r in rows)
+    t0 = sum(r.get("tokens_in", 0) + r.get("tokens_out", 0) for r in rows if r.get("model_tier") == "T0")
+    tot = sum(r.get("tokens_in", 0) + r.get("tokens_out", 0) for r in rows) or 1
+    by_mt = {}
+    for r in rows:
+        k = (r.get("model", "?"), r.get("task_type", "?"))
+        by_mt.setdefault(k, []).append(r)
+    print(f"== 仪表盘 {datetime.date.today()} ==")
+    print(f"任务总数 {len(rows)} | 已合入 {len(merged)} | 累计成本 ¥{cost:.2f} | T0 token 占比 {t0/tot:.1%}")
+    print(f"单位合入成本 ¥{cost/max(len(merged),1):.2f}")
+    print("\n模型×任务类型（n≥20 且通过率<60% 建议降权）:")
+    for (m, t), rs in sorted(by_mt.items()):
+        ok = sum(1 for r in rs if r.get("verifier_verdict") == "PASS")
+        flag = " ⛔" if len(rs) >= 20 and ok/len(rs) < 0.6 else ""
+        print(f"  {m:32s} {t:8s} n={len(rs):3d} 通过率 {ok/len(rs):.0%}{flag}")
+    bad = [r["task_id"] for r in rows if r.get("misreport")]
+    if bad: print(f"\n⚠️ 虚报事件: {bad}")
+
+if __name__ == "__main__":
+    ap = argparse.ArgumentParser(prog="opc")
+    sub = ap.add_subparsers(dest="cmd", required=True)
+    p = sub.add_parser("new-task"); p.add_argument("--wave", required=True); p.add_argument("--title", required=True)
+    sub.add_parser("board")
+    p = sub.add_parser("dispatch"); p.add_argument("task_id"); p.add_argument("--dry-run", action="store_true", default=True)
+    sub.add_parser("dashboard")
+    a = ap.parse_args()
+    {"new-task": cmd_new_task, "board": cmd_board, "dispatch": cmd_dispatch, "dashboard": cmd_dashboard}[a.cmd](a)
