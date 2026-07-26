@@ -23,7 +23,7 @@ cd 中小学教辅材料
 ```bash
 python -m venv .venv
 source .venv/Scripts/activate
-pip install -r requirements.txt
+pip install -r requirements-dev.txt
 ```
 
 验证 Python 版本：
