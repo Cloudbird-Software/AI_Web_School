@@ -12,3 +12,6 @@ worktrees/
 # T-W1-001: pip install -e . 生成的元数据（不入库）
 *.egg-info/
 .eggs/
+
+# W2 运行时产物（PDF 输出等）
+out/
