@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% block title %}错误{% endblock %}
+{% block content %}
+<div class="card" style="text-align: center; padding: 60px 20px;">
+  <h2 style="color: #dc3545;">错误 {{ code }}</h2>
+  <p>{{ message }}</p>
+  <p style="margin-top: 24px;">
+    <a href="/items" class="btn">返回题库</a>
+  </p>
+</div>
+{% endblock %}

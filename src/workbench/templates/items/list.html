@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% block title %}题库列表{% endblock %}
+{% block content %}
+<div class="card">
+  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+    <h2 style="margin: 0;">题库列表</h2>
+    <a href="/templates/new" class="btn">+ 新建母题</a>
+  </div>
+
+  <form method="GET" action="/items" style="margin-bottom: 16px;">
+    <div class="form-row">
+      <div class="form-group">
+        <label for="pack_id">按学科包过滤</label>
+        <select name="pack_id" id="pack_id" onchange="this.form.submit()">
+          <option value="">全部</option>
+          {% for p in packs %}
+          <option value="{{ p }}" {% if pack_id_filter == p %}selected{% endif %}>{{ p }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="form-group" style="display: flex; align-items: flex-end;">
+        <button type="submit" class="btn">过滤</button>
+        {% if pack_id_filter %}<a href="/items" class="btn btn-secondary" style="margin-left: 8px;">清除</a>{% endif %}
+      </div>
+    </div>
+  </form>
+
+  {% if items %}
+  <table>
+    <thead>
+      <tr>
+        <th>item_id</th>
+        <th>pack_id</th>
+        <th>tier</th>
+        <th>当前版本状态</th>
+        <th>创建时间</th>
+        <th>操作</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for it in items %}
+      <tr>
+        <td><code>{{ it.item_id[:16] }}{% if it.item_id|length > 16 %}…{% endif %}</code></td>
+        <td>{{ it.pack_id }}</td>
+        <td><span class="badge badge-tier">{{ it.tier }}</span></td>
+        <td><span class="badge badge-{{ it.status }}">{{ it.status }}</span></td>
+        <td>{{ it.created_at.strftime('%Y-%m-%d %H:%M') if it.created_at else '-' }}</td>
+        <td><a href="/items/{{ it.item_id }}" class="btn btn-secondary">详情</a></td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p style="text-align: center; padding: 40px; color: #666;">
+    题库为空。先 <a href="/templates/new">新建母题</a> 并签发实例。
+  </p>
+  {% endif %}
+</div>
+{% endblock %}

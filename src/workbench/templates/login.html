@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% block title %}登录{% endblock %}
+{% block content %}
+<div class="card" style="max-width: 400px; margin: 60px auto;">
+  <h2 style="margin-top: 0;">登录 · 教研工作台</h2>
+  {% if error %}<div class="error">{{ error }}</div>{% endif %}
+  <form method="POST" action="/login">
+    <input type="hidden" name="next" value="{{ next }}">
+    <div class="form-group">
+      <label for="token">访问 Token</label>
+      <input type="password" name="token" id="token" required autofocus placeholder="输入 WORKBENCH_TOKEN">
+    </div>
+    <button type="submit" class="btn">登录</button>
+  </form>
+  <p class="info" style="margin-top: 16px; font-size: 12px;">
+    W2 单用户静态 token 鉴权；token 通过环境变量 WORKBENCH_TOKEN 配置。
+  </p>
+</div>
+{% endblock %}

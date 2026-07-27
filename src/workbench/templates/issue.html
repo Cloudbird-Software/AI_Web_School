@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% block title %}签发 · {{ version.item_version_id[:8] }}{% endblock %}
+{% block content %}
+<div class="card">
+  <h2>签发 item_version</h2>
+  <table>
+    <tr><th style="width: 200px;">item_version_id</th><td><code>{{ version.item_version_id }}</code></td></tr>
+    <tr><th>item_id</th><td><code>{{ version.item_id }}</code></td></tr>
+    {% if item %}
+    <tr><th>pack_id</th><td>{{ item.pack_id }}</td></tr>
+    <tr><th>tier</th><td><span class="badge badge-tier">{{ item.tier }}</span></td></tr>
+    {% endif %}
+    <tr><th>当前状态</th><td><span class="badge badge-{{ version.status }}">{{ version.status }}</span></td></tr>
+    <tr><th>门证书</th><td>
+      {% if version.gate_certificate_id %}
+        <code>{{ version.gate_certificate_id }}</code>
+      {% else %}
+        <span style="color: #999;">无（未过门）</span>
+      {% endif %}
+    </td></tr>
+  </table>
+</div>
+
+<div class="card">
+  <h3>内容快照（六大块摘要）</h3>
+  <p><strong>objective：</strong></p>
+  <pre>{{ version.objective | tojson(indent=2) }}</pre>
+  <p><strong>content：</strong></p>
+  <pre>{{ version.content | tojson(indent=2) }}</pre>
+</div>
+
+<div class="card">
+  <h3>签发操作</h3>
+  {% if can_issue %}
+  <p style="color: #17a2b8;">点击下方按钮触发门编排（schema → license → 查重）。全部验证器通过后状态前移到 <code>published</code>，并写入 publication 签发账。</p>
+  <form method="post" action="/issue/{{ version.item_version_id }}">
+    <button type="submit" class="btn">确认签发</button>
+    <a href="/items/{{ version.item_id }}" class="btn btn-secondary">返回详情</a>
+  </form>
+  {% else %}
+  <p style="color: #dc3545;">当前状态 <code>{{ version.status }}</code> 不可签发（仅 draft/quarantined 可签发；状态机无回边/无重签）。</p>
+  <a href="/items/{{ version.item_id }}" class="btn btn-secondary">返回详情</a>
+  {% endif %}
+</div>
+{% endblock %}

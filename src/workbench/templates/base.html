@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}教研工作台{% endblock %} · muti-platform</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif; margin: 0; padding: 0; background: #f5f5f5; color: #222; }
+    .nav { background: #1a1a1a; color: #fff; padding: 12px 24px; display: flex; gap: 16px; align-items: center; }
+    .nav a { color: #fff; text-decoration: none; font-size: 14px; }
+    .nav a:hover { text-decoration: underline; }
+    .nav .brand { font-weight: bold; font-size: 16px; margin-right: auto; }
+    .container { max-width: 1200px; margin: 24px auto; padding: 0 24px; }
+    .card { background: #fff; border-radius: 6px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); padding: 20px; margin-bottom: 16px; }
+    table { width: 100%; border-collapse: collapse; font-size: 14px; }
+    th, td { padding: 10px 12px; text-align: left; border-bottom: 1px solid #e0e0e0; }
+    th { background: #fafafa; font-weight: 600; }
+    tr:hover { background: #fafafa; }
+    .badge { display: inline-block; padding: 2px 8px; border-radius: 3px; font-size: 12px; }
+    .badge-draft { background: #fff3cd; color: #856404; }
+    .badge-published { background: #d4edda; color: #155724; }
+    .badge-quarantined { background: #f8d7da; color: #721c24; }
+    .badge-retired { background: #e2e3e5; color: #383d41; }
+    .badge-no_version { background: #e2e3e5; color: #383d41; }
+    .badge-tier { background: #d1ecf1; color: #0c5460; }
+    .btn { display: inline-block; padding: 6px 14px; background: #007bff; color: #fff; border: none; border-radius: 4px; cursor: pointer; text-decoration: none; font-size: 14px; }
+    .btn:hover { background: #0056b3; }
+    .btn-secondary { background: #6c757d; }
+    .btn-secondary:hover { background: #545b62; }
+    .btn-danger { background: #dc3545; }
+    .btn-danger:hover { background: #bd2130; }
+    .form-group { margin-bottom: 14px; }
+    .form-group label { display: block; font-weight: 600; margin-bottom: 4px; }
+    .form-group input, .form-group select, .form-group textarea { width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; font-family: monospace; }
+    .form-group textarea { min-height: 200px; font-family: "Consolas", "Monaco", monospace; font-size: 13px; }
+    .form-row { display: flex; gap: 12px; }
+    .form-row .form-group { flex: 1; }
+    .error { color: #dc3545; font-size: 14px; margin-bottom: 12px; }
+    .info { color: #17a2b8; font-size: 14px; }
+    pre { background: #f8f9fa; padding: 12px; border-radius: 4px; overflow-x: auto; font-size: 13px; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px; }
+    .grid-item { background: #fff; padding: 12px; border-radius: 4px; border: 1px solid #e0e0e0; }
+    .grid-item h4 { margin: 0 0 8px 0; font-size: 14px; }
+    .grid-item .answer { margin-top: 8px; padding-top: 8px; border-top: 1px dashed #ccc; color: #155724; font-weight: 600; }
+    .stats { display: flex; gap: 24px; margin-bottom: 16px; }
+    .stat { background: #fff; padding: 12px 20px; border-radius: 4px; border-left: 4px solid #007bff; }
+    .stat .num { font-size: 24px; font-weight: bold; }
+    .stat .label { font-size: 12px; color: #666; }
+  </style>
+</head>
+<body>
+  <nav class="nav">
+    <span class="brand">教研工作台</span>
+    <a href="/items">题库</a>
+    <a href="/templates/new">新建母题</a>
+    <a href="/logout">登出</a>
+  </nav>
+  <div class="container">
+    {% block content %}{% endblock %}
+  </div>
+</body>
+</html>
