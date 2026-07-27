@@ -53,7 +53,11 @@ def _load_char_in_corpus_module():
     """
     mod_name = "subject_chinese_char_in_corpus_under_test"
     if mod_name in sys.modules:
-        return sys.modules[mod_name]
+        # 缓存命中：模块不重执行，但 reset_registry() 可能已清空注册表——
+        # register_validator 幂等（覆盖语义），确保注册存在（测试互染修复）
+        mod = sys.modules[mod_name]
+        register_validator("subject-chinese", mod.CharInCorpusValidator)
+        return mod
     spec = importlib.util.spec_from_file_location(mod_name, _VALIDATOR_PATH)
     if spec is None or spec.loader is None:
         raise ImportError(f"无法加载 {_VALIDATOR_PATH}")
@@ -407,7 +411,8 @@ class TestValidatorRegistration:
         """char_in_corpus 已注册到 pack_id='subject-chinese'."""
         from src.core.gate.validator import get_validator, list_validators
 
-        # 模块加载时已注册（_load_char_in_corpus_module 触发）
+        # 自包含：显式确保模块加载与注册（其他测试可能已 reset_registry）
+        _load_char_in_corpus_module()
         assert "char_in_corpus" in list_validators("subject-chinese")
 
     def test_validator_class_attributes(self) -> None:

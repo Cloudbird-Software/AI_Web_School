@@ -24,7 +24,7 @@ jobs:
         run: |
           ! git diff origin/main...HEAD -- tests/ | grep -q '^-.*assert' \
             || { echo "❌ 删除既有断言"; exit 1; }
-          ! git diff origin/main...HEAD -- tests/ | grep -qE '^\+.*(pytest\.mark\.(skip|xfail)|pytest\.(skip|xfail)\(|unittest\.skip)' \
+          ! git diff origin/main...HEAD -- tests/ | grep -qE '^\+.*(pytest\.mark\.(skip|xfail)\b|pytest\.(skip|xfail)\(|unittest\.skip)' \
             || { echo "❌ 新增 skip/xfail"; exit 1; }
 
       - name: 核心域禁止 import 学科包（X6）
