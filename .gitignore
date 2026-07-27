@@ -15,3 +15,9 @@ worktrees/
 
 # W2 运行时产物（PDF 输出等）
 out/
+
+# 临时测试日志与脚本
+*.log
+tmp_*
+run_tests*
+run_full_test.py
