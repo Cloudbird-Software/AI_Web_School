@@ -37,6 +37,27 @@ def _load_pipeline():
     return mod
 
 
+@pytest.fixture(autouse=True)
+async def _clean_content_tables(async_session: AsyncSession):
+    """清理内容表（savepoint 内 TRUNCATE，测试结束随外层事务回滚恢复）.
+
+    为什么需要：管线 CLI（english_pipeline.py main）会对测试库真实提交
+    12 个 published 实例（内容寻址 id 固定）；本测试在 savepoint 内重跑
+    同一条管线会撞上既有行的 PK。TRUNCATE 让本测试视图回到空表，
+    回滚后既有行恢复——测试与 CLI 实证互不干扰。
+    为什么 TRUNCATE 可行：append-only 触发器只拦 UPDATE/DELETE（行级），
+    TRUNCATE 是 DDL 类操作不触发（与 test_response_event_writer 同模式）。
+    """
+    await async_session.execute(
+        text(
+            "TRUNCATE TABLE item_version, item, item_template,"
+            " item_template_version RESTART IDENTITY CASCADE"
+        )
+    )
+    await async_session.commit()
+    yield
+
+
 class TestEnglishPipelineE2E:
     """E2E-3：词汇单选/拼写两题型全链路."""
 
