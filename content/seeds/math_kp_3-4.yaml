@@ -1,0 +1,270 @@
+# 数学 3-4 年级首批知识图谱种子数据（T-W2-014）
+#
+# 锚定课标：义务教育数学课程标准（2022 年版）第二学段（3-4 年级）。
+# 覆盖四大领域代表性知识点：数与代数 / 图形与几何 / 统计与概率 / 综合与实践。
+#
+# 节点编码命名约定（验收 #3）：math.{domain}.{topic}.{subtopic}
+#   domain ∈ {nal 数与代数, geo 图形与几何, sp 统计与概率, cp 综合与实践}
+#   全部 dimension=kp，pack_id=subject-math，gradeband=M（第二学段）
+#
+# 边类型（与 relation_type 表一致）：
+#   prerequisite 先修（transitive=true，方向，acyclic）
+#   confusable   易混淆（symmetric=true，非传递）
+#   composes     组成（transitive=true，方向，acyclic，A 是 B 的子部分）
+#
+# 幂等约定：seed_loader 按 (pack_id, dimension, code) 查重节点，
+#           按 (src_node_id, dst_node_id, rel_type) 查重边；
+#           重复导入 = skip，不抛错。
+
+version: "1.0"
+pack_id: subject-math
+graph_release_id: "2026.1.math-3-4"
+
+relation_types:
+  - rel_type: prerequisite
+    directed: true
+    transitive: true
+    acyclic: true
+    symmetric: false
+    description: 先修关系（传递闭包展开）
+  - rel_type: confusable
+    directed: false
+    transitive: false
+    acyclic: false
+    symmetric: true
+    description: 易混淆关系（对称，非传递）
+  - rel_type: composes
+    directed: true
+    transitive: true
+    acyclic: true
+    symmetric: false
+    description: 组成关系（A 是 B 的子部分）
+
+# ────────────────────────────────────────────────────────────────────
+# 节点：3-4 年级数学知识点（dimension=kp 固定）
+# ────────────────────────────────────────────────────────────────────
+nodes:
+
+  # ─── 数与代数 nal ───
+  # 整数
+  - {code: math.nal.integer.recognize, title: 整数的认识, std_anchor: 课标2022.nal.3-4.1}
+  - {code: math.nal.integer.read_write, title: 整数的读写, std_anchor: 课标2022.nal.3-4.1}
+  - {code: math.nal.integer.compare, title: 整数的大小比较, std_anchor: 课标2022.nal.3-4.1}
+  - {code: math.nal.integer.round, title: 整数的近似与估算, std_anchor: 课标2022.nal.3-4.1}
+  - {code: math.nal.integer.add_sub, title: 整数加减法, std_anchor: 课标2022.nal.3-4.2}
+  - {code: math.nal.integer.mul, title: 整数乘法, std_anchor: 课标2022.nal.3-4.2}
+  - {code: math.nal.integer.div, title: 整数除法, std_anchor: 课标2022.nal.3-4.2}
+  - {code: math.nal.integer.mul_div, title: 乘除混合运算, std_anchor: 课标2022.nal.3-4.2}
+  - {code: math.nal.integer.four_op, title: 四则混合运算, std_anchor: 课标2022.nal.3-4.2}
+  - {code: math.nal.integer.bracket, title: 括号与运算顺序, std_anchor: 课标2022.nal.3-4.2}
+
+  # 小数
+  - {code: math.nal.decimal.recognize, title: 小数的初步认识, std_anchor: 课标2022.nal.3-4.3}
+  - {code: math.nal.decimal.read_write, title: 小数的读写, std_anchor: 课标2022.nal.3-4.3}
+  - {code: math.nal.decimal.meaning, title: 小数的意义, std_anchor: 课标2022.nal.3-4.3}
+  - {code: math.nal.decimal.compare, title: 小数的大小比较, std_anchor: 课标2022.nal.3-4.3}
+  - {code: math.nal.decimal.add_sub, title: 小数加减法, std_anchor: 课标2022.nal.3-4.3}
+
+  # 分数
+  - {code: math.nal.fraction.recognize, title: 分数的初步认识, std_anchor: 课标2022.nal.3-4.3}
+  - {code: math.nal.fraction.read_write, title: 分数的读写, std_anchor: 课标2022.nal.3-4.3}
+  - {code: math.nal.fraction.meaning, title: 分数的意义, std_anchor: 课标2022.nal.3-4.3}
+  - {code: math.nal.fraction.compare, title: 分数的大小比较, std_anchor: 课标2022.nal.3-4.3}
+  - {code: math.nal.fraction.simple_add_sub, title: 同分母分数加减法, std_anchor: 课标2022.nal.3-4.3}
+
+  # 运算律
+  - {code: math.nal.operation.commute_add, title: 加法交换律, std_anchor: 课标2022.nal.3-4.4}
+  - {code: math.nal.operation.assoc_add, title: 加法结合律, std_anchor: 课标2022.nal.3-4.4}
+  - {code: math.nal.operation.commute_mul, title: 乘法交换律, std_anchor: 课标2022.nal.3-4.4}
+  - {code: math.nal.operation.assoc_mul, title: 乘法结合律, std_anchor: 课标2022.nal.3-4.4}
+  - {code: math.nal.operation.distrib, title: 乘法分配律, std_anchor: 课标2022.nal.3-4.4}
+  - {code: math.nal.operation.simple_calc, title: 简便运算, std_anchor: 课标2022.nal.3-4.4}
+
+  # 量与计量
+  - {code: math.nal.quantity.length, title: 长度单位, std_anchor: 课标2022.nal.3-4.5}
+  - {code: math.nal.quantity.area_unit, title: 面积单位, std_anchor: 课标2022.nal.3-4.5}
+  - {code: math.nal.quantity.mass, title: 质量单位, std_anchor: 课标2022.nal.3-4.5}
+  - {code: math.nal.quantity.time, title: 时间单位, std_anchor: 课标2022.nal.3-4.5}
+  - {code: math.nal.quantity.unit_convert, title: 单位换算, std_anchor: 课标2022.nal.3-4.5}
+  - {code: math.nal.quantity.estimate, title: 估算与应用, std_anchor: 课标2022.nal.3-4.5}
+  - {code: math.nal.quantity.money, title: 人民币的认识与计算, std_anchor: 课标2022.nal.3-4.5}
+
+  # ─── 图形与几何 geo ───
+  # 角
+  - {code: math.geo.angle.recognize, title: 角的初步认识, std_anchor: 课标2022.geo.3-4.1}
+  - {code: math.geo.angle.measure, title: 角的度量, std_anchor: 课标2022.geo.3-4.1}
+  - {code: math.geo.angle.classify, title: 角的分类, std_anchor: 课标2022.geo.3-4.1}
+  - {code: math.geo.angle.draw, title: 角的画法, std_anchor: 课标2022.geo.3-4.1}
+
+  # 线
+  - {code: math.geo.line.line_seg, title: 线段的认识, std_anchor: 课标2022.geo.3-4.1}
+  - {code: math.geo.line.ray, title: 射线的认识, std_anchor: 课标2022.geo.3-4.1}
+  - {code: math.geo.line.straight, title: 直线的认识, std_anchor: 课标2022.geo.3-4.1}
+  - {code: math.geo.line.parallel, title: 平行, std_anchor: 课标2022.geo.3-4.1}
+  - {code: math.geo.line.perpendicular, title: 垂直, std_anchor: 课标2022.geo.3-4.1}
+
+  # 长方形与正方形
+  - {code: math.geo.rect.recognize, title: 长方形的认识, std_anchor: 课标2022.geo.3-4.2}
+  - {code: math.geo.square.recognize, title: 正方形的认识, std_anchor: 课标2022.geo.3-4.2}
+  - {code: math.geo.rect.perimeter, title: 长方形周长, std_anchor: 课标2022.geo.3-4.2}
+  - {code: math.geo.square.perimeter, title: 正方形周长, std_anchor: 课标2022.geo.3-4.2}
+  - {code: math.geo.rect.area, title: 长方形面积, std_anchor: 课标2022.geo.3-4.2}
+  - {code: math.geo.square.area, title: 正方形面积, std_anchor: 课标2022.geo.3-4.2}
+
+  # 三角形
+  - {code: math.geo.triangle.recognize, title: 三角形的认识, std_anchor: 课标2022.geo.3-4.2}
+  - {code: math.geo.triangle.classify_angle, title: 三角形按角分类, std_anchor: 课标2022.geo.3-4.2}
+  - {code: math.geo.triangle.classify_side, title: 三角形按边分类, std_anchor: 课标2022.geo.3-4.2}
+  - {code: math.geo.triangle.inner_sum, title: 三角形内角和, std_anchor: 课标2022.geo.3-4.2}
+
+  # 圆
+  - {code: math.geo.circle.recognize, title: 圆的初步认识, std_anchor: 课标2022.geo.3-4.2}
+
+  # 图形变换
+  - {code: math.geo.transform.axis, title: 轴对称图形, std_anchor: 课标2022.geo.3-4.3}
+  - {code: math.geo.transform.translate, title: 平移, std_anchor: 课标2022.geo.3-4.3}
+
+  # 观察物体
+  - {code: math.geo.observe.body, title: 观察物体, std_anchor: 课标2022.geo.3-4.4}
+
+  # ─── 统计与概率 sp ───
+  # 数据收集与整理
+  - {code: math.sp.data.collect, title: 数据的收集, std_anchor: 课标2022.sp.3-4.1}
+  - {code: math.sp.data.sort, title: 数据的分类与整理, std_anchor: 课标2022.sp.3-4.1}
+  - {code: math.sp.data.record, title: 数据的记录方式, std_anchor: 课标2022.sp.3-4.1}
+
+  # 统计图表
+  - {code: math.sp.chart.bar_simple, title: 简单条形统计图, std_anchor: 课标2022.sp.3-4.2}
+  - {code: math.sp.chart.bar_one, title: 一格表示多个单位的条形图, std_anchor: 课标2022.sp.3-4.2}
+  - {code: math.sp.chart.read, title: 看图分析, std_anchor: 课标2022.sp.3-4.2}
+  - {code: math.sp.chart.draw, title: 绘制统计图, std_anchor: 课标2022.sp.3-4.2}
+
+  # 平均数
+  - {code: math.sp.average.meaning, title: 平均数的意义, std_anchor: 课标2022.sp.3-4.3}
+  - {code: math.sp.average.calc, title: 平均数的计算, std_anchor: 课标2022.sp.3-4.3}
+
+  # 可能性
+  - {code: math.sp.probability.recognize, title: 可能性的初步认识, std_anchor: 课标2022.sp.3-4.4}
+  - {code: math.sp.probability.compare, title: 可能性大小比较, std_anchor: 课标2022.sp.3-4.4}
+
+  # 数据分析观念
+  - {code: math.sp.analysis.interpret, title: 数据的简单分析, std_anchor: 课标2022.sp.3-4.5}
+
+  # ─── 综合与实践 cp ───
+  - {code: math.cp.project.travel, title: 旅游费用问题, std_anchor: 课标2022.cp.3-4.1}
+  - {code: math.cp.project.budget, title: 班级预算, std_anchor: 课标2022.cp.3-4.1}
+  - {code: math.cp.project.measure, title: 校园测量实践, std_anchor: 课标2022.cp.3-4.1}
+  - {code: math.cp.project.calendar, title: 年历制作, std_anchor: 课标2022.cp.3-4.1}
+  - {code: math.cp.project.recipe, title: 营养配餐, std_anchor: 课标2022.cp.3-4.1}
+  - {code: math.cp.project.map, title: 简易地图与方位, std_anchor: 课标2022.cp.3-4.1}
+  - {code: math.cp.method.inquiry, title: 提出问题与简单探究, std_anchor: 课标2022.cp.3-4.2}
+  - {code: math.cp.method.cooperate, title: 合作与表达, std_anchor: 课标2022.cp.3-4.2}
+
+  # ─── 数学思想方法（横切）───
+  - {code: math.nal.thinking.induction, title: 归纳思想, std_anchor: 课标2022.thinking.3-4.1}
+  - {code: math.nal.thinking.analogy, title: 类比思想, std_anchor: 课标2022.thinking.3-4.1}
+  - {code: math.geo.thinking.symbol, title: 符号意识, std_anchor: 课标2022.thinking.3-4.2}
+  - {code: math.sp.thinking.model, title: 模型思想, std_anchor: 课标2022.thinking.3-4.3}
+
+# ────────────────────────────────────────────────────────────────────
+# 边：先修 prerequisite / 易混淆 confusable / 组成 composes
+# ────────────────────────────────────────────────────────────────────
+edges:
+
+  # ── 先修：数与代数 整数 ──
+  - {src: math.nal.integer.recognize, dst: math.nal.integer.read_write, rel_type: prerequisite}
+  - {src: math.nal.integer.read_write, dst: math.nal.integer.compare, rel_type: prerequisite}
+  - {src: math.nal.integer.compare, dst: math.nal.integer.round, rel_type: prerequisite}
+  - {src: math.nal.integer.recognize, dst: math.nal.integer.add_sub, rel_type: prerequisite}
+  - {src: math.nal.integer.add_sub, dst: math.nal.integer.mul, rel_type: prerequisite}
+  - {src: math.nal.integer.mul, dst: math.nal.integer.div, rel_type: prerequisite}
+  - {src: math.nal.integer.mul, dst: math.nal.integer.mul_div, rel_type: prerequisite}
+  - {src: math.nal.integer.div, dst: math.nal.integer.mul_div, rel_type: prerequisite}
+  - {src: math.nal.integer.mul_div, dst: math.nal.integer.four_op, rel_type: prerequisite}
+  - {src: math.nal.integer.bracket, dst: math.nal.integer.four_op, rel_type: prerequisite}
+
+  # ── 先修：小数（整数→小数）──
+  - {src: math.nal.integer.recognize, dst: math.nal.decimal.recognize, rel_type: prerequisite}
+  - {src: math.nal.decimal.recognize, dst: math.nal.decimal.read_write, rel_type: prerequisite}
+  - {src: math.nal.decimal.read_write, dst: math.nal.decimal.meaning, rel_type: prerequisite}
+  - {src: math.nal.decimal.meaning, dst: math.nal.decimal.compare, rel_type: prerequisite}
+  - {src: math.nal.decimal.compare, dst: math.nal.decimal.add_sub, rel_type: prerequisite}
+  - {src: math.nal.integer.add_sub, dst: math.nal.decimal.add_sub, rel_type: prerequisite}
+
+  # ── 先修：分数（整数→分数；小数/分数互为先修引入）──
+  - {src: math.nal.integer.div, dst: math.nal.fraction.recognize, rel_type: prerequisite}
+  - {src: math.nal.fraction.recognize, dst: math.nal.fraction.read_write, rel_type: prerequisite}
+  - {src: math.nal.fraction.read_write, dst: math.nal.fraction.meaning, rel_type: prerequisite}
+  - {src: math.nal.fraction.meaning, dst: math.nal.fraction.compare, rel_type: prerequisite}
+  - {src: math.nal.fraction.compare, dst: math.nal.fraction.simple_add_sub, rel_type: prerequisite}
+
+  # ── 先修：运算律 ──
+  - {src: math.nal.integer.add_sub, dst: math.nal.operation.commute_add, rel_type: prerequisite}
+  - {src: math.nal.operation.commute_add, dst: math.nal.operation.assoc_add, rel_type: prerequisite}
+  - {src: math.nal.integer.mul, dst: math.nal.operation.commute_mul, rel_type: prerequisite}
+  - {src: math.nal.operation.commute_mul, dst: math.nal.operation.assoc_mul, rel_type: prerequisite}
+  - {src: math.nal.operation.assoc_mul, dst: math.nal.operation.distrib, rel_type: prerequisite}
+  - {src: math.nal.operation.distrib, dst: math.nal.operation.simple_calc, rel_type: prerequisite}
+  - {src: math.nal.integer.four_op, dst: math.nal.operation.simple_calc, rel_type: prerequisite}
+
+  # ── 先修：量与计量 ──
+  - {src: math.nal.quantity.length, dst: math.nal.quantity.area_unit, rel_type: prerequisite}
+  - {src: math.nal.quantity.length, dst: math.nal.quantity.mass, rel_type: prerequisite}
+  - {src: math.nal.quantity.length, dst: math.nal.quantity.time, rel_type: prerequisite}
+  - {src: math.nal.quantity.length, dst: math.nal.quantity.unit_convert, rel_type: prerequisite}
+
+  # ── 先修：图形与几何 角/线 ──
+  - {src: math.geo.angle.recognize, dst: math.geo.angle.measure, rel_type: prerequisite}
+  - {src: math.geo.angle.measure, dst: math.geo.angle.classify, rel_type: prerequisite}
+  - {src: math.geo.angle.classify, dst: math.geo.angle.draw, rel_type: prerequisite}
+  - {src: math.geo.line.line_seg, dst: math.geo.line.ray, rel_type: prerequisite}
+  - {src: math.geo.line.ray, dst: math.geo.line.straight, rel_type: prerequisite}
+  - {src: math.geo.line.straight, dst: math.geo.line.parallel, rel_type: prerequisite}
+  - {src: math.geo.line.straight, dst: math.geo.line.perpendicular, rel_type: prerequisite}
+
+  # ── 先修：长方形/正方形 ──
+  - {src: math.geo.line.perpendicular, dst: math.geo.rect.recognize, rel_type: prerequisite}
+  - {src: math.geo.rect.recognize, dst: math.geo.square.recognize, rel_type: prerequisite}
+  - {src: math.geo.rect.recognize, dst: math.geo.rect.perimeter, rel_type: prerequisite}
+  - {src: math.geo.square.recognize, dst: math.geo.square.perimeter, rel_type: prerequisite}
+  - {src: math.geo.rect.perimeter, dst: math.geo.rect.area, rel_type: prerequisite}
+  - {src: math.geo.square.perimeter, dst: math.geo.square.area, rel_type: prerequisite}
+
+  # ── 先修：三角形 ──
+  - {src: math.geo.angle.classify, dst: math.geo.triangle.recognize, rel_type: prerequisite}
+  - {src: math.geo.triangle.recognize, dst: math.geo.triangle.classify_angle, rel_type: prerequisite}
+  - {src: math.geo.triangle.recognize, dst: math.geo.triangle.classify_side, rel_type: prerequisite}
+  - {src: math.geo.triangle.classify_angle, dst: math.geo.triangle.inner_sum, rel_type: prerequisite}
+
+  # ── 先修：统计与概率 ──
+  - {src: math.sp.data.collect, dst: math.sp.data.sort, rel_type: prerequisite}
+  - {src: math.sp.data.sort, dst: math.sp.data.record, rel_type: prerequisite}
+  - {src: math.sp.data.record, dst: math.sp.chart.bar_simple, rel_type: prerequisite}
+  - {src: math.sp.chart.bar_simple, dst: math.sp.chart.bar_one, rel_type: prerequisite}
+  - {src: math.sp.chart.bar_one, dst: math.sp.chart.read, rel_type: prerequisite}
+  - {src: math.sp.chart.read, dst: math.sp.chart.draw, rel_type: prerequisite}
+  - {src: math.sp.data.sort, dst: math.sp.average.meaning, rel_type: prerequisite}
+  - {src: math.sp.average.meaning, dst: math.sp.average.calc, rel_type: prerequisite}
+  - {src: math.sp.average.calc, dst: math.sp.analysis.interpret, rel_type: prerequisite}
+  - {src: math.sp.data.record, dst: math.sp.probability.recognize, rel_type: prerequisite}
+  - {src: math.sp.probability.recognize, dst: math.sp.probability.compare, rel_type: prerequisite}
+
+  # ── 易混淆 confusable（对称）──
+  - {src: math.nal.decimal.read_write, dst: math.nal.fraction.read_write, rel_type: confusable}
+  - {src: math.nal.decimal.compare, dst: math.nal.fraction.compare, rel_type: confusable}
+  - {src: math.nal.operation.commute_add, dst: math.nal.operation.commute_mul, rel_type: confusable}
+  - {src: math.nal.operation.assoc_add, dst: math.nal.operation.assoc_mul, rel_type: confusable}
+  - {src: math.geo.line.parallel, dst: math.geo.line.perpendicular, rel_type: confusable}
+  - {src: math.geo.rect.perimeter, dst: math.geo.rect.area, rel_type: confusable}
+  - {src: math.geo.square.perimeter, dst: math.geo.square.area, rel_type: confusable}
+  - {src: math.geo.triangle.classify_angle, dst: math.geo.triangle.classify_side, rel_type: confusable}
+  - {src: math.sp.average.meaning, dst: math.sp.probability.recognize, rel_type: confusable}
+
+  # ── 组成 composes（A 是 B 的子部分）──
+  - {src: math.nal.integer.recognize, dst: math.nal.integer.add_sub, rel_type: composes}
+  - {src: math.nal.integer.mul, dst: math.nal.integer.mul_div, rel_type: composes}
+  - {src: math.nal.integer.div, dst: math.nal.integer.mul_div, rel_type: composes}
+  - {src: math.geo.rect.recognize, dst: math.geo.rect.perimeter, rel_type: composes}
+  - {src: math.geo.square.recognize, dst: math.geo.square.perimeter, rel_type: composes}
+  - {src: math.sp.data.collect, dst: math.sp.data.sort, rel_type: composes}
+  - {src: math.sp.data.sort, dst: math.sp.chart.bar_simple, rel_type: composes}
