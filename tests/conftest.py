@@ -1,10 +1,17 @@
-"""T-W1-001 全局 pytest fixture。
+"""T-W1-001 全局 pytest fixture；T-W2-019 引入事务回滚隔离。
 
 提供 PostgreSQL 异步会话 fixture（基于 docker-compose 中的 db 服务），
 后续 W1+ 任务（ORM/写入服务等）的单元测试均复用本 fixture。
 
 为什么不用 SQLite：宪法 D2 的「DB 触发器强制」「JSONB」「DEFERRABLE 外键」
 等关键约束依赖 PostgreSQL 特性，测试环境必须与生产同构。
+
+T-W2-019 测试隔离：async_session 通过「外层事务 + SAVEPOINT」实现测试间隔离。
+- 测试 A 的写入在 SAVEPOINT 内；session.commit() 退化为 RELEASE SAVEPOINT
+  （数据对当前外层事务可见，但不持久化到 DB）
+- 测试结束后 ROLLBACK 外层事务，所有写入丢弃
+- 测试可重复运行，不污染开发/测试数据库，可并发
+- PostgreSQL 的 DDL 触发器、CHECK 约束在 SAVEPOINT 内同样生效（与原 W1 测试兼容）
 """
 from __future__ import annotations
 
@@ -30,11 +37,14 @@ if str(PROJECT_ROOT) not in sys.path:
 
 # --- 最小 .env 加载器（与 alembic/env.py 一致，避免重复实现污染）---
 def _load_dotenv_if_needed() -> None:
-    """若 POSTGRES_USER 已在 os.environ 中，则什么都不做；
-    否则从项目根 .env 读取并注入 os.environ（不覆盖已有值）。
+    """从 worktree 根 .env 加载配置，覆盖系统环境变量。
+
+    为什么覆盖而不是 setdefault：
+    - 多 worktree 并行开发时，系统环境变量可能被其他 worktree 的 `make` export
+      污染（POSTGRES_DB=muti_dev 等），导致本 worktree 测试连到错误数据库。
+    - 每个 worktree 应有独立 .env，指定独立测试数据库（POSTGRES_DB 互斥）。
+    - .env 已在 .gitignore 中，是 worktree 本地配置，应优先于系统环境变量。
     """
-    if os.environ.get("POSTGRES_USER"):
-        return
     env_file = PROJECT_ROOT / ".env"
     if not env_file.is_file():
         return
@@ -43,7 +53,8 @@ def _load_dotenv_if_needed() -> None:
         if not line or line.startswith("#") or "=" not in line:
             continue
         key, _, value = line.partition("=")
-        os.environ.setdefault(key.strip(), value.strip().strip('"').strip("'"))
+        # 覆盖系统环境变量：worktree .env 优先
+        os.environ[key.strip()] = value.strip().strip('"').strip("'")
 
 
 _load_dotenv_if_needed()
@@ -83,12 +94,51 @@ async def async_engine() -> AsyncIterator[AsyncEngine]:
 
 @pytest_asyncio.fixture
 async def async_session(async_engine: AsyncEngine) -> AsyncIterator[AsyncSession]:
-    """单测试用 AsyncSession。
+    """单测试用 AsyncSession，事务回滚隔离（T-W2-019）。
 
-    为什么不用事务回滚隔离：W1 测试包含 DDL 触发器 / CHECK 约束验证，
-    需要真实提交才能命中 PG 端强制逻辑；改用每测试后 TRUNCATE 清理代价
-    较高且会破坏只增不改表的语义。当前测试规模小，测试间无共享状态依赖。
-    后续测试规模扩大时引入 transaction-rollback 隔离层。
+    实现：在连接上 BEGIN 外层事务，AsyncSession 通过
+    ``join_transaction_mode="create_savepoint"`` 加入外层事务——
+    - session.commit() 退化为 RELEASE SAVEPOINT（写入仅对外层事务可见，
+      不持久化到 DB）
+    - session.rollback() 退化为 ROLLBACK TO SAVEPOINT
+    测试结束后 ROLLBACK 外层事务，所有写入丢弃，下一个测试从干净状态开始。
+
+    为什么 PostgreSQL 的 DDL 触发器与 CHECK 约束在此模式下仍然生效：
+    - AFTER/BEFORE INSERT 触发器在 INSERT 语句执行时同步触发（非 commit 时），
+      SAVEPOINT 内 INSERT 同样触发，验证逻辑不受影响。
+    - CHECK 约束在 PostgreSQL 中不可 DEFERRABLE，INSERT 语句执行时即校验，
+      SAVEPOINT 内违反约束同样立即抛 IntegrityError。
+    - DEFERRABLE INITIALLY DEFERRED 外键在 SAVEPOINT RELEASE 时校验，
+      原 W1 循环外键测试（互引插入）在 SAVEPOINT 内仍可通过。
+
+    为什么改用事务回滚（取代 W1 注释中「每测试后 TRUNCATE」方案）：
+    TRUNCATE 破坏只增不改表的语义、代价高且不可与并发测试共用 DB；
+    事务回滚是 SQLAlchemy 官方推荐的测试隔离模式，且天然支持并发。
+    """
+    async with async_engine.connect() as connection:
+        # 外层事务：所有测试写入都封装在此事务内，结束时整体回滚
+        transaction = await connection.begin()
+        try:
+            async with AsyncSession(
+                bind=connection,
+                expire_on_commit=False,
+                join_transaction_mode="create_savepoint",
+            ) as session:
+                yield session
+        finally:
+            await transaction.rollback()
+
+
+@pytest_asyncio.fixture
+async def committed_session(async_engine: AsyncEngine) -> AsyncIterator[AsyncSession]:
+    """需要真实持久化提交的测试用 AsyncSession（不隔离）。
+
+    何时使用：极少数测试需要验证跨连接/跨事务的可见性（如测试隔离元测试
+    自身需要往 DB 注入「脏数据」并保留）——常规业务测试禁止使用本 fixture，
+    一律走 async_session 的事务回滚隔离。
+
+    为什么不与 async_session 共享连接：committed_session 用独立连接 + 独立
+    事务，commit 后数据真实持久化到 DB；调用方需自行在 teardown 清理。
     """
     factory = async_sessionmaker(async_engine, expire_on_commit=False)
     async with factory() as session:
