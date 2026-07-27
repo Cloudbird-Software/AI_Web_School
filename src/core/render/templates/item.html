@@ -45,5 +45,11 @@
       {% endif %}
     {% endfor %}
   </div>
+  {% if ir.placement_token or ir.item_short_code %}
+  <div class="item-trace">
+    {%- if ir.placement_token %}<span class="placement-token">{{ ir.placement_token }}</span>{% endif -%}
+    {%- if ir.item_short_code %}<span class="item-short-code">{{ ir.item_short_code }}</span>{% endif -%}
+  </div>
+  {% endif %}
 </div>
 {%- endmacro %}

@@ -1,0 +1,53 @@
+# A 线母题模板：单词拼写（W3 S7）
+#
+# 词表驱动：slot=目标词 + 释义 + 首字母提示（hint 由调用方按
+# 「首字母 + 剩余字母下划线」规则生成注入）；presentation=释义 + 提示 + 拼写空位；
+# answer_program=目标词本身（word 槽值直接返回）。
+# 交互类型：text_blank；评分器：exact_match（注册表复用，D4）。
+#
+# 宪法 D4：交互与评分器只复用注册表，禁止私造；
+# 宪法 X6：英语逻辑只在 src/packs/subject-english/ 下。
+template_version_id: sha256:tpl-english-word-spelling-v1
+template_id: tpl-english-word-spelling
+dsl_version: '1'
+spec:
+  objective:
+    kp_set:
+    - dimension: kp
+      code: english.vocab.spelling
+    kp_set_mode: single
+    cognitive_level: remember
+    gradeband: H
+    graph_release: '2026.1'
+  slots:
+    # 目标词（来自课标词表 words[*].word）
+    word:
+      type: string
+      difficulty_relevant: true
+    # 中文释义（词表 words[*].meaning）
+    meaning:
+      type: string
+      difficulty_relevant: false
+    # 首字母提示（如 'a _ _ _ _'，由管线按规则生成注入）
+    hint:
+      type: string
+      difficulty_relevant: false
+  variation_axes:
+    axes: []
+  presentation:
+    blocks:
+    - kind: text
+      template: '根据中文释义和首字母提示，拼写单词：'
+    - kind: text
+      template: '释义：{meaning}'
+    - kind: text
+      template: '提示：{hint}'
+    - kind: text
+      # 拼写空位（纸卷规范 interaction.text_blank.paper_spec：下划线空位）
+      template: '拼写：＿＿＿＿＿＿＿＿'
+  answer_program:
+    expression: word
+    returns: string
+  distractor_rules:
+    # text_blank 交互无干扰项；error_bindings 由评分阶段错因推断生成
+    rules: []

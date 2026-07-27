@@ -212,10 +212,15 @@ class LicenseValidator(Validator):
     - fail：license_id 缺失 / 未找到 / decision≠approved / 已过期。
     - pass：合法且未过期。
     - review：未提供 db（无法查证）。
+
+    W3 适配（S9-②，item 业务适配）：artifact_type='item' 且无 license_id 时
+    返回 pass（跳过）而非 fail——item 是规则/模板产物，许可义务在其引用的
+    material/corpus 产物侧强制（架构 v2 §4.3 门策略矩阵：license 验证器只对
+    material/corpus 类产物强制）；item 若显式携带 license_id 仍照常校验。
     """
 
     validator_id = "license"
-    version = "1.0.0+generic"
+    version = "1.1.0+generic"
     blocking = True
     cost_tier = "cheap"
 
@@ -228,6 +233,18 @@ class LicenseValidator(Validator):
         elapsed_ms = lambda: int((time.monotonic() - start) * 1000)
 
         if not license_id:
+            # W3 适配：item 无 license_id 不阻断（许可在 material/corpus 侧强制）
+            if ctx.artifact_type == "item":
+                return self._timed_result(
+                    verdict="pass",
+                    evidence={
+                        "reason": "item 产物无 license_id：许可在 material/corpus 侧强制，跳过",
+                        "skipped": True,
+                        "artifact_type": ctx.artifact_type,
+                    },
+                    confidence=Decimal("1.000"),
+                    elapsed_ms=elapsed_ms(),
+                )
             return self._timed_result(
                 verdict="fail",
                 evidence={"reason": "未提供 license_id"},

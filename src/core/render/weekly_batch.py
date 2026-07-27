@@ -290,7 +290,17 @@ def run(
 
     for idx, iv in enumerate(selected, start=1):
         item_number = str(idx)
-        ir = item_to_ir(iv, item_number=item_number)
+        # 先生成 paper_item_id/短码（W3 遗留 S9：卷面印每题短码），
+        # 渲染时把 placement_token + item_short_code 透传进 IR 印到卷面
+        paper_item_id = str(ulid.new())
+        short_code = generate_item_short_code(paper_item_id)
+        placement_token = f"q{idx}"
+        ir = item_to_ir(
+            iv,
+            item_number=item_number,
+            placement_token=placement_token,
+            item_short_code=short_code,
+        )
         paper_items_html_parts.append(render_item(ir))
 
         # 解析册：题面 + 答案
@@ -298,13 +308,11 @@ def run(
         solution_items_html_parts.append(_render_solution_item(ir, answer))
 
         # paper_item 行（dict）
-        paper_item_id = str(ulid.new())
-        short_code = generate_item_short_code(paper_item_id)
         paper_item_rows.append({
             "paper_item_id": paper_item_id,
             "paper_id": paper_id,
             "item_version_id": ir.item_version_id,
-            "placement_token": f"q{idx}",
+            "placement_token": placement_token,
             "item_number": idx,
             "item_short_code": short_code,
         })

@@ -147,6 +147,9 @@ class RenderIR(BaseModel):
     - item_version_id / item_id：溯源到 item_version 表（D3 内容寻址）
     - interaction_id：来自 interaction_ref，决定作答采集与评分契约
     - item_number：卷内题号（由组卷器分配，IR 自身不含排序逻辑）
+    - placement_token / item_short_code：卷内位置标识与题短码（W3 遗留 S9：
+      卷面印每题短码；由组卷器/批处理在组卷时分配，IR 只做透传展示；
+      单题渲染无卷上下文时为 None，不输出追溯行）
     - blocks：题面内容序列（text/fill/choice/math_svg/group）
     - layout_hints：版式提示
     """
@@ -157,6 +160,8 @@ class RenderIR(BaseModel):
     item_id: str
     interaction_id: str
     item_number: Optional[str] = None
+    placement_token: Optional[str] = None
+    item_short_code: Optional[str] = None
     blocks: list[Block] = Field(default_factory=list)
     layout_hints: LayoutHints = Field(default_factory=LayoutHints)
 
