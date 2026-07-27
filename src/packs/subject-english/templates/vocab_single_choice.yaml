@@ -1,0 +1,93 @@
+# A 线母题模板：词汇单选（W3 S7）
+#
+# 词表驱动：slot=目标词 + 正确释义 + 三个干扰释义（由调用方从课标词表
+# 同级选取注入）；presentation=题干 + A/B/C/D 四选项文本；
+# answer_program=正确选项字母（answer_letter 槽，由调用方洗牌后注入）。
+# 交互类型：single_choice；评分器：exact_match（注册表复用，D4）。
+#
+# 干扰项即错误类型映射（R-Q-06）：d1/d2/d3 三条规则分别绑定
+# 形近/近义/同主题三类混淆错误类型，error_bindings 由引擎装配。
+#
+# 宪法 D4：交互与评分器只复用注册表，禁止私造；
+# 宪法 X6：英语逻辑只在 src/packs/subject-english/ 下。
+template_version_id: sha256:tpl-english-vocab-single-choice-v1
+template_id: tpl-english-vocab-single-choice
+dsl_version: '1'
+spec:
+  objective:
+    kp_set:
+    - dimension: kp
+      code: english.vocab.word-meaning
+    kp_set_mode: single
+    cognitive_level: remember
+    gradeband: H
+    graph_release: '2026.1'
+  slots:
+    # 目标词（来自课标词表 words[*].word）
+    word:
+      type: string
+      difficulty_relevant: true
+    # 正确释义（词表 words[*].meaning）
+    meaning:
+      type: string
+      difficulty_relevant: false
+    # 三个干扰释义（调用方从词表同级选取：d1 形近 / d2 近义 / d3 同主题）
+    d1:
+      type: string
+      difficulty_relevant: false
+    d2:
+      type: string
+      difficulty_relevant: false
+    d3:
+      type: string
+      difficulty_relevant: false
+    # 洗牌后的四个选项（= meaning + d1..d3 的某一确定排列，调用方注入）
+    opt_a:
+      type: string
+      difficulty_relevant: false
+    opt_b:
+      type: string
+      difficulty_relevant: false
+    opt_c:
+      type: string
+      difficulty_relevant: false
+    opt_d:
+      type: string
+      difficulty_relevant: false
+    # 正确选项字母（A/B/C/D，调用方洗牌后注入）
+    answer_letter:
+      type: string
+      difficulty_relevant: false
+  variation_axes:
+    axes: []
+  presentation:
+    blocks:
+    - kind: text
+      template: '选出单词 "{word}" 的正确释义：'
+    - kind: text
+      template: 'A. {opt_a}'
+    - kind: text
+      template: 'B. {opt_b}'
+    - kind: text
+      template: 'C. {opt_c}'
+    - kind: text
+      template: 'D. {opt_d}'
+  answer_program:
+    # 安全表达式求值器支持 Name 节点；answer_letter 槽值为 'A'..'D'
+    expression: answer_letter
+    returns: string
+  distractor_rules:
+    rules:
+    # 干扰项 = 释义文本（option_value），绑定错误类型（选某项是证据非因果）
+    - rule_type: deterministic
+      error_type_id: err.english.vocab.confuse-word-form
+      expression: d1
+      label: 形近词混淆
+    - rule_type: deterministic
+      error_type_id: err.english.vocab.confuse-near-synonym
+      expression: d2
+      label: 近义混淆
+    - rule_type: deterministic
+      error_type_id: err.english.vocab.confuse-theme
+      expression: d3
+      label: 同主题混淆

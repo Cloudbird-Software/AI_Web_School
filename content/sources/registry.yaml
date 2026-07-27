@@ -38,6 +38,16 @@ records:
     notes: 官方公开
     registered_at: "2026-07-27"
 
+  - license_id: lic-kebiao-english-2022
+    source: 义务教育英语课程标准（2022 年版）
+    rights_holder: 中华人民共和国教育部
+    scope: 英语 1-9 年级课标词表（二级词汇表）锚定，事实引用
+    expires_at: null
+    decision: approved
+    kind: curriculum
+    notes: 官方公开；W3 S7 英语包词表种子许可
+    registered_at: "2026-07-27"
+
   # ── 2. 拼音库（MIT，可商用） ──
   - license_id: lic-pypinyin-mit
     source: pypinyin
