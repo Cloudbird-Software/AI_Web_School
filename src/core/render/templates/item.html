@@ -1,0 +1,49 @@
+{# T-W2-034 单题 HTML 片段模板（Jinja2 宏，供页面模板或直接调用）.
+
+  与 html_renderer.render_item 产出结构一致；保留此模板用于：
+  - 文档化输出结构（HTML 骨架的单一真源）
+  - 需要服务端模板渲染（而非 Python f-string）的场景
+
+  用法（Jinja2）：
+    {% from "item.html" import render_item_macro %}
+    {{ render_item_macro(ir) }}
+#}
+{% macro render_item_macro(ir) -%}
+<div class="item"
+     data-item-version-id="{{ ir.item_version_id }}"
+     data-item-id="{{ ir.item_id }}"
+     data-interaction-id="{{ ir.interaction_id }}"
+     data-page-break-before="{{ ir.layout_hints.page_break_before | lower }}"
+     data-keep-with-next="{{ ir.layout_hints.keep_with_next | lower }}"
+     data-preferred-columns="{{ ir.layout_hints.preferred_columns }}">
+  {% if ir.item_number %}<div class="item-number">{{ ir.item_number }}.</div>{% endif %}
+  <div class="item-body">
+    {% for block in ir.blocks %}
+      {% if block.type == "text" %}
+      <p class="item-text">{{ block.value }}</p>
+      {% elif block.type == "fill" %}
+      <span class="blank"
+            data-blank-id="{{ block.blank_id }}"
+            data-kind="{{ block.kind }}"
+            {% if block.unit %}data-unit="{{ block.unit }}"{% endif %}
+            {% if block.width > 0 %}style="--blank-width:{{ block.width }}ch"{% endif %}></span>
+      {% elif block.type == "choice" %}
+      <ul class="options {{ block.mode }}">
+        {% for opt in block.options %}
+        <li><span class="option-label">{{ opt.id }}</span><span class="option-text">{{ opt.label }}</span></li>
+        {% endfor %}
+      </ul>
+      {% elif block.type == "math_svg" %}
+      <figure class="math-svg">{{ block.svg | safe }}{% if block.caption %}<figcaption>{{ block.caption }}</figcaption>{% endif %}</figure>
+      {% elif block.type == "group" %}
+      <div class="group">
+        {% if block.material %}<div class="group-material">{{ block.material }}</div>{% endif %}
+        <div class="group-items">
+          {% for sub in block.items %}{{ render_item_macro(sub) }}{% endfor %}
+        </div>
+      </div>
+      {% endif %}
+    {% endfor %}
+  </div>
+</div>
+{%- endmacro %}
