@@ -37,6 +37,7 @@ dependencies = [
 [project.optional-dependencies]
 dev = [
     "pytest>=8",
+    "pytest-asyncio>=0.23",  # async_session fixture 与 W1+ ORM/写入服务单测需要
     "pip-tools>=7.4",  # 用于 pip-compile 锁定依赖（X8：新依赖须说明理由）
 ]
 
