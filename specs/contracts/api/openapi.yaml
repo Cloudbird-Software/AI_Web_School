@@ -1,8 +1,7 @@
 openapi: 3.1.0
 info:
-  title: muti-platform 只读 API v1
-  description: 小学语数英个性化练习平台 · 只读查询 API。覆盖 item / item_version / item_template / gate_certificate。写入路径走
-    src/core/content/writer.py 等服务层，本 API 不暴露。
+  title: muti-platform API v1
+  description: 小学语数英个性化练习平台 API。items/gate 为只读查询；sessions 为学生侧在线作答会话（W3-S3）。
   version: 1.0.0
 paths:
   /items/{item_id}:
@@ -124,6 +123,194 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+  /sessions:
+    post:
+      tags:
+      - sessions
+      summary: 开始练习（静态卷或实例池序列快照）
+      description: 开始练习：快照题目序列创建会话（序列一经开始不变）.
+      operationId: create_session_sessions_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StartSessionRequest'
+        required: true
+      responses:
+        '201':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StartSessionResponse'
+        '422':
+          description: 参数互斥/题目未发布
+  /sessions/{session_id}:
+    get:
+      tags:
+      - sessions
+      summary: 会话状态（进度/已用时长/时长保护余量）
+      description: 取会话状态.
+      operationId: read_session_state_sessions__session_id__get
+      parameters:
+      - name: session_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+          title: Session Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SessionState'
+        '404':
+          description: 会话不存在
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /sessions/{session_id}/next:
+    get:
+      tags:
+      - sessions
+      summary: 取下一题（主序列→错题回测）
+      description: '取下一题；会话完成返回 {"done": true}（并把会话置 completed）.'
+      operationId: read_next_item_sessions__session_id__next_get
+      parameters:
+      - name: session_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+          title: Session Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                title: Response Read Next Item Sessions  Session Id  Next Get
+        '404':
+          description: 会话不存在
+        '409':
+          description: 时长保护触发（rest_required）/会话已放弃
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /sessions/{session_id}/responses:
+    post:
+      tags:
+      - sessions
+      summary: 提交作答（即时评分+按错误类型的反馈+落 response_event）
+      description: 提交当前应答题的作答：评分→落账→反馈→错题回测标记.
+      operationId: create_response_sessions__session_id__responses_post
+      parameters:
+      - name: session_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+          title: Session Id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SubmitResponseRequest'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Feedback'
+        '404':
+          description: 会话不存在
+        '409':
+          description: 时长保护触发/序列外作答/会话已结束
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /sessions/{session_id}/resume:
+    post:
+      tags:
+      - sessions
+      summary: 休息确认（时长保护解除，计时锚点重置）
+      description: 休息确认后继续作答.
+      operationId: resume_sessions__session_id__resume_post
+      parameters:
+      - name: session_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+          title: Session Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SessionState'
+        '404':
+          description: 会话不存在
+        '409':
+          description: 会话已结束
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /sessions/{session_id}/abandon:
+    post:
+      tags:
+      - sessions
+      summary: 放弃会话
+      description: 放弃会话（已作答事件保留在 response_event 账）.
+      operationId: abandon_sessions__session_id__abandon_post
+      parameters:
+      - name: session_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+          title: Session Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SessionState'
+        '404':
+          description: 会话不存在
+        '409':
+          description: 会话已完成
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
   /health:
     get:
       tags:
@@ -197,6 +384,61 @@ components:
         为什么元素是 permissive dict：契约 §5 未对 error_bindings 单元素结构
 
         强制 JSON Schema，R-Q-06/07 的具体结构由错误类型注册表承载。'
+    Feedback:
+      properties:
+        event_id:
+          type: string
+          format: uuid
+          title: Event Id
+          description: response_event 事件 id
+        correct:
+          type: boolean
+          title: Correct
+        dimension_scores:
+          additionalProperties:
+            type: number
+          type: object
+          title: Dimension Scores
+        error_inferences:
+          items:
+            additionalProperties: true
+            type: object
+          type: array
+          title: Error Inferences
+        error_feedback:
+          items:
+            additionalProperties: true
+            type: object
+          type: array
+          title: Error Feedback
+          description: 按错误类型展示的反馈（error_type_id + 干扰项设计 label + 置信度）
+        explanation:
+          anyOf:
+          - items:
+              type: string
+            type: array
+          - type: 'null'
+          title: Explanation
+          description: 题目解析（content 中 explanation/solution/analysis 块）
+        progress:
+          additionalProperties:
+            type: integer
+          type: object
+          title: Progress
+        session_status:
+          type: string
+          title: Session Status
+      additionalProperties: false
+      type: object
+      required:
+      - event_id
+      - correct
+      - dimension_scores
+      - error_inferences
+      - progress
+      - session_status
+      title: Feedback
+      description: 提交作答的即时反馈（含按错误类型展示的解析）.
     GateCertificateRead:
       properties:
         cert_id:
@@ -701,6 +943,167 @@ components:
         scorer_id 必须在 registries/scorer.yaml 注册（D4）；
 
         scorer_params 的结构由评分器决定，本处保持 dict 不细化。'
+    SessionState:
+      properties:
+        session_id:
+          type: string
+          format: uuid
+          title: Session Id
+        status:
+          type: string
+          title: Status
+        scene:
+          type: string
+          title: Scene
+        gradeband:
+          type: string
+          title: Gradeband
+        paper_id:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Paper Id
+        total:
+          type: integer
+          title: Total
+          description: 主序列题量
+        main_answered:
+          type: integer
+          title: Main Answered
+          description: 主序列已作答数（=current_index）
+        answered_count:
+          type: integer
+          title: Answered Count
+          description: 累计作答数（含回测轮）
+        correct_count:
+          type: integer
+          title: Correct Count
+        wrong_count:
+          type: integer
+          title: Wrong Count
+          description: 错题标记数
+        retest_pending:
+          type: integer
+          title: Retest Pending
+          description: 待回测错题数
+        elapsed_active_sec:
+          type: integer
+          title: Elapsed Active Sec
+          description: 距上次休息确认以来的连续作答秒数
+        time_limit_sec:
+          type: integer
+          title: Time Limit Sec
+        remaining_sec:
+          type: integer
+          title: Remaining Sec
+          description: 距时长保护触发的剩余秒数（可为负=已超）
+        started_at:
+          type: string
+          format: date-time
+          title: Started At
+        completed_at:
+          anyOf:
+          - type: string
+            format: date-time
+          - type: 'null'
+          title: Completed At
+      additionalProperties: false
+      type: object
+      required:
+      - session_id
+      - status
+      - scene
+      - gradeband
+      - total
+      - main_answered
+      - answered_count
+      - correct_count
+      - wrong_count
+      - retest_pending
+      - elapsed_active_sec
+      - time_limit_sec
+      - remaining_sec
+      - started_at
+      title: SessionState
+      description: 会话状态（进度/已用时长/时长保护余量）.
+    StartSessionRequest:
+      properties:
+        student_alias_id:
+          type: string
+          format: uuid
+          title: Student Alias Id
+        gradeband:
+          anyOf:
+          - type: string
+            enum:
+            - L
+            - M
+            - H
+          - type: 'null'
+          title: Gradeband
+          description: 学段；paper_id 会话缺省取 paper.gradeband
+        scene:
+          type: string
+          enum:
+          - practice
+          - diagnosis
+          title: Scene
+          default: practice
+        paper_id:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Paper Id
+        item_version_ids:
+          anyOf:
+          - items:
+              type: string
+            type: array
+          - type: 'null'
+          title: Item Version Ids
+        retest_wrong:
+          type: boolean
+          title: Retest Wrong
+          description: 主序列走完后是否对错题回测一轮
+          default: false
+      additionalProperties: false
+      type: object
+      required:
+      - student_alias_id
+      title: StartSessionRequest
+      description: POST /sessions 请求体（paper_id 与 item_version_ids 二选一）.
+    StartSessionResponse:
+      properties:
+        session_id:
+          type: string
+          format: uuid
+          title: Session Id
+        status:
+          type: string
+          title: Status
+        scene:
+          type: string
+          title: Scene
+        gradeband:
+          type: string
+          title: Gradeband
+        total:
+          type: integer
+          title: Total
+        time_limit_sec:
+          type: integer
+          title: Time Limit Sec
+      additionalProperties: false
+      type: object
+      required:
+      - session_id
+      - status
+      - scene
+      - gradeband
+      - total
+      - time_limit_sec
+      title: StartSessionResponse
+      description: POST /sessions 响应.
     StepRef:
       properties:
         step_id:
@@ -718,6 +1121,30 @@ components:
       - kp
       title: StepRef
       description: 分步过程题的步骤级标注（R-Q-15）.
+    SubmitResponseRequest:
+      properties:
+        item_version_id:
+          type: string
+          title: Item Version Id
+        response:
+          additionalProperties: true
+          type: object
+          title: Response
+          description: 原始作答载荷（结构由交互类型 response_schema 保证）
+        duration_ms:
+          anyOf:
+          - type: integer
+            minimum: 0.0
+          - type: 'null'
+          title: Duration Ms
+          description: 作答耗时（毫秒）；NULL=未知，禁止填 0 冒充
+      additionalProperties: false
+      type: object
+      required:
+      - item_version_id
+      - response
+      title: SubmitResponseRequest
+      description: POST /sessions/{id}/responses 请求体.
     TemplateDetailResponse:
       properties:
         template_id:
