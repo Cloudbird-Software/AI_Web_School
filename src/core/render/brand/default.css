@@ -100,6 +100,21 @@ html, body {
   display: block;
 }
 
+/* ── 卷面追溯行（W3 遗留 S9：每题短码印于卷面，扫码查源） ────────── */
+.item-trace {
+  margin-top: 4px;
+  font-size: 8pt;
+  color: #888;
+}
+.item-trace .placement-token {
+  font-family: monospace;
+  margin-right: 6px;
+}
+.item-trace .item-short-code {
+  font-family: monospace;
+  letter-spacing: 1px;
+}
+
 /* ── 文本块 ────────────────────────────────────────────────────── */
 .item-text {
   margin: 4px 0;

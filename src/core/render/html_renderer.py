@@ -143,9 +143,12 @@ def render_item(ir: RenderIR) -> str:
         <div class="item" data-item-version-id="..." data-interaction-id="...">
           <div class="item-number">题号.</div>
           <div class="item-body">blocks...</div>
+          <div class="item-trace">q1 · 短码</div>   <!-- 仅组卷上下文提供时 -->
         </div>
 
     item_number 为 None 时不渲染题号行。
+    placement_token / item_short_code 均为 None 时不渲染追溯行（W3 遗留 S9：
+    卷面印每题短码；单题渲染无卷上下文时保持原输出不变）。
     """
     number_html = (
         f'<div class="item-number">{_escape(ir.item_number)}.</div>'
@@ -153,6 +156,8 @@ def render_item(ir: RenderIR) -> str:
         else ""
     )
     body = "".join(_render_block(b) for b in ir.blocks)
+    # 追溯行：卷内位置标识 + 题短码（学生/家长扫码查源，T-W2-037 回溯链入口）
+    trace_html = _render_trace(ir)
     # layout_hints 作为 data 属性透传，CSS/JS 可据此控制分页
     hints = ir.layout_hints
     hints_attr = (
@@ -164,8 +169,28 @@ def render_item(ir: RenderIR) -> str:
         f'<div class="item" data-item-version-id="{_escape(ir.item_version_id)}" '
         f'data-item-id="{_escape(ir.item_id)}" '
         f'data-interaction-id="{_escape(ir.interaction_id)}"{hints_attr}>'
-        f'{number_html}<div class="item-body">{body}</div></div>'
+        f'{number_html}<div class="item-body">{body}</div>{trace_html}</div>'
     )
+
+
+def _render_trace(ir: RenderIR) -> str:
+    """渲染卷面追溯行（placement_token + item_short_code）.
+
+    两者都缺省时返回空串（不改变既有输出）；
+    只提供其一时只渲染提供的部分（短码是查源主键，优先展示）。
+    """
+    if not ir.placement_token and not ir.item_short_code:
+        return ""
+    parts: list[str] = []
+    if ir.placement_token:
+        parts.append(
+            f'<span class="placement-token">{_escape(ir.placement_token)}</span>'
+        )
+    if ir.item_short_code:
+        parts.append(
+            f'<span class="item-short-code">{_escape(ir.item_short_code)}</span>'
+        )
+    return f'<div class="item-trace">{"".join(parts)}</div>'
 
 
 def render_items(irs: list[RenderIR]) -> str:

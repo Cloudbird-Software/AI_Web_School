@@ -139,12 +139,18 @@ def item_to_ir(
     item_version: Any,
     *,
     item_number: Optional[str] = None,
+    placement_token: Optional[str] = None,
+    item_short_code: Optional[str] = None,
 ) -> RenderIR:
     """将 ItemVersion 转换为 RenderIR.
 
     参数:
         item_version: ItemVersion ORM 行 / ItemVersionPydantic / dict
         item_number: 卷内题号（由组卷器分配，可选）
+        placement_token: 卷内位置标识（如 'q1'/'q2.sub1'，组卷器分配，可选；
+            W3 遗留 S9：卷面印每题短码需要）
+        item_short_code: 题短码（paper_item.item_short_code，可选；
+            与 placement_token 一起印于卷面供扫码查源）
 
     返回:
         RenderIR 实例
@@ -188,6 +194,8 @@ def item_to_ir(
         item_id=str(item_id),
         interaction_id=str(interaction_id),
         item_number=item_number,
+        placement_token=placement_token,
+        item_short_code=item_short_code,
         blocks=ir_blocks,
         layout_hints=layout_hints,
     )
