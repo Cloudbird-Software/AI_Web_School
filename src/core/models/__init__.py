@@ -66,6 +66,17 @@ from src.core.models.material_version import (
 from src.core.models.item_group import ItemGroup, ItemGroupPydantic
 from src.core.models.corpus_asset import CorpusAsset, CorpusAssetPydantic
 from src.core.models.corpus_version import CorpusVersion, CorpusVersionPydantic
+# 知识图谱三表（T-W2-012）
+from src.core.models.kp_node import KpNode, KpNodePydantic, kp_node_status_enum
+from src.core.models.kp_edge import KpEdge, KpEdgePydantic
+from src.core.models.relation_type import RelationType, RelationTypePydantic
+# 闭包与图谱版本（T-W2-013）
+from src.core.models.kp_closure import KpClosure, KpClosurePydantic
+from src.core.models.graph_release import (
+    GraphRelease,
+    GraphReleasePydantic,
+    graph_release_status_enum,
+)
 
 __all__ = [
     # Base + ENUM
@@ -75,6 +86,8 @@ __all__ = [
     "item_template_version_status_enum",
     "material_kind_enum",
     "material_license_decision_enum",
+    "kp_node_status_enum",
+    "graph_release_status_enum",
     # 九实体 ORM
     "Item",
     "ItemVersion",
@@ -87,6 +100,13 @@ __all__ = [
     "CorpusVersion",
     # 支撑表 ORM（material_version/corpus_version FK 依赖）
     "MaterialLicense",
+    # 知识图谱三表 ORM（T-W2-012）
+    "KpNode",
+    "KpEdge",
+    "RelationType",
+    # 闭包与图谱版本 ORM（T-W2-013）
+    "KpClosure",
+    "GraphRelease",
     # Pydantic schema
     "ItemPydantic",
     "ItemVersionPydantic",
