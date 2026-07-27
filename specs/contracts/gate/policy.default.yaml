@@ -3,6 +3,12 @@
 # 通用链（platform）覆盖全部产物类型；学科链（subject-math）为 skeleton，学科验证器由数学包注册后追加。
 # 廉价先行顺序：schema（结构）→ license（许可）→ duplicate_placeholder（查重占位）。
 # 阻断项：schema/license 为阻断（fail 短路）；duplicate_placeholder 为 review 类（重复提示，不阻断）。
+#
+# W3 适配（S9-② item 业务适配）：license 验证器只对 material/corpus 类产物强制——
+# item 是规则/模板产物，许可义务在其引用的素材/语料（material/corpus）侧校验；
+# item 链保留 license 步骤（链结构冻结），但 LicenseValidator v1.1.0 起：
+# artifact_type='item' 且无 license_id 时返回 pass（跳过，见 evidence.skipped），
+# 显式携带 license_id 的 item 仍照常校验。material/corpus/audio 缺失 license_id 仍 fail。
 policy_version: "gate-policy-v1"
 status: frozen-candidate
 description: "W2 默认门策略：通用链（schema→license→duplicate_placeholder）覆盖全产物类型 + 数学包 skeleton"
