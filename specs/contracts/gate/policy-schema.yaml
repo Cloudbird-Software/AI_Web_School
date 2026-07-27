@@ -1,0 +1,49 @@
+# 门策略矩阵 Schema 契约（平台级，冻结候选）
+# 来源：架构 v2 §4.3「校验域：门策略矩阵 × 插件 × 数据库级强制」
+# 纪律（宪法 A2/D2）：门策略按「学科包 × 产物类型」配置有序验证器链；
+# 策略版本化，编排器（T-W2-010）按链顺序调用，廉价先行，阻断失败短路。
+# 本文件由 contract-watch 强制只增不改；策略版本灰度与回滚见架构 v2 §4.3 末段。
+registry: gate_policy
+contract_version: "1.0.0"
+status: frozen-candidate   # 人类逐行审查批准后转为 frozen
+source_sections:
+  - "架构v2 §4.3 校验域：门策略矩阵 × 插件 × 数据库级强制"
+
+# 产物类型域（artifact_type）：与统一内容模型对齐
+# item（题实例）/ material（素材）/ corpus（语料）/ group（题组）/ blueprint（命题蓝图）/ audio（音频素材）
+artifact_types:
+  - item
+  - material
+  - corpus
+  - group
+  - blueprint
+  - audio
+
+# 策略文件必备字段（任何策略文件不得缺项）
+required_fields:
+  - policy_version    # 策略版本串（落 gate_run.policy_version / gate_certificate.policy_version）
+  - status            # frozen-candidate | frozen
+  - description       # 策略说明（人类可读）
+  - chains            # 有序验证器链列表（pack_id × artifact_type）
+
+# 链条条目（chains[]）结构
+chain_entry_fields:
+  - pack_id            # 学科包 id：'platform'（通用）或 'subject-math' 等
+  - artifact_type     # 产物类型（见上 artifact_types）
+  - validators         # 有序验证器列表（编排器按顺序调用）
+
+# 验证器步骤（chains[].validators[]）结构
+validator_step_fields:
+  - validator_id      # 验证器 id（必须在注册表中声明；实现在 src/core/gate/validators/ 或学科包）
+  - blocking           # 可选，默认取验证器类 blocking 属性；true=阻断项（fail 短路），false=仅留痕
+  - params             # 可选，验证器参数（传给 GateContext）
+
+# 策略加载校验规则（loader.py 实现）
+validation_rules:
+  - policy_version 非空字符串
+  - chains 列表非空
+  - 每条 chain 的 pack_id + artifact_type 组合唯一（同一组合不得重复定义）
+  - artifact_type ∈ artifact_types 域
+  - validators 列表非空
+  - 每条 validator_id 必须在注册表中声明（register_validator），不强求已实现
+  - 验证器 id 在同一条链内不得重复

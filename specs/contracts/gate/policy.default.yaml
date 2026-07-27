@@ -1,0 +1,77 @@
+# W2 默认门策略矩阵
+# 来源：架构 v2 §4.3；T-W2-008 落地。
+# 通用链（platform）覆盖全部产物类型；学科链（subject-math）为 skeleton，学科验证器由数学包注册后追加。
+# 廉价先行顺序：schema（结构）→ license（许可）→ duplicate_placeholder（查重占位）。
+# 阻断项：schema/license 为阻断（fail 短路）；duplicate_placeholder 为 review 类（重复提示，不阻断）。
+policy_version: "gate-policy-v1"
+status: frozen-candidate
+description: "W2 默认门策略：通用链（schema→license→duplicate_placeholder）覆盖全产物类型 + 数学包 skeleton"
+
+chains:
+  # ── 通用链（platform）：全部产物类型走同一套通用验证器 ──
+  - pack_id: platform
+    artifact_type: item
+    validators:
+      - validator_id: schema
+        blocking: true
+      - validator_id: license
+        blocking: true
+      - validator_id: duplicate_placeholder
+        blocking: false   # 查重提示：重复返回 review，不阻断签发
+
+  - pack_id: platform
+    artifact_type: material
+    validators:
+      - validator_id: schema
+        blocking: true
+      - validator_id: license
+        blocking: true
+      - validator_id: duplicate_placeholder
+        blocking: false
+
+  - pack_id: platform
+    artifact_type: corpus
+    validators:
+      - validator_id: schema
+        blocking: true
+      - validator_id: license
+        blocking: true
+      - validator_id: duplicate_placeholder
+        blocking: false
+
+  - pack_id: platform
+    artifact_type: group
+    validators:
+      - validator_id: schema
+        blocking: true
+      - validator_id: duplicate_placeholder
+        blocking: false
+    # group 无 license（题组引用素材版本，许可在素材侧校验）
+
+  - pack_id: platform
+    artifact_type: blueprint
+    validators:
+      - validator_id: schema
+        blocking: true
+
+  - pack_id: platform
+    artifact_type: audio
+    validators:
+      - validator_id: schema
+        blocking: true
+      - validator_id: license
+        blocking: true
+      - validator_id: duplicate_placeholder
+        blocking: false
+
+  # ── 数学包链（subject-math）：skeleton，学科验证器待数学包注册后追加 ──
+  - pack_id: subject-math
+    artifact_type: item
+    validators:
+      - validator_id: schema
+        blocking: true
+      - validator_id: license
+        blocking: true
+      - validator_id: duplicate_placeholder
+        blocking: false
+      # 学科验证器位（如 math_dual_impl / math_solvability）由数学包注册后在此追加

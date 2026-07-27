@@ -1,0 +1,53 @@
+case_id: single_choice_addition
+description: 单选题——整数加法
+template_version:
+  template_version_id: sha256:fixture-template-single-choice-add
+  template_id: tpl-001-single-choice-add
+  dsl_version: '1'
+  spec:
+    objective:
+      kp_set:
+      - dimension: kp
+        code: math.nal.int.add
+      kp_set_mode: single
+      cognitive_level: apply
+      gradeband: L
+      graph_release: '2026.1'
+    slots:
+      a:
+        type: int
+        difficulty_relevant: true
+      b:
+        type: int
+        difficulty_relevant: true
+    variation_axes:
+      axes: []
+    presentation:
+      blocks:
+      - kind: text
+        template: '{a} + {b} = ?'
+    answer_program:
+      expression: a + b
+      returns: number
+    distractor_rules:
+      rules:
+      - rule_type: deterministic
+        error_type_id: err.calc.add.off-by-one
+        expression: a + b + 1
+        label: 多 1
+      - rule_type: deterministic
+        error_type_id: err.calc.add.minus-one
+        expression: a + b - 1
+        label: 少 1
+params:
+  a: 3
+  b: 4
+pack_digest: sha256:pack-math-fixture
+interaction_id: single_choice
+scorer_id: exact_match
+scorer_params:
+  answer: 7
+locale: zh-CN
+corpus_digests: []
+seed: 0
+expected_item_version_id: sha256:8bbe4cb1acbbe9d7e7b00e5dbe9f794142a00d738e53b5db74454b1144ff2c80

@@ -1,0 +1,53 @@
+case_id: numeric_blank_pythagorean
+description: 数值填空题——勾股定理求斜边
+template_version:
+  template_version_id: sha256:fixture-template-numeric-blank-pythagorean
+  template_id: tpl-002-numeric-blank-pythagorean
+  dsl_version: '1'
+  spec:
+    objective:
+      kp_set:
+      - dimension: kp
+        code: math.gm.pythagorean
+      kp_set_mode: single
+      cognitive_level: apply
+      gradeband: M
+      graph_release: '2026.1'
+    slots:
+      a:
+        type: int
+        difficulty_relevant: true
+      b:
+        type: int
+        difficulty_relevant: true
+    variation_axes:
+      axes: []
+    presentation:
+      blocks:
+      - kind: text
+        template: 直角三角形两直角边为 {a} 和 {b}，求斜边长。
+    answer_program:
+      expression: sqrt(a * a + b * b)
+      returns: number
+    distractor_rules:
+      rules:
+      - rule_type: deterministic
+        error_type_id: err.pythagorean.sum
+        expression: a + b
+        label: 和而非斜边
+      - rule_type: deterministic
+        error_type_id: err.pythagorean.diff
+        expression: a * a + b * b
+        label: 未开方
+params:
+  a: 3
+  b: 4
+pack_digest: sha256:pack-math-fixture
+interaction_id: numeric_blank
+scorer_id: math_equivalence
+scorer_params:
+  answer_expr: '5'
+locale: zh-CN
+corpus_digests: []
+seed: 0
+expected_item_version_id: sha256:a99651a61918333fea02be6b9b7bcd69fb981d5f3a39368ccf8a4022621c6128

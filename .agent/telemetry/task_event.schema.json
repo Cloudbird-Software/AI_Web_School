@@ -1,0 +1,105 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://local/muti/.agent/telemetry/task_event.schema.json",
+  "title": "TaskEvent",
+  "description": "T-W2-021 任务卡遥测事件 schema：JSONL 每行一个事件，记录一次 agent 任务的执行特征。\n\n字段映射（任务卡概念字段 → 本 schema 字段）：\n  task_id      → task_id\n  model        → model + model_tier\n  status       → verifier_verdict (PASS/FAIL/REVIEW) + merged (bool)\n  gate_signal  → gate_results.{unit,contract,golden} (pass/fail/review)\n  token_cost   → tokens_in + tokens_out (count) + cost_cny (CNY)\n  duration     → finished_at - started_at (ISO 8601，由消费方计算)",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["task_id", "model", "task_type", "started_at", "finished_at"],
+  "properties": {
+    "task_id": {
+      "type": "string",
+      "pattern": "^T-[A-Z0-9]+-\\d+$",
+      "description": "任务卡 id，如 T-W2-019"
+    },
+    "wave": {
+      "type": "string",
+      "pattern": "^W[0-9]+[a-z]?$",
+      "description": "波次，如 W2 / W2a"
+    },
+    "role": {
+      "type": "string",
+      "enum": ["builder", "verifier", "judge", "scribe"],
+      "description": "执行角色"
+    },
+    "model": {
+      "type": "string",
+      "description": "provider/model-name，如 deepseek/deepseek-chat"
+    },
+    "model_tier": {
+      "type": "string",
+      "enum": ["T0", "T1", "T2"],
+      "description": "模型梯队（决定路由与单位成本阈值）"
+    },
+    "task_type": {
+      "type": "string",
+      "enum": ["impl", "fix", "test", "docs", "bench", "content"],
+      "description": "任务类型（用于模型×任务类型通过率聚合）"
+    },
+    "owner_module": {
+      "type": "string",
+      "description": "任务卡 owner_module（用于核对 owner 互斥）"
+    },
+    "started_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 起始时间，UTC"
+    },
+    "finished_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 结束时间，UTC"
+    },
+    "tokens_in": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "输入 token 数（含系统 prompt + 上下文）"
+    },
+    "tokens_out": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "输出 token 数"
+    },
+    "cost_cny": {
+      "type": "number",
+      "minimum": 0,
+      "description": "本次任务成本（人民币元）"
+    },
+    "attempts": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "尝试次数（attempts=1 表示一次通过）"
+    },
+    "escalated": {
+      "type": "boolean",
+      "description": "是否触发升级（失败 N 次后升梯队）"
+    },
+    "gate_results": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "unit": {"type": "string", "enum": ["pass", "fail", "review"]},
+        "contract": {"type": "string", "enum": ["pass", "fail", "review"]},
+        "golden": {"type": "string", "enum": ["pass", "fail", "review"]}
+      },
+      "description": "三道门禁信号（unit / contract / golden）"
+    },
+    "verifier_verdict": {
+      "type": "string",
+      "enum": ["PASS", "FAIL", "REVIEW"],
+      "description": "Verifier 最终判定（PASS 才能合入）"
+    },
+    "pr": {
+      "type": "string",
+      "description": "PR 链接或编号，如 #123"
+    },
+    "merged": {
+      "type": "boolean",
+      "description": "是否已合入主分支"
+    },
+    "misreport": {
+      "type": "boolean",
+      "description": "Builder 汇报与机器信号矛盾时由 Scribe 回填 true"
+    }
+  }
+}
