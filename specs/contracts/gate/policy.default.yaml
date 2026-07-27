@@ -75,3 +75,20 @@ chains:
       - validator_id: duplicate_placeholder
         blocking: false
       # 学科验证器位（如 math_dual_impl / math_solvability）由数学包注册后在此追加
+
+  # ── 语文包链（subject-chinese）：T-W2-032 落地 ──
+  # 注意：char_in_corpus 验证器由 src/packs/subject-chinese/validators/char_in_corpus.py
+  # 运行时注册（importlib 加载），策略加载前须先 import 该模块。
+  # 管线脚本与单测手动加载该模块后调用 issue_certificate，不依赖本默认策略链。
+  # 后续波次可由 app 启动时统一 import 学科包模块，再加载本策略。
+  # - pack_id: subject-chinese
+  #   artifact_type: item
+  #   validators:
+  #     - validator_id: schema
+  #       blocking: true
+  #     - validator_id: license
+  #       blocking: true
+  #     - validator_id: char_in_corpus
+  #       blocking: true
+  #     - validator_id: duplicate_placeholder
+  #       blocking: false

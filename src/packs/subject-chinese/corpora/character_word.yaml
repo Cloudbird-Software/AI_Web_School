@@ -1,0 +1,5294 @@
+version: '1.0'
+license_id: lic-kebiao-chinese-2022
+metadata:
+  description: 语文字词库种子（T-W2-031）
+  char_source: 义务教育语文课程标准（2022 年版）常用字表 + 平台自编
+  pinyin_source: pypinyin (MIT, license_id=lic-pypinyin-mit)
+  strokes_note: 前 ~120 字笔画数已人工核；其余 null 待补
+  generated_at: '2026-07-27'
+characters:
+- id: c0001
+  char: 的
+  pinyin: de
+  strokes: 8
+  similar_group: sim-013
+  gradeband: L
+- id: c0002
+  char: 一
+  pinyin: yī
+  strokes: 1
+  similar_group: null
+  gradeband: L
+- id: c0003
+  char: 是
+  pinyin: shì
+  strokes: 9
+  similar_group: null
+  gradeband: L
+- id: c0004
+  char: 不
+  pinyin: bù
+  strokes: 4
+  similar_group: null
+  gradeband: L
+- id: c0005
+  char: 了
+  pinyin: le
+  strokes: 2
+  similar_group: sim-010
+  gradeband: L
+- id: c0006
+  char: 人
+  pinyin: rén
+  strokes: 2
+  similar_group: sim-002
+  gradeband: L
+- id: c0007
+  char: 在
+  pinyin: zài
+  strokes: 6
+  similar_group: null
+  gradeband: L
+- id: c0008
+  char: 我
+  pinyin: wǒ
+  strokes: 7
+  similar_group: null
+  gradeband: L
+- id: c0009
+  char: 有
+  pinyin: yǒu
+  strokes: 6
+  similar_group: sim-014
+  gradeband: L
+- id: c0010
+  char: 他
+  pinyin: tā
+  strokes: 5
+  similar_group: sim-015
+  gradeband: L
+- id: c0011
+  char: 这
+  pinyin: zhè
+  strokes: 7
+  similar_group: null
+  gradeband: L
+- id: c0012
+  char: 中
+  pinyin: zhōng
+  strokes: 4
+  similar_group: null
+  gradeband: L
+- id: c0013
+  char: 大
+  pinyin: dà
+  strokes: 3
+  similar_group: sim-006
+  gradeband: L
+- id: c0014
+  char: 为
+  pinyin: wèi
+  strokes: 4
+  similar_group: null
+  gradeband: L
+- id: c0015
+  char: 上
+  pinyin: shàng
+  strokes: 3
+  similar_group: null
+  gradeband: L
+- id: c0016
+  char: 来
+  pinyin: lái
+  strokes: 7
+  similar_group: null
+  gradeband: L
+- id: c0017
+  char: 个
+  pinyin: gè
+  strokes: 3
+  similar_group: null
+  gradeband: L
+- id: c0018
+  char: 国
+  pinyin: guó
+  strokes: 8
+  similar_group: null
+  gradeband: L
+- id: c0019
+  char: 地
+  pinyin: dì
+  strokes: 6
+  similar_group: null
+  gradeband: L
+- id: c0020
+  char: 到
+  pinyin: dào
+  strokes: 8
+  similar_group: sim-018
+  gradeband: L
+- id: c0021
+  char: 以
+  pinyin: yǐ
+  strokes: 4
+  similar_group: null
+  gradeband: L
+- id: c0022
+  char: 说
+  pinyin: shuō
+  strokes: 9
+  similar_group: null
+  gradeband: L
+- id: c0023
+  char: 时
+  pinyin: shí
+  strokes: 7
+  similar_group: null
+  gradeband: L
+- id: c0024
+  char: 要
+  pinyin: yào
+  strokes: 9
+  similar_group: null
+  gradeband: L
+- id: c0025
+  char: 就
+  pinyin: jiù
+  strokes: 12
+  similar_group: null
+  gradeband: L
+- id: c0026
+  char: 出
+  pinyin: chū
+  strokes: 5
+  similar_group: null
+  gradeband: L
+- id: c0027
+  char: 会
+  pinyin: huì
+  strokes: 6
+  similar_group: null
+  gradeband: L
+- id: c0028
+  char: 可
+  pinyin: kě
+  strokes: 5
+  similar_group: null
+  gradeband: L
+- id: c0029
+  char: 也
+  pinyin: yě
+  strokes: 3
+  similar_group: null
+  gradeband: L
+- id: c0030
+  char: 你
+  pinyin: nǐ
+  strokes: null
+  similar_group: null
+  gradeband: L
+- id: c0031
+  char: 对
+  pinyin: duì
+  strokes: null
+  similar_group: null
+  gradeband: L
+- id: c0032
+  char: 生
+  pinyin: shēng
+  strokes: 5
+  similar_group: sim-021
+  gradeband: L
+- id: c0033
+  char: 能
+  pinyin: néng
+  strokes: 10
+  similar_group: null
+  gradeband: L
+- id: c0034
+  char: 而
+  pinyin: ér
+  strokes: 6
+  similar_group: null
+  gradeband: L
+- id: c0035
+  char: 子
+  pinyin: zi
+  strokes: 3
+  similar_group: sim-010
+  gradeband: L
+- id: c0036
+  char: 那
+  pinyin: nà
+  strokes: 6
+  similar_group: null
+  gradeband: L
+- id: c0037
+  char: 得
+  pinyin: dé
+  strokes: 11
+  similar_group: sim-013
+  gradeband: L
+- id: c0038
+  char: 于
+  pinyin: yú
+  strokes: 3
+  similar_group: null
+  gradeband: L
+- id: c0039
+  char: 着
+  pinyin: zhe
+  strokes: 11
+  similar_group: null
+  gradeband: L
+- id: c0040
+  char: 下
+  pinyin: xià
+  strokes: 3
+  similar_group: null
+  gradeband: L
+- id: c0041
+  char: 自
+  pinyin: zì
+  strokes: 6
+  similar_group: null
+  gradeband: L
+- id: c0042
+  char: 之
+  pinyin: zhī
+  strokes: 3
+  similar_group: null
+  gradeband: L
+- id: c0043
+  char: 年
+  pinyin: nián
+  strokes: 6
+  similar_group: null
+  gradeband: L
+- id: c0044
+  char: 过
+  pinyin: guò
+  strokes: 6
+  similar_group: null
+  gradeband: L
+- id: c0045
+  char: 发
+  pinyin: fā
+  strokes: 5
+  similar_group: null
+  gradeband: L
+- id: c0046
+  char: 后
+  pinyin: hòu
+  strokes: 6
+  similar_group: null
+  gradeband: L
+- id: c0047
+  char: 作
+  pinyin: zuò
+  strokes: 7
+  similar_group: sim-012
+  gradeband: L
+- id: c0048
+  char: 里
+  pinyin: lǐ
+  strokes: 7
+  similar_group: null
+  gradeband: L
+- id: c0049
+  char: 用
+  pinyin: yòng
+  strokes: 5
+  similar_group: null
+  gradeband: L
+- id: c0050
+  char: 道
+  pinyin: dào
+  strokes: 12
+  similar_group: sim-018
+  gradeband: L
+- id: c0051
+  char: 行
+  pinyin: xíng
+  strokes: 6
+  similar_group: null
+  gradeband: L
+- id: c0052
+  char: 所
+  pinyin: suǒ
+  strokes: 8
+  similar_group: null
+  gradeband: L
+- id: c0053
+  char: 然
+  pinyin: rán
+  strokes: 12
+  similar_group: null
+  gradeband: L
+- id: c0054
+  char: 家
+  pinyin: jiā
+  strokes: 10
+  similar_group: null
+  gradeband: L
+- id: c0055
+  char: 种
+  pinyin: zhǒng
+  strokes: 9
+  similar_group: null
+  gradeband: L
+- id: c0056
+  char: 事
+  pinyin: shì
+  strokes: 8
+  similar_group: null
+  gradeband: L
+- id: c0057
+  char: 成
+  pinyin: chéng
+  strokes: 6
+  similar_group: null
+  gradeband: L
+- id: c0058
+  char: 方
+  pinyin: fāng
+  strokes: 4
+  similar_group: null
+  gradeband: L
+- id: c0059
+  char: 多
+  pinyin: duō
+  strokes: 6
+  similar_group: null
+  gradeband: L
+- id: c0060
+  char: 经
+  pinyin: jīng
+  strokes: 8
+  similar_group: null
+  gradeband: L
+- id: c0061
+  char: 么
+  pinyin: me
+  strokes: 3
+  similar_group: null
+  gradeband: L
+- id: c0062
+  char: 去
+  pinyin: qù
+  strokes: 5
+  similar_group: null
+  gradeband: L
+- id: c0063
+  char: 法
+  pinyin: fǎ
+  strokes: 8
+  similar_group: null
+  gradeband: L
+- id: c0064
+  char: 学
+  pinyin: xué
+  strokes: 8
+  similar_group: null
+  gradeband: L
+- id: c0065
+  char: 如
+  pinyin: rú
+  strokes: 6
+  similar_group: null
+  gradeband: L
+- id: c0066
+  char: 都
+  pinyin: dōu
+  strokes: 10
+  similar_group: null
+  gradeband: L
+- id: c0067
+  char: 同
+  pinyin: tóng
+  strokes: 6
+  similar_group: null
+  gradeband: L
+- id: c0068
+  char: 现
+  pinyin: xiàn
+  strokes: 8
+  similar_group: null
+  gradeband: L
+- id: c0069
+  char: 当
+  pinyin: dāng
+  strokes: 6
+  similar_group: null
+  gradeband: L
+- id: c0070
+  char: 没
+  pinyin: méi
+  strokes: 7
+  similar_group: null
+  gradeband: L
+- id: c0071
+  char: 动
+  pinyin: dòng
+  strokes: 6
+  similar_group: null
+  gradeband: L
+- id: c0072
+  char: 面
+  pinyin: miàn
+  strokes: 9
+  similar_group: null
+  gradeband: L
+- id: c0073
+  char: 起
+  pinyin: qǐ
+  strokes: 10
+  similar_group: null
+  gradeband: L
+- id: c0074
+  char: 看
+  pinyin: kàn
+  strokes: 9
+  similar_group: null
+  gradeband: L
+- id: c0075
+  char: 定
+  pinyin: dìng
+  strokes: 8
+  similar_group: null
+  gradeband: L
+- id: c0076
+  char: 天
+  pinyin: tiān
+  strokes: 4
+  similar_group: null
+  gradeband: L
+- id: c0077
+  char: 分
+  pinyin: fēn
+  strokes: 4
+  similar_group: null
+  gradeband: L
+- id: c0078
+  char: 还
+  pinyin: hái
+  strokes: 7
+  similar_group: null
+  gradeband: L
+- id: c0079
+  char: 进
+  pinyin: jìn
+  strokes: 7
+  similar_group: sim-020
+  gradeband: L
+- id: c0080
+  char: 好
+  pinyin: hǎo
+  strokes: 6
+  similar_group: null
+  gradeband: L
+- id: c0081
+  char: 小
+  pinyin: xiǎo
+  strokes: 3
+  similar_group: null
+  gradeband: L
+- id: c0082
+  char: 部
+  pinyin: bù
+  strokes: 10
+  similar_group: null
+  gradeband: L
+- id: c0083
+  char: 其
+  pinyin: qí
+  strokes: 8
+  similar_group: null
+  gradeband: L
+- id: c0084
+  char: 些
+  pinyin: xiē
+  strokes: 8
+  similar_group: null
+  gradeband: L
+- id: c0085
+  char: 主
+  pinyin: zhǔ
+  strokes: 5
+  similar_group: null
+  gradeband: L
+- id: c0086
+  char: 样
+  pinyin: yàng
+  strokes: 10
+  similar_group: null
+  gradeband: L
+- id: c0087
+  char: 理
+  pinyin: lǐ
+  strokes: 11
+  similar_group: null
+  gradeband: L
+- id: c0088
+  char: 心
+  pinyin: xīn
+  strokes: 4
+  similar_group: sim-016
+  gradeband: L
+- id: c0089
+  char: 她
+  pinyin: tā
+  strokes: 6
+  similar_group: sim-015
+  gradeband: L
+- id: c0090
+  char: 本
+  pinyin: běn
+  strokes: 5
+  similar_group: sim-007
+  gradeband: L
+- id: c0091
+  char: 前
+  pinyin: qián
+  strokes: 9
+  similar_group: null
+  gradeband: L
+- id: c0092
+  char: 开
+  pinyin: kāi
+  strokes: 4
+  similar_group: null
+  gradeband: L
+- id: c0093
+  char: 但
+  pinyin: dàn
+  strokes: null
+  similar_group: null
+  gradeband: L
+- id: c0094
+  char: 因
+  pinyin: yīn
+  strokes: 6
+  similar_group: null
+  gradeband: L
+- id: c0095
+  char: 只
+  pinyin: zhǐ
+  strokes: 5
+  similar_group: null
+  gradeband: L
+- id: c0096
+  char: 从
+  pinyin: cóng
+  strokes: 4
+  similar_group: null
+  gradeband: L
+- id: c0097
+  char: 想
+  pinyin: xiǎng
+  strokes: 13
+  similar_group: null
+  gradeband: L
+- id: c0098
+  char: 实
+  pinyin: shí
+  strokes: 8
+  similar_group: null
+  gradeband: L
+- id: c0099
+  char: 日
+  pinyin: rì
+  strokes: 4
+  similar_group: sim-004
+  gradeband: L
+- id: c0100
+  char: 军
+  pinyin: jūn
+  strokes: 6
+  similar_group: null
+  gradeband: L
+- id: c0101
+  char: 者
+  pinyin: zhě
+  strokes: 8
+  similar_group: null
+  gradeband: L
+- id: c0102
+  char: 意
+  pinyin: yì
+  strokes: 13
+  similar_group: null
+  gradeband: L
+- id: c0103
+  char: 无
+  pinyin: wú
+  strokes: 4
+  similar_group: null
+  gradeband: L
+- id: c0104
+  char: 力
+  pinyin: lì
+  strokes: 2
+  similar_group: null
+  gradeband: L
+- id: c0105
+  char: 它
+  pinyin: tā
+  strokes: 5
+  similar_group: null
+  gradeband: L
+- id: c0106
+  char: 与
+  pinyin: yǔ
+  strokes: 3
+  similar_group: null
+  gradeband: L
+- id: c0107
+  char: 长
+  pinyin: zhǎng
+  strokes: 4
+  similar_group: null
+  gradeband: L
+- id: c0108
+  char: 把
+  pinyin: bǎ
+  strokes: 7
+  similar_group: null
+  gradeband: L
+- id: c0109
+  char: 机
+  pinyin: jī
+  strokes: 6
+  similar_group: null
+  gradeband: L
+- id: c0110
+  char: 十
+  pinyin: shí
+  strokes: 2
+  similar_group: null
+  gradeband: L
+- id: c0111
+  char: 民
+  pinyin: mín
+  strokes: 5
+  similar_group: null
+  gradeband: L
+- id: c0112
+  char: 第
+  pinyin: dì
+  strokes: 11
+  similar_group: null
+  gradeband: L
+- id: c0113
+  char: 公
+  pinyin: gōng
+  strokes: 4
+  similar_group: sim-017
+  gradeband: L
+- id: c0114
+  char: 此
+  pinyin: cǐ
+  strokes: 6
+  similar_group: null
+  gradeband: L
+- id: c0115
+  char: 已
+  pinyin: yǐ
+  strokes: 3
+  similar_group: sim-001
+  gradeband: L
+- id: c0116
+  char: 工
+  pinyin: gōng
+  strokes: 3
+  similar_group: sim-017
+  gradeband: L
+- id: c0117
+  char: 使
+  pinyin: shǐ
+  strokes: 8
+  similar_group: null
+  gradeband: L
+- id: c0118
+  char: 情
+  pinyin: qíng
+  strokes: 11
+  similar_group: null
+  gradeband: L
+- id: c0119
+  char: 明
+  pinyin: míng
+  strokes: 8
+  similar_group: null
+  gradeband: L
+- id: c0120
+  char: 性
+  pinyin: xìng
+  strokes: 8
+  similar_group: null
+  gradeband: L
+- id: c0121
+  char: 知
+  pinyin: zhī
+  strokes: 8
+  similar_group: null
+  gradeband: L
+- id: c0122
+  char: 全
+  pinyin: quán
+  strokes: 6
+  similar_group: null
+  gradeband: L
+- id: c0123
+  char: 三
+  pinyin: sān
+  strokes: 3
+  similar_group: null
+  gradeband: L
+- id: c0124
+  char: 又
+  pinyin: yòu
+  strokes: 2
+  similar_group: sim-014
+  gradeband: L
+- id: c0125
+  char: 关
+  pinyin: guān
+  strokes: 6
+  similar_group: null
+  gradeband: L
+- id: c0126
+  char: 点
+  pinyin: diǎn
+  strokes: 9
+  similar_group: null
+  gradeband: L
+- id: c0127
+  char: 正
+  pinyin: zhèng
+  strokes: 5
+  similar_group: null
+  gradeband: L
+- id: c0128
+  char: 业
+  pinyin: yè
+  strokes: 5
+  similar_group: null
+  gradeband: L
+- id: c0129
+  char: 外
+  pinyin: wài
+  strokes: 5
+  similar_group: null
+  gradeband: L
+- id: c0130
+  char: 将
+  pinyin: jiāng
+  strokes: 9
+  similar_group: null
+  gradeband: L
+- id: c0131
+  char: 两
+  pinyin: liǎng
+  strokes: 7
+  similar_group: null
+  gradeband: L
+- id: c0132
+  char: 高
+  pinyin: gāo
+  strokes: 10
+  similar_group: null
+  gradeband: L
+- id: c0133
+  char: 间
+  pinyin: jiān
+  strokes: 7
+  similar_group: sim-011
+  gradeband: L
+- id: c0134
+  char: 由
+  pinyin: yóu
+  strokes: 5
+  similar_group: sim-005
+  gradeband: L
+- id: c0135
+  char: 问
+  pinyin: wèn
+  strokes: 6
+  similar_group: sim-011
+  gradeband: L
+- id: c0136
+  char: 很
+  pinyin: hěn
+  strokes: 9
+  similar_group: null
+  gradeband: L
+- id: c0137
+  char: 最
+  pinyin: zuì
+  strokes: 12
+  similar_group: null
+  gradeband: L
+- id: c0138
+  char: 重
+  pinyin: zhòng
+  strokes: 9
+  similar_group: null
+  gradeband: L
+- id: c0139
+  char: 物
+  pinyin: wù
+  strokes: 8
+  similar_group: null
+  gradeband: L
+- id: c0140
+  char: 文
+  pinyin: wén
+  strokes: 4
+  similar_group: null
+  gradeband: L
+- id: c0141
+  char: 应
+  pinyin: yīng
+  strokes: 7
+  similar_group: null
+  gradeband: L
+- id: c0142
+  char: 二
+  pinyin: èr
+  strokes: 2
+  similar_group: null
+  gradeband: L
+- id: c0143
+  char: 计
+  pinyin: jì
+  strokes: 4
+  similar_group: null
+  gradeband: L
+- id: c0144
+  char: 给
+  pinyin: gěi
+  strokes: 9
+  similar_group: null
+  gradeband: L
+- id: c0145
+  char: 做
+  pinyin: zuò
+  strokes: 11
+  similar_group: sim-012
+  gradeband: L
+- id: c0146
+  char: 代
+  pinyin: dài
+  strokes: 5
+  similar_group: null
+  gradeband: L
+- id: c0147
+  char: 合
+  pinyin: hé
+  strokes: 6
+  similar_group: null
+  gradeband: L
+- id: c0148
+  char: 五
+  pinyin: wǔ
+  strokes: 4
+  similar_group: null
+  gradeband: L
+- id: c0149
+  char: 六
+  pinyin: liù
+  strokes: 4
+  similar_group: null
+  gradeband: L
+- id: c0150
+  char: 七
+  pinyin: qī
+  strokes: 2
+  similar_group: null
+  gradeband: L
+- id: c0151
+  char: 八
+  pinyin: bā
+  strokes: 2
+  similar_group: null
+  gradeband: L
+- id: c0152
+  char: 九
+  pinyin: jiǔ
+  strokes: 2
+  similar_group: null
+  gradeband: L
+- id: c0153
+  char: 百
+  pinyin: bǎi
+  strokes: 6
+  similar_group: sim-009
+  gradeband: L
+- id: c0154
+  char: 千
+  pinyin: qiān
+  strokes: 3
+  similar_group: null
+  gradeband: L
+- id: c0155
+  char: 万
+  pinyin: wàn
+  strokes: 3
+  similar_group: null
+  gradeband: L
+- id: c0156
+  char: 月
+  pinyin: yuè
+  strokes: 4
+  similar_group: null
+  gradeband: L
+- id: c0157
+  char: 秒
+  pinyin: miǎo
+  strokes: 9
+  similar_group: null
+  gradeband: L
+- id: c0158
+  char: 春
+  pinyin: chūn
+  strokes: 9
+  similar_group: null
+  gradeband: L
+- id: c0159
+  char: 夏
+  pinyin: xià
+  strokes: 10
+  similar_group: null
+  gradeband: L
+- id: c0160
+  char: 秋
+  pinyin: qiū
+  strokes: 9
+  similar_group: null
+  gradeband: L
+- id: c0161
+  char: 冬
+  pinyin: dōng
+  strokes: 5
+  similar_group: null
+  gradeband: L
+- id: c0162
+  char: 东
+  pinyin: dōng
+  strokes: 5
+  similar_group: null
+  gradeband: L
+- id: c0163
+  char: 南
+  pinyin: nán
+  strokes: 9
+  similar_group: null
+  gradeband: L
+- id: c0164
+  char: 西
+  pinyin: xī
+  strokes: null
+  similar_group: null
+  gradeband: L
+- id: c0165
+  char: 北
+  pinyin: běi
+  strokes: 5
+  similar_group: null
+  gradeband: L
+- id: c0166
+  char: 左
+  pinyin: zuǒ
+  strokes: 5
+  similar_group: null
+  gradeband: L
+- id: c0167
+  char: 右
+  pinyin: yòu
+  strokes: 5
+  similar_group: null
+  gradeband: L
+- id: c0168
+  char: 金
+  pinyin: jīn
+  strokes: 8
+  similar_group: null
+  gradeband: L
+- id: c0169
+  char: 木
+  pinyin: mù
+  strokes: 4
+  similar_group: sim-007
+  gradeband: L
+- id: c0170
+  char: 水
+  pinyin: shuǐ
+  strokes: 4
+  similar_group: null
+  gradeband: L
+- id: c0171
+  char: 火
+  pinyin: huǒ
+  strokes: 4
+  similar_group: null
+  gradeband: L
+- id: c0172
+  char: 土
+  pinyin: tǔ
+  strokes: 3
+  similar_group: sim-003
+  gradeband: L
+- id: c0173
+  char: 山
+  pinyin: shān
+  strokes: 3
+  similar_group: null
+  gradeband: L
+- id: c0174
+  char: 石
+  pinyin: shí
+  strokes: 5
+  similar_group: null
+  gradeband: L
+- id: c0175
+  char: 田
+  pinyin: tián
+  strokes: 5
+  similar_group: sim-005
+  gradeband: L
+- id: c0176
+  char: 风
+  pinyin: fēng
+  strokes: 4
+  similar_group: null
+  gradeband: L
+- id: c0177
+  char: 雨
+  pinyin: yǔ
+  strokes: 8
+  similar_group: null
+  gradeband: L
+- id: c0178
+  char: 雷
+  pinyin: léi
+  strokes: 13
+  similar_group: null
+  gradeband: L
+- id: c0179
+  char: 电
+  pinyin: diàn
+  strokes: 5
+  similar_group: null
+  gradeband: L
+- id: c0180
+  char: 雪
+  pinyin: xuě
+  strokes: 11
+  similar_group: null
+  gradeband: L
+- id: c0181
+  char: 云
+  pinyin: yún
+  strokes: 4
+  similar_group: null
+  gradeband: L
+- id: c0182
+  char: 马
+  pinyin: mǎ
+  strokes: 3
+  similar_group: null
+  gradeband: L
+- id: c0183
+  char: 牛
+  pinyin: niú
+  strokes: 4
+  similar_group: sim-008
+  gradeband: L
+- id: c0184
+  char: 羊
+  pinyin: yáng
+  strokes: 6
+  similar_group: null
+  gradeband: L
+- id: c0185
+  char: 鸡
+  pinyin: jī
+  strokes: null
+  similar_group: null
+  gradeband: L
+- id: c0186
+  char: 犬
+  pinyin: quǎn
+  strokes: null
+  similar_group: null
+  gradeband: L
+- id: c0187
+  char: 豕
+  pinyin: shǐ
+  strokes: null
+  similar_group: null
+  gradeband: L
+- id: c0188
+  char: 花
+  pinyin: huā
+  strokes: null
+  similar_group: null
+  gradeband: L
+- id: c0189
+  char: 鸟
+  pinyin: niǎo
+  strokes: 5
+  similar_group: null
+  gradeband: L
+- id: c0190
+  char: 鱼
+  pinyin: yú
+  strokes: 8
+  similar_group: null
+  gradeband: L
+- id: c0191
+  char: 虫
+  pinyin: chóng
+  strokes: 6
+  similar_group: null
+  gradeband: L
+- id: c0192
+  char: 草
+  pinyin: cǎo
+  strokes: 9
+  similar_group: null
+  gradeband: L
+- id: c0193
+  char: 衣
+  pinyin: yī
+  strokes: 6
+  similar_group: null
+  gradeband: L
+- id: c0194
+  char: 食
+  pinyin: shí
+  strokes: 9
+  similar_group: null
+  gradeband: L
+- id: c0195
+  char: 住
+  pinyin: zhù
+  strokes: 7
+  similar_group: null
+  gradeband: L
+- id: c0196
+  char: 车
+  pinyin: chē
+  strokes: 4
+  similar_group: null
+  gradeband: L
+- id: c0197
+  char: 走
+  pinyin: zǒu
+  strokes: 7
+  similar_group: null
+  gradeband: L
+- id: c0198
+  char: 跑
+  pinyin: pǎo
+  strokes: 12
+  similar_group: null
+  gradeband: L
+- id: c0199
+  char: 跳
+  pinyin: tiào
+  strokes: null
+  similar_group: null
+  gradeband: L
+- id: c0200
+  char: 听
+  pinyin: tīng
+  strokes: 7
+  similar_group: null
+  gradeband: L
+- id: c0201
+  char: 读
+  pinyin: dú
+  strokes: 10
+  similar_group: null
+  gradeband: L
+- id: c0202
+  char: 写
+  pinyin: xiě
+  strokes: 5
+  similar_group: null
+  gradeband: L
+- id: c0203
+  char: 入
+  pinyin: rù
+  strokes: 2
+  similar_group: sim-002
+  gradeband: L
+- id: c0204
+  char: 落
+  pinyin: luò
+  strokes: 12
+  similar_group: null
+  gradeband: L
+- id: c0205
+  char: 升
+  pinyin: shēng
+  strokes: 4
+  similar_group: null
+  gradeband: L
+- id: c0206
+  char: 降
+  pinyin: jiàng
+  strokes: 8
+  similar_group: null
+  gradeband: L
+- id: c0207
+  char: 浮
+  pinyin: fú
+  strokes: 10
+  similar_group: null
+  gradeband: L
+- id: c0208
+  char: 沉
+  pinyin: chén
+  strokes: 7
+  similar_group: null
+  gradeband: L
+- id: c0209
+  char: 红
+  pinyin: hóng
+  strokes: 6
+  similar_group: null
+  gradeband: L
+- id: c0210
+  char: 黄
+  pinyin: huáng
+  strokes: 11
+  similar_group: null
+  gradeband: L
+- id: c0211
+  char: 蓝
+  pinyin: lán
+  strokes: 13
+  similar_group: null
+  gradeband: L
+- id: c0212
+  char: 绿
+  pinyin: lǜ
+  strokes: 11
+  similar_group: null
+  gradeband: L
+- id: c0213
+  char: 白
+  pinyin: bái
+  strokes: 5
+  similar_group: sim-009
+  gradeband: L
+- id: c0214
+  char: 黑
+  pinyin: hēi
+  strokes: 12
+  similar_group: null
+  gradeband: L
+- id: c0215
+  char: 紫
+  pinyin: zǐ
+  strokes: 12
+  similar_group: null
+  gradeband: L
+- id: c0216
+  char: 粉
+  pinyin: fěn
+  strokes: 10
+  similar_group: null
+  gradeband: L
+- id: c0217
+  char: 灰
+  pinyin: huī
+  strokes: 6
+  similar_group: null
+  gradeband: L
+- id: c0218
+  char: 褐
+  pinyin: hè
+  strokes: 14
+  similar_group: null
+  gradeband: L
+- id: c0219
+  char: 橙
+  pinyin: chéng
+  strokes: 16
+  similar_group: null
+  gradeband: L
+- id: c0220
+  char: 冷
+  pinyin: lěng
+  strokes: 7
+  similar_group: null
+  gradeband: L
+- id: c0221
+  char: 暖
+  pinyin: nuǎn
+  strokes: 13
+  similar_group: null
+  gradeband: L
+- id: c0222
+  char: 热
+  pinyin: rè
+  strokes: 10
+  similar_group: null
+  gradeband: L
+- id: c0223
+  char: 凉
+  pinyin: liáng
+  strokes: 10
+  similar_group: null
+  gradeband: L
+- id: c0224
+  char: 干
+  pinyin: gàn
+  strokes: 3
+  similar_group: null
+  gradeband: L
+- id: c0225
+  char: 湿
+  pinyin: shī
+  strokes: 12
+  similar_group: null
+  gradeband: L
+- id: c0226
+  char: 新
+  pinyin: xīn
+  strokes: 13
+  similar_group: sim-016
+  gradeband: L
+- id: c0227
+  char: 旧
+  pinyin: jiù
+  strokes: 5
+  similar_group: null
+  gradeband: L
+- id: c0228
+  char: 美
+  pinyin: měi
+  strokes: 9
+  similar_group: null
+  gradeband: L
+- id: c0229
+  char: 丑
+  pinyin: chǒu
+  strokes: 4
+  similar_group: null
+  gradeband: L
+- id: c0230
+  char: 善
+  pinyin: shàn
+  strokes: 12
+  similar_group: null
+  gradeband: L
+- id: c0231
+  char: 恶
+  pinyin: è
+  strokes: 10
+  similar_group: null
+  gradeband: L
+- id: c0232
+  char: 坏
+  pinyin: huài
+  strokes: null
+  similar_group: null
+  gradeband: L
+- id: c0233
+  char: 远
+  pinyin: yuǎn
+  strokes: 7
+  similar_group: null
+  gradeband: L
+- id: c0234
+  char: 近
+  pinyin: jìn
+  strokes: 7
+  similar_group: sim-020
+  gradeband: L
+- id: c0235
+  char: 低
+  pinyin: dī
+  strokes: 7
+  similar_group: null
+  gradeband: L
+- id: c0236
+  char: 短
+  pinyin: duǎn
+  strokes: 12
+  similar_group: null
+  gradeband: L
+- id: c0237
+  char: 粗
+  pinyin: cū
+  strokes: null
+  similar_group: null
+  gradeband: L
+- id: c0238
+  char: 细
+  pinyin: xì
+  strokes: null
+  similar_group: null
+  gradeband: L
+- id: c0239
+  char: 少
+  pinyin: shǎo
+  strokes: 4
+  similar_group: null
+  gradeband: L
+- id: c0240
+  char: 轻
+  pinyin: qīng
+  strokes: 9
+  similar_group: null
+  gradeband: L
+- id: c0241
+  char: 快
+  pinyin: kuài
+  strokes: 7
+  similar_group: null
+  gradeband: L
+- id: c0242
+  char: 慢
+  pinyin: màn
+  strokes: 14
+  similar_group: null
+  gradeband: L
+- id: c0243
+  char: 强
+  pinyin: qiáng
+  strokes: 12
+  similar_group: null
+  gradeband: L
+- id: c0244
+  char: 弱
+  pinyin: ruò
+  strokes: 10
+  similar_group: null
+  gradeband: L
+- id: c0245
+  char: 深
+  pinyin: shēn
+  strokes: 11
+  similar_group: null
+  gradeband: L
+- id: c0246
+  char: 浅
+  pinyin: qiǎn
+  strokes: 8
+  similar_group: null
+  gradeband: L
+- id: c0247
+  char: 厚
+  pinyin: hòu
+  strokes: 9
+  similar_group: null
+  gradeband: L
+- id: c0248
+  char: 薄
+  pinyin: báo
+  strokes: 16
+  similar_group: null
+  gradeband: L
+- id: c0249
+  char: 宽
+  pinyin: kuān
+  strokes: 10
+  similar_group: null
+  gradeband: L
+- id: c0250
+  char: 窄
+  pinyin: zhǎi
+  strokes: 10
+  similar_group: null
+  gradeband: L
+- id: c0251
+  char: 暗
+  pinyin: àn
+  strokes: 13
+  similar_group: null
+  gradeband: L
+- id: c0252
+  char: 爸
+  pinyin: bà
+  strokes: 8
+  similar_group: null
+  gradeband: L
+- id: c0253
+  char: 妈
+  pinyin: mā
+  strokes: 6
+  similar_group: null
+  gradeband: L
+- id: c0254
+  char: 爷
+  pinyin: yé
+  strokes: 6
+  similar_group: null
+  gradeband: L
+- id: c0255
+  char: 奶
+  pinyin: nǎi
+  strokes: 5
+  similar_group: null
+  gradeband: L
+- id: c0256
+  char: 哥
+  pinyin: gē
+  strokes: 10
+  similar_group: null
+  gradeband: L
+- id: c0257
+  char: 姐
+  pinyin: jiě
+  strokes: 8
+  similar_group: null
+  gradeband: L
+- id: c0258
+  char: 弟
+  pinyin: dì
+  strokes: 7
+  similar_group: null
+  gradeband: L
+- id: c0259
+  char: 妹
+  pinyin: mèi
+  strokes: 8
+  similar_group: null
+  gradeband: L
+- id: c0260
+  char: 叔
+  pinyin: shū
+  strokes: 8
+  similar_group: null
+  gradeband: L
+- id: c0261
+  char: 伯
+  pinyin: bó
+  strokes: 7
+  similar_group: null
+  gradeband: L
+- id: c0262
+  char: 姨
+  pinyin: yí
+  strokes: 9
+  similar_group: null
+  gradeband: L
+- id: c0263
+  char: 舅
+  pinyin: jiù
+  strokes: 13
+  similar_group: null
+  gradeband: L
+- id: c0264
+  char: 父
+  pinyin: fù
+  strokes: 4
+  similar_group: null
+  gradeband: L
+- id: c0265
+  char: 母
+  pinyin: mǔ
+  strokes: 5
+  similar_group: null
+  gradeband: L
+- id: c0266
+  char: 儿
+  pinyin: ér
+  strokes: 2
+  similar_group: null
+  gradeband: L
+- id: c0267
+  char: 女
+  pinyin: nǚ
+  strokes: 3
+  similar_group: null
+  gradeband: L
+- id: c0268
+  char: 孙
+  pinyin: sūn
+  strokes: 6
+  similar_group: null
+  gradeband: L
+- id: c0269
+  char: 朋
+  pinyin: péng
+  strokes: 8
+  similar_group: null
+  gradeband: L
+- id: c0270
+  char: 友
+  pinyin: yǒu
+  strokes: 4
+  similar_group: null
+  gradeband: L
+- id: c0271
+  char: 师
+  pinyin: shī
+  strokes: 6
+  similar_group: null
+  gradeband: L
+- id: c0272
+  char: 语
+  pinyin: yǔ
+  strokes: 9
+  similar_group: null
+  gradeband: L
+- id: c0273
+  char: 数
+  pinyin: shù
+  strokes: 13
+  similar_group: null
+  gradeband: L
+- id: c0274
+  char: 英
+  pinyin: yīng
+  strokes: 8
+  similar_group: null
+  gradeband: L
+- id: c0275
+  char: 体
+  pinyin: tǐ
+  strokes: 7
+  similar_group: null
+  gradeband: L
+- id: c0276
+  char: 音
+  pinyin: yīn
+  strokes: 9
+  similar_group: null
+  gradeband: L
+- id: c0277
+  char: 科
+  pinyin: kē
+  strokes: 9
+  similar_group: null
+  gradeband: L
+- id: c0278
+  char: 史
+  pinyin: shǐ
+  strokes: 5
+  similar_group: null
+  gradeband: L
+- id: c0279
+  char: 政
+  pinyin: zhèng
+  strokes: 8
+  similar_group: null
+  gradeband: L
+- id: c0280
+  char: 化
+  pinyin: huà
+  strokes: 4
+  similar_group: null
+  gradeband: L
+- id: c0281
+  char: 书
+  pinyin: shū
+  strokes: 4
+  similar_group: null
+  gradeband: L
+- id: c0282
+  char: 笔
+  pinyin: bǐ
+  strokes: 10
+  similar_group: null
+  gradeband: L
+- id: c0283
+  char: 纸
+  pinyin: zhǐ
+  strokes: 7
+  similar_group: null
+  gradeband: L
+- id: c0284
+  char: 墨
+  pinyin: mò
+  strokes: 15
+  similar_group: null
+  gradeband: L
+- id: c0285
+  char: 字
+  pinyin: zì
+  strokes: 6
+  similar_group: null
+  gradeband: L
+- id: c0286
+  char: 词
+  pinyin: cí
+  strokes: 7
+  similar_group: null
+  gradeband: L
+- id: c0287
+  char: 典
+  pinyin: diǎn
+  strokes: 8
+  similar_group: null
+  gradeband: L
+- id: c0288
+  char: 诗
+  pinyin: shī
+  strokes: 8
+  similar_group: null
+  gradeband: L
+- id: c0289
+  char: 句
+  pinyin: jù
+  strokes: 5
+  similar_group: null
+  gradeband: L
+- id: c0290
+  char: 段
+  pinyin: duàn
+  strokes: 9
+  similar_group: null
+  gradeband: L
+- id: c0291
+  char: 篇
+  pinyin: piān
+  strokes: 15
+  similar_group: null
+  gradeband: L
+- id: c0292
+  char: 章
+  pinyin: zhāng
+  strokes: 11
+  similar_group: null
+  gradeband: L
+- id: c0293
+  char: 校
+  pinyin: xiào
+  strokes: 10
+  similar_group: null
+  gradeband: L
+- id: c0294
+  char: 院
+  pinyin: yuàn
+  strokes: 9
+  similar_group: null
+  gradeband: L
+- id: c0295
+  char: 班
+  pinyin: bān
+  strokes: 10
+  similar_group: null
+  gradeband: L
+- id: c0296
+  char: 级
+  pinyin: jí
+  strokes: 9
+  similar_group: null
+  gradeband: L
+- id: c0297
+  char: 组
+  pinyin: zǔ
+  strokes: 8
+  similar_group: null
+  gradeband: L
+- id: c0298
+  char: 队
+  pinyin: duì
+  strokes: 4
+  similar_group: null
+  gradeband: L
+- id: c0299
+  char: 排
+  pinyin: pái
+  strokes: 11
+  similar_group: null
+  gradeband: L
+- id: c0300
+  char: 连
+  pinyin: lián
+  strokes: 7
+  similar_group: null
+  gradeband: L
+- id: c0301
+  char: 营
+  pinyin: yíng
+  strokes: 11
+  similar_group: null
+  gradeband: L
+- id: c0302
+  char: 团
+  pinyin: tuán
+  strokes: 6
+  similar_group: null
+  gradeband: L
+- id: c0303
+  char: 兵
+  pinyin: bīng
+  strokes: 7
+  similar_group: null
+  gradeband: L
+- id: c0304
+  char: 卒
+  pinyin: zú
+  strokes: 8
+  similar_group: null
+  gradeband: L
+- id: c0305
+  char: 帅
+  pinyin: shuài
+  strokes: 5
+  similar_group: null
+  gradeband: L
+- id: c0306
+  char: 相
+  pinyin: xiāng
+  strokes: 9
+  similar_group: null
+  gradeband: L
+- id: c0307
+  char: 士
+  pinyin: shì
+  strokes: 3
+  similar_group: sim-003
+  gradeband: L
+- id: c0308
+  char: 象
+  pinyin: xiàng
+  strokes: 11
+  similar_group: sim-019
+  gradeband: L
+- id: c0309
+  char: 炮
+  pinyin: pào
+  strokes: 9
+  similar_group: null
+  gradeband: L
+- id: c0310
+  char: 吃
+  pinyin: chī
+  strokes: 6
+  similar_group: null
+  gradeband: L
+- id: c0311
+  char: 喝
+  pinyin: hē
+  strokes: 12
+  similar_group: null
+  gradeband: L
+- id: c0312
+  char: 玩
+  pinyin: wán
+  strokes: 8
+  similar_group: null
+  gradeband: L
+- id: c0313
+  char: 睡
+  pinyin: shuì
+  strokes: 13
+  similar_group: null
+  gradeband: L
+- id: c0314
+  char: 坐
+  pinyin: zuò
+  strokes: 7
+  similar_group: null
+  gradeband: L
+- id: c0315
+  char: 立
+  pinyin: lì
+  strokes: 5
+  similar_group: null
+  gradeband: L
+- id: c0316
+  char: 唱
+  pinyin: chàng
+  strokes: 11
+  similar_group: null
+  gradeband: L
+- id: c0317
+  char: 画
+  pinyin: huà
+  strokes: 8
+  similar_group: null
+  gradeband: L
+- id: c0318
+  char: 教
+  pinyin: jiào
+  strokes: 11
+  similar_group: null
+  gradeband: L
+- id: c0319
+  char: 找
+  pinyin: zhǎo
+  strokes: 7
+  similar_group: null
+  gradeband: L
+- id: c0320
+  char: 拿
+  pinyin: ná
+  strokes: 10
+  similar_group: null
+  gradeband: L
+- id: c0321
+  char: 放
+  pinyin: fàng
+  strokes: 8
+  similar_group: null
+  gradeband: L
+- id: c0322
+  char: 打
+  pinyin: dǎ
+  strokes: 5
+  similar_group: null
+  gradeband: L
+- id: c0323
+  char: 踢
+  pinyin: tī
+  strokes: 15
+  similar_group: null
+  gradeband: L
+- id: c0324
+  char: 骑
+  pinyin: qí
+  strokes: 11
+  similar_group: null
+  gradeband: L
+- id: c0325
+  char: 老
+  pinyin: lǎo
+  strokes: null
+  similar_group: null
+  gradeband: L
+- id: c0326
+  char: 铅
+  pinyin: qiān
+  strokes: null
+  similar_group: null
+  gradeband: L
+- id: c0327
+  char: 橡
+  pinyin: xiàng
+  strokes: null
+  similar_group: null
+  gradeband: L
+- id: c0328
+  char: 皮
+  pinyin: pí
+  strokes: null
+  similar_group: null
+  gradeband: L
+- id: c0329
+  char: 尺
+  pinyin: chǐ
+  strokes: null
+  similar_group: null
+  gradeband: L
+- id: c0330
+  char: 课
+  pinyin: kè
+  strokes: null
+  similar_group: null
+  gradeband: L
+- id: c0331
+  char: 讲
+  pinyin: jiǎng
+  strokes: null
+  similar_group: null
+  gradeband: L
+- id: c0332
+  char: 回
+  pinyin: huí
+  strokes: null
+  similar_group: null
+  gradeband: L
+- id: c0333
+  char: 饭
+  pinyin: fàn
+  strokes: null
+  similar_group: null
+  gradeband: L
+- id: c0334
+  char: 觉
+  pinyin: jué
+  strokes: null
+  similar_group: null
+  gradeband: L
+- id: c0335
+  char: 床
+  pinyin: chuáng
+  strokes: null
+  similar_group: null
+  gradeband: L
+- id: c0336
+  char: 刷
+  pinyin: shuā
+  strokes: null
+  similar_group: null
+  gradeband: L
+- id: c0337
+  char: 牙
+  pinyin: yá
+  strokes: null
+  similar_group: null
+  gradeband: L
+- id: c0338
+  char: 洗
+  pinyin: xǐ
+  strokes: null
+  similar_group: null
+  gradeband: L
+- id: c0339
+  char: 脸
+  pinyin: liǎn
+  strokes: null
+  similar_group: null
+  gradeband: L
+- id: c0340
+  char: 澡
+  pinyin: zǎo
+  strokes: null
+  similar_group: null
+  gradeband: L
+- id: c0341
+  char: 穿
+  pinyin: chuān
+  strokes: null
+  similar_group: null
+  gradeband: L
+- id: c0342
+  char: 戴
+  pinyin: dài
+  strokes: null
+  similar_group: null
+  gradeband: L
+- id: c0343
+  char: 帽
+  pinyin: mào
+  strokes: null
+  similar_group: null
+  gradeband: L
+- id: c0344
+  char: 鞋
+  pinyin: xié
+  strokes: null
+  similar_group: null
+  gradeband: L
+- id: c0345
+  char: 阿
+  pinyin: ā
+  strokes: null
+  similar_group: null
+  gradeband: L
+- id: c0346
+  char: 们
+  pinyin: men
+  strokes: null
+  similar_group: null
+  gradeband: L
+- id: c0347
+  char: 己
+  pinyin: jǐ
+  strokes: null
+  similar_group: sim-001
+  gradeband: L
+- id: c0348
+  char: 别
+  pinyin: bié
+  strokes: null
+  similar_group: null
+  gradeband: L
+- id: c0349
+  char: 什
+  pinyin: shén
+  strokes: null
+  similar_group: null
+  gradeband: L
+- id: c0350
+  char: 怎
+  pinyin: zěn
+  strokes: null
+  similar_group: null
+  gradeband: L
+- id: c0351
+  char: 候
+  pinyin: hòu
+  strokes: null
+  similar_group: null
+  gradeband: L
+- id: c0352
+  char: 颜
+  pinyin: yán
+  strokes: null
+  similar_group: null
+  gradeband: L
+- id: c0353
+  char: 色
+  pinyin: sè
+  strokes: null
+  similar_group: null
+  gradeband: L
+- id: c0354
+  char: 声
+  pinyin: shēng
+  strokes: null
+  similar_group: sim-021
+  gradeband: L
+- id: c0355
+  char: 太
+  pinyin: tài
+  strokes: null
+  similar_group: sim-006
+  gradeband: L
+- id: c0356
+  char: 阳
+  pinyin: yáng
+  strokes: null
+  similar_group: null
+  gradeband: L
+- id: c0357
+  char: 亮
+  pinyin: liàng
+  strokes: null
+  similar_group: null
+  gradeband: L
+- id: c0358
+  char: 星
+  pinyin: xīng
+  strokes: null
+  similar_group: null
+  gradeband: L
+- id: c0359
+  char: 早
+  pinyin: zǎo
+  strokes: null
+  similar_group: null
+  gradeband: L
+- id: c0360
+  char: 午
+  pinyin: wǔ
+  strokes: null
+  similar_group: sim-008
+  gradeband: L
+- id: c0361
+  char: 晚
+  pinyin: wǎn
+  strokes: null
+  similar_group: null
+  gradeband: L
+- id: c0362
+  char: 今
+  pinyin: jīn
+  strokes: null
+  similar_group: null
+  gradeband: L
+- id: c0363
+  char: 昨
+  pinyin: zuó
+  strokes: null
+  similar_group: null
+  gradeband: L
+- id: c0364
+  char: 边
+  pinyin: biān
+  strokes: null
+  similar_group: null
+  gradeband: L
+- id: c0365
+  char: 河
+  pinyin: hé
+  strokes: null
+  similar_group: null
+  gradeband: L
+- id: c0366
+  char: 树
+  pinyin: shù
+  strokes: null
+  similar_group: null
+  gradeband: L
+- id: c0367
+  char: 鸭
+  pinyin: yā
+  strokes: null
+  similar_group: null
+  gradeband: L
+- id: c0368
+  char: 四
+  pinyin: sì
+  strokes: null
+  similar_group: null
+  gradeband: L
+- id: c0369
+  char: 彤
+  pinyin: tóng
+  strokes: null
+  similar_group: null
+  gradeband: L
+- id: c0370
+  char: 油
+  pinyin: yóu
+  strokes: null
+  similar_group: null
+  gradeband: L
+- id: c0371
+  char: 澄
+  pinyin: chéng
+  strokes: null
+  similar_group: null
+  gradeband: L
+- id: c0372
+  char: 乎
+  pinyin: hū
+  strokes: null
+  similar_group: null
+  gradeband: L
+- id: c0373
+  char: 茫
+  pinyin: máng
+  strokes: null
+  similar_group: null
+  gradeband: L
+- id: c0374
+  char: 灿
+  pinyin: càn
+  strokes: null
+  similar_group: null
+  gradeband: L
+- id: c0375
+  char: 晶
+  pinyin: jīng
+  strokes: null
+  similar_group: null
+  gradeband: L
+- id: c0376
+  char: 笑
+  pinyin: xiào
+  strokes: null
+  similar_group: null
+  gradeband: L
+- id: c0377
+  char: 哈
+  pinyin: hā
+  strokes: null
+  similar_group: null
+  gradeband: L
+- id: c0378
+  char: 哭
+  pinyin: kū
+  strokes: null
+  similar_group: null
+  gradeband: L
+- id: c0379
+  char: 啼
+  pinyin: tí
+  strokes: null
+  similar_group: null
+  gradeband: L
+- id: c0380
+  char: 兴
+  pinyin: xīng
+  strokes: null
+  similar_group: null
+  gradeband: L
+- id: c0381
+  char: 冲
+  pinyin: chōng
+  strokes: null
+  similar_group: null
+  gradeband: L
+- id: c0382
+  char: 急
+  pinyin: jí
+  strokes: null
+  similar_group: null
+  gradeband: L
+- id: c0383
+  char: 匆
+  pinyin: cōng
+  strokes: null
+  similar_group: null
+  gradeband: L
+- id: c0384
+  char: 吞
+  pinyin: tūn
+  strokes: null
+  similar_group: null
+  gradeband: L
+- id: c0385
+  char: 胖
+  pinyin: pàng
+  strokes: null
+  similar_group: null
+  gradeband: L
+- id: c0386
+  char: 瘦
+  pinyin: shòu
+  strokes: null
+  similar_group: null
+  gradeband: L
+- id: c0387
+  char: 巴
+  pinyin: bā
+  strokes: null
+  similar_group: null
+  gradeband: L
+- id: c0388
+  char: 矮
+  pinyin: ǎi
+  strokes: null
+  similar_group: null
+  gradeband: L
+- id: c0389
+  char: 帆
+  pinyin: fān
+  strokes: null
+  similar_group: null
+  gradeband: L
+- id: c0390
+  char: 顺
+  pinyin: shùn
+  strokes: null
+  similar_group: null
+  gradeband: L
+- id: c0391
+  char: 龙
+  pinyin: lóng
+  strokes: null
+  similar_group: null
+  gradeband: L
+- id: c0392
+  char: 戏
+  pinyin: xì
+  strokes: null
+  similar_group: null
+  gradeband: L
+- id: c0393
+  char: 珠
+  pinyin: zhū
+  strokes: null
+  similar_group: null
+  gradeband: L
+- id: c0394
+  char: 泰
+  pinyin: tài
+  strokes: null
+  similar_group: null
+  gradeband: L
+- id: c0395
+  char: 海
+  pinyin: hǎi
+  strokes: null
+  similar_group: null
+  gradeband: L
+- id: c0396
+  char: 谷
+  pinyin: gǔ
+  strokes: null
+  similar_group: null
+  gradeband: L
+- id: c0397
+  char: 丰
+  pinyin: fēng
+  strokes: null
+  similar_group: null
+  gradeband: L
+- id: c0398
+  char: 登
+  pinyin: dēng
+  strokes: null
+  similar_group: null
+  gradeband: L
+- id: c0399
+  char: 玲
+  pinyin: líng
+  strokes: null
+  similar_group: null
+  gradeband: L
+- id: c0400
+  char: 珑
+  pinyin: lóng
+  strokes: null
+  similar_group: null
+  gradeband: L
+- id: c0401
+  char: 归
+  pinyin: guī
+  strokes: null
+  similar_group: null
+  gradeband: L
+- id: c0402
+  char: 齐
+  pinyin: qí
+  strokes: null
+  similar_group: null
+  gradeband: L
+- id: c0403
+  char: 更
+  pinyin: gèng
+  strokes: null
+  similar_group: null
+  gradeband: L
+- id: c0404
+  char: 炎
+  pinyin: yán
+  strokes: null
+  similar_group: null
+  gradeband: L
+- id: c0405
+  char: 气
+  pinyin: qì
+  strokes: null
+  similar_group: null
+  gradeband: L
+- id: c0406
+  char: 爽
+  pinyin: shuǎng
+  strokes: null
+  similar_group: null
+  gradeband: L
+- id: c0407
+  char: 纷
+  pinyin: fēn
+  strokes: null
+  similar_group: null
+  gradeband: L
+- id: c0408
+  char: 飞
+  pinyin: fēi
+  strokes: null
+  similar_group: null
+  gradeband: L
+- id: c0409
+  char: 清
+  pinyin: qīng
+  strokes: null
+  similar_group: null
+  gradeband: L
+- id: c0410
+  char: 秀
+  pinyin: xiù
+  strokes: null
+  similar_group: null
+  gradeband: L
+- id: c0411
+  char: 香
+  pinyin: xiāng
+  strokes: null
+  similar_group: null
+  gradeband: L
+- id: c0412
+  char: 莺
+  pinyin: yīng
+  strokes: null
+  similar_group: null
+  gradeband: L
+- id: c0413
+  char: 和
+  pinyin: hé
+  strokes: null
+  similar_group: null
+  gradeband: L
+- id: c0414
+  char: 丽
+  pinyin: lì
+  strokes: null
+  similar_group: null
+  gradeband: L
+- id: c0415
+  char: 淡
+  pinyin: dàn
+  strokes: null
+  similar_group: null
+  gradeband: L
+- id: c0416
+  char: 闪
+  pinyin: shǎn
+  strokes: null
+  similar_group: null
+  gradeband: L
+- id: c0417
+  char: 鸣
+  pinyin: míng
+  strokes: null
+  similar_group: null
+  gradeband: L
+- id: c0418
+  char: 倾
+  pinyin: qīng
+  strokes: null
+  similar_group: null
+  gradeband: L
+- id: c0419
+  char: 盆
+  pinyin: pén
+  strokes: null
+  similar_group: null
+  gradeband: L
+- id: c0420
+  char: 毛
+  pinyin: máo
+  strokes: null
+  similar_group: null
+  gradeband: L
+- id: c0421
+  char: 冰
+  pinyin: bīng
+  strokes: null
+  similar_group: null
+  gradeband: L
+- id: c0422
+  char: 皑
+  pinyin: ái
+  strokes: null
+  similar_group: null
+  gradeband: L
+- id: c0423
+  char: 光
+  pinyin: guāng
+  strokes: null
+  similar_group: null
+  gradeband: L
+- id: c0424
+  char: 银
+  pinyin: yín
+  strokes: null
+  similar_group: null
+  gradeband: L
+- id: c0425
+  char: 装
+  pinyin: zhuāng
+  strokes: null
+  similar_group: null
+  gradeband: L
+- id: c0426
+  char: 素
+  pinyin: sù
+  strokes: null
+  similar_group: null
+  gradeband: L
+- id: c0427
+  char: 裹
+  pinyin: guǒ
+  strokes: null
+  similar_group: null
+  gradeband: L
+- id: c0428
+  char: 锦
+  pinyin: jǐn
+  strokes: null
+  similar_group: null
+  gradeband: L
+- id: c0429
+  char: 绣
+  pinyin: xiù
+  strokes: null
+  similar_group: null
+  gradeband: L
+- id: c0430
+  char: 江
+  pinyin: jiāng
+  strokes: null
+  similar_group: null
+  gradeband: L
+- id: c0431
+  char: 阔
+  pinyin: kuò
+  strokes: null
+  similar_group: null
+  gradeband: L
+- id: c0432
+  char: 空
+  pinyin: kōng
+  strokes: null
+  similar_group: null
+  gradeband: L
+- id: c0433
+  char: 习
+  pinyin: xí
+  strokes: null
+  similar_group: null
+  gradeband: L
+- id: c0434
+  char: 向
+  pinyin: xiàng
+  strokes: null
+  similar_group: sim-019
+  gradeband: L
+- id: c0435
+  char: 嘴
+  pinyin: zuǐ
+  strokes: null
+  similar_group: null
+  gradeband: L
+- id: c0436
+  char: 舌
+  pinyin: shé
+  strokes: null
+  similar_group: null
+  gradeband: L
+- id: c0437
+  char: 稳
+  pinyin: wěn
+  strokes: null
+  similar_group: null
+  gradeband: L
+- id: c0438
+  char: 言
+  pinyin: yán
+  strokes: null
+  similar_group: null
+  gradeband: L
+- id: c0439
+  char: 目
+  pinyin: mù
+  strokes: null
+  similar_group: sim-004
+  gradeband: L
+- id: c0440
+  char: 转
+  pinyin: zhuǎn
+  strokes: null
+  similar_group: null
+  gradeband: L
+- id: c0441
+  char: 睛
+  pinyin: jīng
+  strokes: null
+  similar_group: null
+  gradeband: L
+- id: c0442
+  char: 耳
+  pinyin: ěr
+  strokes: null
+  similar_group: null
+  gradeband: L
+- id: c0443
+  char: 手
+  pinyin: shǒu
+  strokes: null
+  similar_group: null
+  gradeband: L
+- id: c0444
+  char: 忙
+  pinyin: máng
+  strokes: null
+  similar_group: null
+  gradeband: L
+- id: c0445
+  char: 脚
+  pinyin: jiǎo
+  strokes: null
+  similar_group: null
+  gradeband: L
+- id: c0446
+  char: 乱
+  pinyin: luàn
+  strokes: null
+  similar_group: null
+  gradeband: L
+- id: c0447
+  char: 踏
+  pinyin: tà
+  strokes: null
+  similar_group: null
+  gradeband: L
+- id: c0448
+  char: 胸
+  pinyin: xiōng
+  strokes: null
+  similar_group: null
+  gradeband: L
+- id: c0449
+  char: 竹
+  pinyin: zhú
+  strokes: null
+  similar_group: null
+  gradeband: L
+- id: c0450
+  char: 蛇
+  pinyin: shé
+  strokes: null
+  similar_group: null
+  gradeband: L
+- id: c0451
+  char: 添
+  pinyin: tiān
+  strokes: null
+  similar_group: null
+  gradeband: L
+- id: c0452
+  char: 足
+  pinyin: zú
+  strokes: null
+  similar_group: null
+  gradeband: L
+- id: c0453
+  char: 守
+  pinyin: shǒu
+  strokes: null
+  similar_group: null
+  gradeband: L
+- id: c0454
+  char: 株
+  pinyin: zhū
+  strokes: null
+  similar_group: null
+  gradeband: L
+- id: c0455
+  char: 待
+  pinyin: dài
+  strokes: null
+  similar_group: null
+  gradeband: L
+- id: c0456
+  char: 兔
+  pinyin: tù
+  strokes: null
+  similar_group: null
+  gradeband: L
+- id: c0457
+  char: 亡
+  pinyin: wáng
+  strokes: null
+  similar_group: null
+  gradeband: L
+- id: c0458
+  char: 补
+  pinyin: bǔ
+  strokes: null
+  similar_group: null
+  gradeband: L
+- id: c0459
+  char: 牢
+  pinyin: láo
+  strokes: null
+  similar_group: null
+  gradeband: L
+- id: c0460
+  char: 揠
+  pinyin: yà
+  strokes: null
+  similar_group: null
+  gradeband: L
+- id: c0461
+  char: 苗
+  pinyin: miáo
+  strokes: null
+  similar_group: null
+  gradeband: L
+- id: c0462
+  char: 助
+  pinyin: zhù
+  strokes: null
+  similar_group: null
+  gradeband: L
+- id: c0463
+  char: 刻
+  pinyin: kè
+  strokes: null
+  similar_group: null
+  gradeband: L
+- id: c0464
+  char: 舟
+  pinyin: zhōu
+  strokes: null
+  similar_group: null
+  gradeband: L
+- id: c0465
+  char: 求
+  pinyin: qiú
+  strokes: null
+  similar_group: null
+  gradeband: L
+- id: c0466
+  char: 剑
+  pinyin: jiàn
+  strokes: null
+  similar_group: null
+  gradeband: L
+- id: c0467
+  char: 掩
+  pinyin: yǎn
+  strokes: null
+  similar_group: null
+  gradeband: L
+- id: c0468
+  char: 盗
+  pinyin: dào
+  strokes: null
+  similar_group: null
+  gradeband: L
+- id: c0469
+  char: 铃
+  pinyin: líng
+  strokes: null
+  similar_group: null
+  gradeband: L
+- id: c0470
+  char: 散
+  pinyin: sàn
+  strokes: null
+  similar_group: null
+  gradeband: L
+- id: c0471
+  char: 歌
+  pinyin: gē
+  strokes: null
+  similar_group: null
+  gradeband: L
+- id: c0472
+  char: 议
+  pinyin: yì
+  strokes: null
+  similar_group: null
+  gradeband: L
+- id: c0473
+  char: 论
+  pinyin: lùn
+  strokes: null
+  similar_group: null
+  gradeband: L
+- id: c0474
+  char: 抒
+  pinyin: shū
+  strokes: null
+  similar_group: null
+  gradeband: L
+- id: c0475
+  char: 记
+  pinyin: jì
+  strokes: null
+  similar_group: null
+  gradeband: L
+- id: c0476
+  char: 叙
+  pinyin: xù
+  strokes: null
+  similar_group: null
+  gradeband: L
+- id: c0477
+  char: 描
+  pinyin: miáo
+  strokes: null
+  similar_group: null
+  gradeband: L
+- id: c0478
+  char: 修
+  pinyin: xiū
+  strokes: null
+  similar_group: null
+  gradeband: L
+- id: c0479
+  char: 辞
+  pinyin: cí
+  strokes: null
+  similar_group: null
+  gradeband: L
+- id: c0480
+  char: 比
+  pinyin: bǐ
+  strokes: null
+  similar_group: null
+  gradeband: L
+- id: c0481
+  char: 喻
+  pinyin: yù
+  strokes: null
+  similar_group: null
+  gradeband: L
+- id: c0482
+  char: 拟
+  pinyin: nǐ
+  strokes: null
+  similar_group: null
+  gradeband: L
+- id: c0483
+  char: 夸
+  pinyin: kuā
+  strokes: null
+  similar_group: null
+  gradeband: L
+- id: c0484
+  char: 张
+  pinyin: zhāng
+  strokes: null
+  similar_group: null
+  gradeband: L
+- id: c0485
+  char: 偶
+  pinyin: ǒu
+  strokes: null
+  similar_group: null
+  gradeband: L
+- id: c0486
+  char: 反
+  pinyin: fǎn
+  strokes: null
+  similar_group: null
+  gradeband: L
+- id: c0487
+  char: 复
+  pinyin: fù
+  strokes: null
+  similar_group: null
+  gradeband: L
+- id: c0488
+  char: 设
+  pinyin: shè
+  strokes: null
+  similar_group: null
+  gradeband: L
+- id: c0489
+  char: 借
+  pinyin: jiè
+  strokes: null
+  similar_group: null
+  gradeband: L
+- id: c0490
+  char: 征
+  pinyin: zhēng
+  strokes: null
+  similar_group: null
+  gradeband: L
+- id: c0491
+  char: 铺
+  pinyin: pù
+  strokes: null
+  similar_group: null
+  gradeband: L
+- id: c0492
+  char: 垫
+  pinyin: diàn
+  strokes: null
+  similar_group: null
+  gradeband: L
+- id: c0493
+  char: 伏
+  pinyin: fú
+  strokes: null
+  similar_group: null
+  gradeband: L
+- id: c0494
+  char: 呼
+  pinyin: hū
+  strokes: null
+  similar_group: null
+  gradeband: L
+- id: c0495
+  char: 渡
+  pinyin: dù
+  strokes: null
+  similar_group: null
+  gradeband: L
+- id: c0496
+  char: 总
+  pinyin: zǒng
+  strokes: null
+  similar_group: null
+  gradeband: L
+- id: c0497
+  char: 结
+  pinyin: jié
+  strokes: null
+  similar_group: null
+  gradeband: L
+- id: c0498
+  char: 头
+  pinyin: tóu
+  strokes: null
+  similar_group: null
+  gradeband: L
+- id: c0499
+  char: 尾
+  pinyin: wěi
+  strokes: null
+  similar_group: null
+  gradeband: L
+- id: c0500
+  char: 丰丽乎习乱亡亮什今们伏修候借倾偶光兔兴冰华图展刚刘则创利别到务动势表城基培境墓声复够奋套妇娘媒妻嫂媳婆寒察寡宾审寓宿寸寺尉尚就尽层屋岛岩岭岁巨巧差已巴希帝带席帮常幅序底度建弃式引张弹归录影径微德忘忙忠念忽怀态惊户扩抛拦拥报拜拟群置聚聞性奋努历原历压县双参县县县县县县取受另只叶合吉同名后向君听员告呼命和喜售唯商善器四回固国图圆在地场址均坚报告纯纱纲纳纵纹纺线组练细纪继绝维绿缓编缘缩署耕耗耳声联聪肃胆臣舆航舰般色节芦苏苦英范茅荐药荣莱莲获莲营萧萨著蒸药蓝藏虑蛇蛋术补衬被规访诀证评识诊译诗详夸
+  pinyin: fēng lì hū xí luàn wáng liàng shén jīn men fú xiū hòu jiè qīng ǒu guāng tù xīng bīng huá tú
+    zhǎn gāng liú zé chuàng lì bié dào wù dòng shì biǎo chéng jī péi jìng mù shēng fù gòu fèn tào fù niáng
+    méi qī sǎo xí pó hán chá guǎ bīn shěn yù sù cùn sì wèi shàng jiù jǐn céng wū dǎo yán lǐng suì jù qiǎo
+    chà yǐ bā xī dì dài xí bāng cháng fú xù dǐ dù jiàn qì shì yǐn zhāng dàn guī lù yǐng jìng wēi dé wàng
+    máng zhōng niàn hū huái tài jīng hù kuò pāo lán yōng bào bài nǐ qún zhì jù wén xìng fèn nǔ lì yuán
+    lì yā xiàn shuāng cān xiàn xiàn xiàn xiàn xiàn xiàn qǔ shòu lìng zhǐ yè hé jí tóng míng hòu xiàng
+    jūn tīng yuán gào hū mìng hé xǐ shòu wéi shāng shàn qì sì huí gù guó tú yuán zài dì chǎng zhǐ jūn
+    jiān bào gào chún shā gāng nà zòng wén fǎng xiàn zǔ liàn xì jì jì jué wéi lǜ huǎn biān yuán suō shǔ
+    gēng hào ěr shēng lián cōng sù dǎn chén yú háng jiàn bān sè jié lú sū kǔ yīng fàn máo jiàn yào róng
+    lái lián huò lián yíng xiāo sà zhù zhēng yào lán cáng lǜ shé dàn shù bǔ chèn bèi guī fǎng jué zhèng
+    píng shí zhěn yì shī xiáng kuā
+  strokes: null
+  similar_group: null
+  gradeband: L
+words:
+- id: w0001
+  word: 同学
+  characters:
+  - 同
+  - 学
+  pinyin: tóng xué
+  gradeband: L
+  confusable_ids: []
+- id: w0002
+  word: 老师
+  characters:
+  - 老
+  - 师
+  pinyin: lǎo shī
+  gradeband: L
+  confusable_ids: []
+- id: w0003
+  word: 学校
+  characters:
+  - 学
+  - 校
+  pinyin: xué xiào
+  gradeband: L
+  confusable_ids: []
+- id: w0004
+  word: 语文
+  characters:
+  - 语
+  - 文
+  pinyin: yǔ wén
+  gradeband: L
+  confusable_ids: []
+- id: w0005
+  word: 数学
+  characters:
+  - 数
+  - 学
+  pinyin: shù xué
+  gradeband: L
+  confusable_ids: []
+- id: w0006
+  word: 英语
+  characters:
+  - 英
+  - 语
+  pinyin: yīng yǔ
+  gradeband: L
+  confusable_ids: []
+- id: w0007
+  word: 书本
+  characters:
+  - 书
+  - 本
+  pinyin: shū běn
+  gradeband: L
+  confusable_ids: []
+- id: w0008
+  word: 铅笔
+  characters:
+  - 铅
+  - 笔
+  pinyin: qiān bǐ
+  gradeband: L
+  confusable_ids: []
+- id: w0009
+  word: 橡皮
+  characters:
+  - 橡
+  - 皮
+  pinyin: xiàng pí
+  gradeband: L
+  confusable_ids: []
+- id: w0010
+  word: 尺子
+  characters:
+  - 尺
+  - 子
+  pinyin: chǐ zi
+  gradeband: L
+  confusable_ids: []
+- id: w0011
+  word: 上课
+  characters:
+  - 上
+  - 课
+  pinyin: shàng kè
+  gradeband: L
+  confusable_ids: []
+- id: w0012
+  word: 下课
+  characters:
+  - 下
+  - 课
+  pinyin: xià kè
+  gradeband: L
+  confusable_ids: []
+- id: w0013
+  word: 读书
+  characters:
+  - 读
+  - 书
+  pinyin: dú shū
+  gradeband: L
+  confusable_ids: []
+- id: w0014
+  word: 写字
+  characters:
+  - 写
+  - 字
+  pinyin: xiě zì
+  gradeband: L
+  confusable_ids: []
+- id: w0015
+  word: 听讲
+  characters:
+  - 听
+  - 讲
+  pinyin: tīng jiǎng
+  gradeband: L
+  confusable_ids: []
+- id: w0016
+  word: 回家
+  characters:
+  - 回
+  - 家
+  pinyin: huí jiā
+  gradeband: L
+  confusable_ids: []
+- id: w0017
+  word: 吃饭
+  characters:
+  - 吃
+  - 饭
+  pinyin: chī fàn
+  gradeband: L
+  confusable_ids: []
+- id: w0018
+  word: 睡觉
+  characters:
+  - 睡
+  - 觉
+  pinyin: shuì jiào
+  gradeband: L
+  confusable_ids: []
+- id: w0019
+  word: 起床
+  characters:
+  - 起
+  - 床
+  pinyin: qǐ chuáng
+  gradeband: L
+  confusable_ids: []
+- id: w0020
+  word: 刷牙
+  characters:
+  - 刷
+  - 牙
+  pinyin: shuā yá
+  gradeband: L
+  confusable_ids: []
+- id: w0021
+  word: 洗脸
+  characters:
+  - 洗
+  - 脸
+  pinyin: xǐ liǎn
+  gradeband: L
+  confusable_ids: []
+- id: w0022
+  word: 洗澡
+  characters:
+  - 洗
+  - 澡
+  pinyin: xǐ zǎo
+  gradeband: L
+  confusable_ids: []
+- id: w0023
+  word: 穿衣
+  characters:
+  - 穿
+  - 衣
+  pinyin: chuān yī
+  gradeband: L
+  confusable_ids: []
+- id: w0024
+  word: 戴帽
+  characters:
+  - 戴
+  - 帽
+  pinyin: dài mào
+  gradeband: L
+  confusable_ids: []
+- id: w0025
+  word: 穿鞋
+  characters:
+  - 穿
+  - 鞋
+  pinyin: chuān xié
+  gradeband: L
+  confusable_ids: []
+- id: w0026
+  word: 爸爸
+  characters:
+  - 爸
+  - 爸
+  pinyin: bà bà
+  gradeband: L
+  confusable_ids: []
+- id: w0027
+  word: 妈妈
+  characters:
+  - 妈
+  - 妈
+  pinyin: mā mā
+  gradeband: L
+  confusable_ids: []
+- id: w0028
+  word: 爷爷
+  characters:
+  - 爷
+  - 爷
+  pinyin: yé yé
+  gradeband: L
+  confusable_ids: []
+- id: w0029
+  word: 奶奶
+  characters:
+  - 奶
+  - 奶
+  pinyin: nǎi nǎi
+  gradeband: L
+  confusable_ids: []
+- id: w0030
+  word: 哥哥
+  characters:
+  - 哥
+  - 哥
+  pinyin: gē gē
+  gradeband: L
+  confusable_ids: []
+- id: w0031
+  word: 姐姐
+  characters:
+  - 姐
+  - 姐
+  pinyin: jiě jiě
+  gradeband: L
+  confusable_ids: []
+- id: w0032
+  word: 弟弟
+  characters:
+  - 弟
+  - 弟
+  pinyin: dì di
+  gradeband: L
+  confusable_ids: []
+- id: w0033
+  word: 妹妹
+  characters:
+  - 妹
+  - 妹
+  pinyin: mèi mèi
+  gradeband: L
+  confusable_ids: []
+- id: w0034
+  word: 叔叔
+  characters:
+  - 叔
+  - 叔
+  pinyin: shū shū
+  gradeband: L
+  confusable_ids: []
+- id: w0035
+  word: 阿姨
+  characters:
+  - 阿
+  - 姨
+  pinyin: ā yí
+  gradeband: L
+  confusable_ids: []
+- id: w0036
+  word: 朋友
+  characters:
+  - 朋
+  - 友
+  pinyin: péng yǒu
+  gradeband: L
+  confusable_ids: []
+- id: w0037
+  word: 大家
+  characters:
+  - 大
+  - 家
+  pinyin: dà jiā
+  gradeband: L
+  confusable_ids: []
+- id: w0038
+  word: 我们
+  characters:
+  - 我
+  - 们
+  pinyin: wǒ men
+  gradeband: L
+  confusable_ids: []
+- id: w0039
+  word: 你们
+  characters:
+  - 你
+  - 们
+  pinyin: nǐ men
+  gradeband: L
+  confusable_ids: []
+- id: w0040
+  word: 他们
+  characters:
+  - 他
+  - 们
+  pinyin: tā men
+  gradeband: L
+  confusable_ids: []
+- id: w0041
+  word: 她们
+  characters:
+  - 她
+  - 们
+  pinyin: tā men
+  gradeband: L
+  confusable_ids: []
+- id: w0042
+  word: 它们
+  characters:
+  - 它
+  - 们
+  pinyin: tā men
+  gradeband: L
+  confusable_ids: []
+- id: w0043
+  word: 自己
+  characters:
+  - 自
+  - 己
+  pinyin: zì jǐ
+  gradeband: L
+  confusable_ids: []
+- id: w0044
+  word: 别人
+  characters:
+  - 别
+  - 人
+  pinyin: bié rén
+  gradeband: L
+  confusable_ids: []
+- id: w0045
+  word: 什么
+  characters:
+  - 什
+  - 么
+  pinyin: shén me
+  gradeband: L
+  confusable_ids: []
+- id: w0046
+  word: 怎么
+  characters:
+  - 怎
+  - 么
+  pinyin: zěn me
+  gradeband: L
+  confusable_ids: []
+- id: w0047
+  word: 为什么
+  characters:
+  - 为
+  - 什
+  - 么
+  pinyin: wèi shén me
+  gradeband: L
+  confusable_ids: []
+- id: w0048
+  word: 时候
+  characters:
+  - 时
+  - 候
+  pinyin: shí hòu
+  gradeband: L
+  confusable_ids: []
+- id: w0049
+  word: 地方
+  characters:
+  - 地
+  - 方
+  pinyin: dì fāng
+  gradeband: L
+  confusable_ids: []
+- id: w0050
+  word: 事情
+  characters:
+  - 事
+  - 情
+  pinyin: shì qíng
+  gradeband: L
+  confusable_ids: []
+- id: w0051
+  word: 东西
+  characters:
+  - 东
+  - 西
+  pinyin: dōng xī
+  gradeband: L
+  confusable_ids: []
+- id: w0052
+  word: 样子
+  characters:
+  - 样
+  - 子
+  pinyin: yàng zi
+  gradeband: L
+  confusable_ids: []
+- id: w0053
+  word: 颜色
+  characters:
+  - 颜
+  - 色
+  pinyin: yán sè
+  gradeband: L
+  confusable_ids: []
+- id: w0054
+  word: 声音
+  characters:
+  - 声
+  - 音
+  pinyin: shēng yīn
+  gradeband: L
+  confusable_ids: []
+- id: w0055
+  word: 太阳
+  characters:
+  - 太
+  - 阳
+  pinyin: tài yáng
+  gradeband: L
+  confusable_ids: []
+- id: w0056
+  word: 月亮
+  characters:
+  - 月
+  - 亮
+  pinyin: yuè liàng
+  gradeband: L
+  confusable_ids: []
+- id: w0057
+  word: 星星
+  characters:
+  - 星
+  - 星
+  pinyin: xīng xīng
+  gradeband: L
+  confusable_ids: []
+- id: w0058
+  word: 白云
+  characters:
+  - 白
+  - 云
+  pinyin: bái yún
+  gradeband: L
+  confusable_ids: []
+- id: w0059
+  word: 风雨
+  characters:
+  - 风
+  - 雨
+  pinyin: fēng yǔ
+  gradeband: L
+  confusable_ids: []
+- id: w0060
+  word: 雷电
+  characters:
+  - 雷
+  - 电
+  pinyin: léi diàn
+  gradeband: L
+  confusable_ids: []
+- id: w0061
+  word: 雪花
+  characters:
+  - 雪
+  - 花
+  pinyin: xuě huā
+  gradeband: L
+  confusable_ids: []
+- id: w0062
+  word: 春天
+  characters:
+  - 春
+  - 天
+  pinyin: chūn tiān
+  gradeband: L
+  confusable_ids: []
+- id: w0063
+  word: 夏天
+  characters:
+  - 夏
+  - 天
+  pinyin: xià tiān
+  gradeband: L
+  confusable_ids: []
+- id: w0064
+  word: 秋天
+  characters:
+  - 秋
+  - 天
+  pinyin: qiū tiān
+  gradeband: L
+  confusable_ids: []
+- id: w0065
+  word: 冬天
+  characters:
+  - 冬
+  - 天
+  pinyin: dōng tiān
+  gradeband: L
+  confusable_ids: []
+- id: w0066
+  word: 早上
+  characters:
+  - 早
+  - 上
+  pinyin: zǎo shàng
+  gradeband: L
+  confusable_ids: []
+- id: w0067
+  word: 中午
+  characters:
+  - 中
+  - 午
+  pinyin: zhōng wǔ
+  gradeband: L
+  confusable_ids: []
+- id: w0068
+  word: 下午
+  characters:
+  - 下
+  - 午
+  pinyin: xià wǔ
+  gradeband: L
+  confusable_ids: []
+- id: w0069
+  word: 晚上
+  characters:
+  - 晚
+  - 上
+  pinyin: wǎn shàng
+  gradeband: L
+  confusable_ids: []
+- id: w0070
+  word: 今天
+  characters:
+  - 今
+  - 天
+  pinyin: jīn tiān
+  gradeband: L
+  confusable_ids: []
+- id: w0071
+  word: 明天
+  characters:
+  - 明
+  - 天
+  pinyin: míng tiān
+  gradeband: L
+  confusable_ids: []
+- id: w0072
+  word: 昨天
+  characters:
+  - 昨
+  - 天
+  pinyin: zuó tiān
+  gradeband: L
+  confusable_ids: []
+- id: w0073
+  word: 现在
+  characters:
+  - 现
+  - 在
+  pinyin: xiàn zài
+  gradeband: L
+  confusable_ids: []
+- id: w0074
+  word: 以后
+  characters:
+  - 以
+  - 后
+  pinyin: yǐ hòu
+  gradeband: L
+  confusable_ids: []
+- id: w0075
+  word: 以前
+  characters:
+  - 以
+  - 前
+  pinyin: yǐ qián
+  gradeband: L
+  confusable_ids: []
+- id: w0076
+  word: 前面
+  characters:
+  - 前
+  - 面
+  pinyin: qián miàn
+  gradeband: L
+  confusable_ids: []
+- id: w0077
+  word: 后面
+  characters:
+  - 后
+  - 面
+  pinyin: hòu miàn
+  gradeband: L
+  confusable_ids: []
+- id: w0078
+  word: 左边
+  characters:
+  - 左
+  - 边
+  pinyin: zuǒ biān
+  gradeband: L
+  confusable_ids: []
+- id: w0079
+  word: 右边
+  characters:
+  - 右
+  - 边
+  pinyin: yòu biān
+  gradeband: L
+  confusable_ids: []
+- id: w0080
+  word: 上面
+  characters:
+  - 上
+  - 面
+  pinyin: shàng miàn
+  gradeband: L
+  confusable_ids: []
+- id: w0081
+  word: 下面
+  characters:
+  - 下
+  - 面
+  pinyin: xià miàn
+  gradeband: L
+  confusable_ids: []
+- id: w0082
+  word: 里面
+  characters:
+  - 里
+  - 面
+  pinyin: lǐ miàn
+  gradeband: L
+  confusable_ids: []
+- id: w0083
+  word: 外面
+  characters:
+  - 外
+  - 面
+  pinyin: wài miàn
+  gradeband: L
+  confusable_ids: []
+- id: w0084
+  word: 中间
+  characters:
+  - 中
+  - 间
+  pinyin: zhōng jiān
+  gradeband: L
+  confusable_ids: []
+- id: w0085
+  word: 大山
+  characters:
+  - 大
+  - 山
+  pinyin: dà shān
+  gradeband: L
+  confusable_ids: []
+- id: w0086
+  word: 小河
+  characters:
+  - 小
+  - 河
+  pinyin: xiǎo hé
+  gradeband: L
+  confusable_ids: []
+- id: w0087
+  word: 树木
+  characters:
+  - 树
+  - 木
+  pinyin: shù mù
+  gradeband: L
+  confusable_ids: []
+- id: w0088
+  word: 花草
+  characters:
+  - 花
+  - 草
+  pinyin: huā cǎo
+  gradeband: L
+  confusable_ids: []
+- id: w0089
+  word: 鸟儿
+  characters:
+  - 鸟
+  - 儿
+  pinyin: niǎo ér
+  gradeband: L
+  confusable_ids: []
+- id: w0090
+  word: 鱼儿
+  characters:
+  - 鱼
+  - 儿
+  pinyin: yú ér
+  gradeband: L
+  confusable_ids: []
+- id: w0091
+  word: 虫子
+  characters:
+  - 虫
+  - 子
+  pinyin: chóng zi
+  gradeband: L
+  confusable_ids: []
+- id: w0092
+  word: 马儿
+  characters:
+  - 马
+  - 儿
+  pinyin: mǎ ér
+  gradeband: L
+  confusable_ids: []
+- id: w0093
+  word: 牛羊
+  characters:
+  - 牛
+  - 羊
+  pinyin: niú yáng
+  gradeband: L
+  confusable_ids: []
+- id: w0094
+  word: 鸡鸭
+  characters:
+  - 鸡
+  - 鸭
+  pinyin: jī yā
+  gradeband: L
+  confusable_ids: []
+- id: w0095
+  word: 红色
+  characters:
+  - 红
+  - 色
+  pinyin: hóng sè
+  gradeband: L
+  confusable_ids: []
+- id: w0096
+  word: 黄色
+  characters:
+  - 黄
+  - 色
+  pinyin: huáng sè
+  gradeband: L
+  confusable_ids: []
+- id: w0097
+  word: 蓝色
+  characters:
+  - 蓝
+  - 色
+  pinyin: lán sè
+  gradeband: L
+  confusable_ids: []
+- id: w0098
+  word: 绿色
+  characters:
+  - 绿
+  - 色
+  pinyin: lǜ sè
+  gradeband: L
+  confusable_ids: []
+- id: w0099
+  word: 白色
+  characters:
+  - 白
+  - 色
+  pinyin: bái sè
+  gradeband: L
+  confusable_ids: []
+- id: w0100
+  word: 黑色
+  characters:
+  - 黑
+  - 色
+  pinyin: hēi sè
+  gradeband: L
+  confusable_ids: []
+- id: w0101
+  word: 紫色
+  characters:
+  - 紫
+  - 色
+  pinyin: zǐ sè
+  gradeband: L
+  confusable_ids: []
+- id: w0102
+  word: 粉色
+  characters:
+  - 粉
+  - 色
+  pinyin: fěn sè
+  gradeband: L
+  confusable_ids: []
+- id: w0103
+  word: 灰色
+  characters:
+  - 灰
+  - 色
+  pinyin: huī sè
+  gradeband: L
+  confusable_ids: []
+- id: w0104
+  word: 橙色
+  characters:
+  - 橙
+  - 色
+  pinyin: chéng sè
+  gradeband: L
+  confusable_ids: []
+- id: w0105
+  word: 一年
+  characters:
+  - 一
+  - 年
+  pinyin: yī nián
+  gradeband: L
+  confusable_ids: []
+- id: w0106
+  word: 二月
+  characters:
+  - 二
+  - 月
+  pinyin: èr yuè
+  gradeband: L
+  confusable_ids: []
+- id: w0107
+  word: 三月
+  characters:
+  - 三
+  - 月
+  pinyin: sān yuè
+  gradeband: L
+  confusable_ids: []
+- id: w0108
+  word: 四月
+  characters:
+  - 四
+  - 月
+  pinyin: sì yuè
+  gradeband: L
+  confusable_ids: []
+- id: w0109
+  word: 五月
+  characters:
+  - 五
+  - 月
+  pinyin: wǔ yuè
+  gradeband: L
+  confusable_ids: []
+- id: w0110
+  word: 六月
+  characters:
+  - 六
+  - 月
+  pinyin: liù yuè
+  gradeband: L
+  confusable_ids: []
+- id: w0111
+  word: 七月
+  characters:
+  - 七
+  - 月
+  pinyin: qī yuè
+  gradeband: L
+  confusable_ids: []
+- id: w0112
+  word: 八月
+  characters:
+  - 八
+  - 月
+  pinyin: bā yuè
+  gradeband: L
+  confusable_ids: []
+- id: w0113
+  word: 九月
+  characters:
+  - 九
+  - 月
+  pinyin: jiǔ yuè
+  gradeband: L
+  confusable_ids: []
+- id: w0114
+  word: 十月
+  characters:
+  - 十
+  - 月
+  pinyin: shí yuè
+  gradeband: L
+  confusable_ids: []
+- id: w0115
+  word: 十一
+  characters:
+  - 十
+  - 一
+  pinyin: shí yī
+  gradeband: L
+  confusable_ids: []
+- id: w0116
+  word: 十二
+  characters:
+  - 十
+  - 二
+  pinyin: shí èr
+  gradeband: L
+  confusable_ids: []
+- id: w0117
+  word: 十三
+  characters:
+  - 十
+  - 三
+  pinyin: shí sān
+  gradeband: L
+  confusable_ids: []
+- id: w0118
+  word: 十四
+  characters:
+  - 十
+  - 四
+  pinyin: shí sì
+  gradeband: L
+  confusable_ids: []
+- id: w0119
+  word: 十五
+  characters:
+  - 十
+  - 五
+  pinyin: shí wǔ
+  gradeband: L
+  confusable_ids: []
+- id: w0120
+  word: 十六
+  characters:
+  - 十
+  - 六
+  pinyin: shí liù
+  gradeband: L
+  confusable_ids: []
+- id: w0121
+  word: 十七
+  characters:
+  - 十
+  - 七
+  pinyin: shí qī
+  gradeband: L
+  confusable_ids: []
+- id: w0122
+  word: 十八
+  characters:
+  - 十
+  - 八
+  pinyin: shí bā
+  gradeband: L
+  confusable_ids: []
+- id: w0123
+  word: 十九
+  characters:
+  - 十
+  - 九
+  pinyin: shí jiǔ
+  gradeband: L
+  confusable_ids: []
+- id: w0124
+  word: 二十
+  characters:
+  - 二
+  - 十
+  pinyin: èr shí
+  gradeband: L
+  confusable_ids: []
+- id: w0125
+  word: 红彤彤
+  characters:
+  - 红
+  - 彤
+  - 彤
+  pinyin: hóng tóng tóng
+  gradeband: L
+  confusable_ids: []
+- id: w0126
+  word: 绿油油
+  characters:
+  - 绿
+  - 油
+  - 油
+  pinyin: lǜ yóu yóu
+  gradeband: L
+  confusable_ids: []
+- id: w0127
+  word: 黄澄澄
+  characters:
+  - 黄
+  - 澄
+  - 澄
+  pinyin: huáng chéng chéng
+  gradeband: L
+  confusable_ids: []
+- id: w0128
+  word: 黑乎乎
+  characters:
+  - 黑
+  - 乎
+  - 乎
+  pinyin: hēi hū hū
+  gradeband: L
+  confusable_ids: []
+- id: w0129
+  word: 白茫茫
+  characters:
+  - 白
+  - 茫
+  - 茫
+  pinyin: bái máng máng
+  gradeband: L
+  confusable_ids: []
+- id: w0130
+  word: 金灿灿
+  characters:
+  - 金
+  - 灿
+  - 灿
+  pinyin: jīn càn càn
+  gradeband: L
+  confusable_ids: []
+- id: w0131
+  word: 亮晶晶
+  characters:
+  - 亮
+  - 晶
+  - 晶
+  pinyin: liàng jīng jīng
+  gradeband: L
+  confusable_ids: []
+- id: w0132
+  word: 笑哈哈
+  characters:
+  - 笑
+  - 哈
+  - 哈
+  pinyin: xiào hā hā
+  gradeband: L
+  confusable_ids: []
+- id: w0133
+  word: 哭啼啼
+  characters:
+  - 哭
+  - 啼
+  - 啼
+  pinyin: kū tí tí
+  gradeband: L
+  confusable_ids: []
+- id: w0134
+  word: 兴冲冲
+  characters:
+  - 兴
+  - 冲
+  - 冲
+  pinyin: xìng chōng chōng
+  gradeband: L
+  confusable_ids: []
+- id: w0135
+  word: 急匆匆
+  characters:
+  - 急
+  - 匆
+  - 匆
+  pinyin: jí cōng cōng
+  gradeband: L
+  confusable_ids: []
+- id: w0136
+  word: 慢吞吞
+  characters:
+  - 慢
+  - 吞
+  - 吞
+  pinyin: màn tūn tūn
+  gradeband: L
+  confusable_ids: []
+- id: w0137
+  word: 胖乎乎
+  characters:
+  - 胖
+  - 乎
+  - 乎
+  pinyin: pàng hū hū
+  gradeband: L
+  confusable_ids: []
+- id: w0138
+  word: 瘦巴巴
+  characters:
+  - 瘦
+  - 巴
+  - 巴
+  pinyin: shòu bā bā
+  gradeband: L
+  confusable_ids: []
+- id: w0139
+  word: 高高的
+  characters:
+  - 高
+  - 高
+  - 的
+  pinyin: gāo gāo de
+  gradeband: L
+  confusable_ids: []
+- id: w0140
+  word: 矮矮的
+  characters:
+  - 矮
+  - 矮
+  - 的
+  pinyin: ǎi ǎi de
+  gradeband: L
+  confusable_ids: []
+- id: w0141
+  word: 大大的
+  characters:
+  - 大
+  - 大
+  - 的
+  pinyin: dà dà de
+  gradeband: L
+  confusable_ids: []
+- id: w0142
+  word: 小小的
+  characters:
+  - 小
+  - 小
+  - 的
+  pinyin: xiǎo xiǎo de
+  gradeband: L
+  confusable_ids: []
+- id: w0143
+  word: 多多的
+  characters:
+  - 多
+  - 多
+  - 的
+  pinyin: duō duō de
+  gradeband: L
+  confusable_ids: []
+- id: w0144
+  word: 少少的
+  characters:
+  - 少
+  - 少
+  - 的
+  pinyin: shǎo shǎo de
+  gradeband: L
+  confusable_ids: []
+- id: w0145
+  word: 一帆风顺
+  characters:
+  - 一
+  - 帆
+  - 风
+  - 顺
+  pinyin: yī fān fēng shùn
+  gradeband: M
+  confusable_ids: []
+- id: w0146
+  word: 二龙戏珠
+  characters:
+  - 二
+  - 龙
+  - 戏
+  - 珠
+  pinyin: èr lóng xì zhū
+  gradeband: M
+  confusable_ids: []
+- id: w0147
+  word: 三阳开泰
+  characters:
+  - 三
+  - 阳
+  - 开
+  - 泰
+  pinyin: sān yáng kāi tài
+  gradeband: M
+  confusable_ids: []
+- id: w0148
+  word: 四海为家
+  characters:
+  - 四
+  - 海
+  - 为
+  - 家
+  pinyin: sì hǎi wéi jiā
+  gradeband: M
+  confusable_ids: []
+- id: w0149
+  word: 五谷丰登
+  characters:
+  - 五
+  - 谷
+  - 丰
+  - 登
+  pinyin: wǔ gǔ fēng dēng
+  gradeband: M
+  confusable_ids: []
+- id: w0150
+  word: 六六大顺
+  characters:
+  - 六
+  - 六
+  - 大
+  - 顺
+  pinyin: liù liù dà shùn
+  gradeband: M
+  confusable_ids: []
+- id: w0151
+  word: 七上八下
+  characters:
+  - 七
+  - 上
+  - 八
+  - 下
+  pinyin: qī shàng bā xià
+  gradeband: M
+  confusable_ids: []
+- id: w0152
+  word: 八面玲珑
+  characters:
+  - 八
+  - 面
+  - 玲
+  - 珑
+  pinyin: bā miàn líng lóng
+  gradeband: M
+  confusable_ids: []
+- id: w0153
+  word: 九九归一
+  characters:
+  - 九
+  - 九
+  - 归
+  - 一
+  pinyin: jiǔ jiǔ guī yī
+  gradeband: M
+  confusable_ids: []
+- id: w0154
+  word: 十全十美
+  characters:
+  - 十
+  - 全
+  - 十
+  - 美
+  pinyin: shí quán shí měi
+  gradeband: M
+  confusable_ids: []
+- id: w0155
+  word: 百花齐放
+  characters:
+  - 百
+  - 花
+  - 齐
+  - 放
+  pinyin: bǎi huā qí fàng
+  gradeband: M
+  confusable_ids: []
+- id: w0156
+  word: 千军万马
+  characters:
+  - 千
+  - 军
+  - 万
+  - 马
+  pinyin: qiān jūn wàn mǎ
+  gradeband: M
+  confusable_ids: []
+- id: w0157
+  word: 万象更新
+  characters:
+  - 万
+  - 象
+  - 更
+  - 新
+  pinyin: wàn xiàng gēng xīn
+  gradeband: M
+  confusable_ids: []
+- id: w0158
+  word: 春暖花开
+  characters:
+  - 春
+  - 暖
+  - 花
+  - 开
+  pinyin: chūn nuǎn huā kāi
+  gradeband: M
+  confusable_ids: []
+- id: w0159
+  word: 夏日炎炎
+  characters:
+  - 夏
+  - 日
+  - 炎
+  - 炎
+  pinyin: xià rì yán yán
+  gradeband: M
+  confusable_ids: []
+- id: w0160
+  word: 秋高气爽
+  characters:
+  - 秋
+  - 高
+  - 气
+  - 爽
+  pinyin: qiū gāo qì shuǎng
+  gradeband: M
+  confusable_ids: []
+- id: w0161
+  word: 冬雪纷飞
+  characters:
+  - 冬
+  - 雪
+  - 纷
+  - 飞
+  pinyin: dōng xuě fēn fēi
+  gradeband: M
+  confusable_ids: []
+- id: w0162
+  word: 山清水秀
+  characters:
+  - 山
+  - 清
+  - 水
+  - 秀
+  pinyin: shān qīng shuǐ xiù
+  gradeband: M
+  confusable_ids: []
+- id: w0163
+  word: 鸟语花香
+  characters:
+  - 鸟
+  - 语
+  - 花
+  - 香
+  pinyin: niǎo yǔ huā xiāng
+  gradeband: M
+  confusable_ids: []
+- id: w0164
+  word: 草长莺飞
+  characters:
+  - 草
+  - 长
+  - 莺
+  - 飞
+  pinyin: cǎo zhǎng yīng fēi
+  gradeband: M
+  confusable_ids: []
+- id: w0165
+  word: 风和日丽
+  characters:
+  - 风
+  - 和
+  - 日
+  - 丽
+  pinyin: fēng hé rì lì
+  gradeband: M
+  confusable_ids: []
+- id: w0166
+  word: 云淡风轻
+  characters:
+  - 云
+  - 淡
+  - 风
+  - 轻
+  pinyin: yún dàn fēng qīng
+  gradeband: M
+  confusable_ids: []
+- id: w0167
+  word: 电闪雷鸣
+  characters:
+  - 电
+  - 闪
+  - 雷
+  - 鸣
+  pinyin: diàn shǎn léi míng
+  gradeband: M
+  confusable_ids: []
+- id: w0168
+  word: 大雨倾盆
+  characters:
+  - 大
+  - 雨
+  - 倾
+  - 盆
+  pinyin: dà yǔ qīng pén
+  gradeband: M
+  confusable_ids: []
+- id: w0169
+  word: 毛毛细雨
+  characters:
+  - 毛
+  - 毛
+  - 细
+  - 雨
+  pinyin: máo máo xì yǔ
+  gradeband: M
+  confusable_ids: []
+- id: w0170
+  word: 冰天雪地
+  characters:
+  - 冰
+  - 天
+  - 雪
+  - 地
+  pinyin: bīng tiān xuě dì
+  gradeband: M
+  confusable_ids: []
+- id: w0171
+  word: 白雪皑皑
+  characters:
+  - 白
+  - 雪
+  - 皑
+  - 皑
+  pinyin: bái xuě ái ái
+  gradeband: M
+  confusable_ids: []
+- id: w0172
+  word: 金光闪闪
+  characters:
+  - 金
+  - 光
+  - 闪
+  - 闪
+  pinyin: jīn guāng shǎn shǎn
+  gradeband: M
+  confusable_ids: []
+- id: w0173
+  word: 银装素裹
+  characters:
+  - 银
+  - 装
+  - 素
+  - 裹
+  pinyin: yín zhuāng sù guǒ
+  gradeband: M
+  confusable_ids: []
+- id: w0174
+  word: 锦绣河山
+  characters:
+  - 锦
+  - 绣
+  - 河
+  - 山
+  pinyin: jǐn xiù hé shān
+  gradeband: M
+  confusable_ids: []
+- id: w0175
+  word: 大江东去
+  characters:
+  - 大
+  - 江
+  - 东
+  - 去
+  pinyin: dà jiāng dōng qù
+  gradeband: M
+  confusable_ids: []
+- id: w0176
+  word: 海阔天空
+  characters:
+  - 海
+  - 阔
+  - 天
+  - 空
+  pinyin: hǎi kuò tiān kōng
+  gradeband: M
+  confusable_ids: []
+- id: w0177
+  word: 好好学习
+  characters:
+  - 好
+  - 好
+  - 学
+  - 习
+  pinyin: hǎo hǎo xué xí
+  gradeband: L
+  confusable_ids: []
+- id: w0178
+  word: 天天向上
+  characters:
+  - 天
+  - 天
+  - 向
+  - 上
+  pinyin: tiān tiān xiàng shàng
+  gradeband: L
+  confusable_ids: []
+- id: w0179
+  word: 一日千里
+  characters:
+  - 一
+  - 日
+  - 千
+  - 里
+  pinyin: yī rì qiān lǐ
+  gradeband: M
+  confusable_ids: []
+- id: w0180
+  word: 一日三秋
+  characters:
+  - 一
+  - 日
+  - 三
+  - 秋
+  pinyin: yí rì sān qiū
+  gradeband: M
+  confusable_ids: []
+- id: w0181
+  word: 一心一意
+  characters:
+  - 一
+  - 心
+  - 一
+  - 意
+  pinyin: yì xīn yí yì
+  gradeband: M
+  confusable_ids: []
+- id: w0182
+  word: 三心二意
+  characters:
+  - 三
+  - 心
+  - 二
+  - 意
+  pinyin: sān xīn èr yì
+  gradeband: M
+  confusable_ids: []
+- id: w0183
+  word: 五颜六色
+  characters:
+  - 五
+  - 颜
+  - 六
+  - 色
+  pinyin: wǔ yán liù sè
+  gradeband: M
+  confusable_ids: []
+- id: w0184
+  word: 七嘴八舌
+  characters:
+  - 七
+  - 嘴
+  - 八
+  - 舌
+  pinyin: qī zuǐ bā shé
+  gradeband: M
+  confusable_ids: []
+- id: w0185
+  word: 九牛一毛
+  characters:
+  - 九
+  - 牛
+  - 一
+  - 毛
+  pinyin: jiǔ niú yì máo
+  gradeband: M
+  confusable_ids: []
+- id: w0186
+  word: 十拿九稳
+  characters:
+  - 十
+  - 拿
+  - 九
+  - 稳
+  pinyin: shí ná jiǔ wěn
+  gradeband: M
+  confusable_ids: []
+- id: w0187
+  word: 百发百中
+  characters:
+  - 百
+  - 发
+  - 百
+  - 中
+  pinyin: bǎi fā bǎi zhòng
+  gradeband: M
+  confusable_ids: []
+- id: w0188
+  word: 千言万语
+  characters:
+  - 千
+  - 言
+  - 万
+  - 语
+  pinyin: qiān yán wàn yǔ
+  gradeband: M
+  confusable_ids: []
+- id: w0189
+  word: 万紫千红
+  characters:
+  - 万
+  - 紫
+  - 千
+  - 红
+  pinyin: wàn zǐ qiān hóng
+  gradeband: M
+  confusable_ids: []
+- id: w0190
+  word: 目不转睛
+  characters:
+  - 目
+  - 不
+  - 转
+  - 睛
+  pinyin: mù bù zhuǎn jīng
+  gradeband: M
+  confusable_ids: []
+- id: w0191
+  word: 耳目一新
+  characters:
+  - 耳
+  - 目
+  - 一
+  - 新
+  pinyin: ěr mù yī xīn
+  gradeband: M
+  confusable_ids: []
+- id: w0192
+  word: 手忙脚乱
+  characters:
+  - 手
+  - 忙
+  - 脚
+  - 乱
+  pinyin: shǒu máng jiǎo luàn
+  gradeband: M
+  confusable_ids: []
+- id: w0193
+  word: 脚踏实地
+  characters:
+  - 脚
+  - 踏
+  - 实
+  - 地
+  pinyin: jiǎo tà shí dì
+  gradeband: M
+  confusable_ids: []
+- id: w0194
+  word: 胸有成竹
+  characters:
+  - 胸
+  - 有
+  - 成
+  - 竹
+  pinyin: xiōng yǒu chéng zhú
+  gradeband: M
+  confusable_ids: []
+- id: w0195
+  word: 画蛇添足
+  characters:
+  - 画
+  - 蛇
+  - 添
+  - 足
+  pinyin: huà shé tiān zú
+  gradeband: M
+  confusable_ids: []
+- id: w0196
+  word: 守株待兔
+  characters:
+  - 守
+  - 株
+  - 待
+  - 兔
+  pinyin: shǒu zhū dài tù
+  gradeband: M
+  confusable_ids: []
+- id: w0197
+  word: 亡羊补牢
+  characters:
+  - 亡
+  - 羊
+  - 补
+  - 牢
+  pinyin: wáng yáng bǔ láo
+  gradeband: M
+  confusable_ids: []
+- id: w0198
+  word: 揠苗助长
+  characters:
+  - 揠
+  - 苗
+  - 助
+  - 长
+  pinyin: yà miáo zhù zhǎng
+  gradeband: M
+  confusable_ids: []
+- id: w0199
+  word: 刻舟求剑
+  characters:
+  - 刻
+  - 舟
+  - 求
+  - 剑
+  pinyin: kè zhōu qiú jiàn
+  gradeband: M
+  confusable_ids: []
+- id: w0200
+  word: 掩耳盗铃
+  characters:
+  - 掩
+  - 耳
+  - 盗
+  - 铃
+  pinyin: yǎn ěr dào líng
+  gradeband: M
+  confusable_ids: []
+- id: w0201
+  word: 散文
+  characters:
+  - 散
+  - 文
+  pinyin: sǎn wén
+  gradeband: H
+  confusable_ids: []
+- id: w0202
+  word: 诗歌
+  characters:
+  - 诗
+  - 歌
+  pinyin: shī gē
+  gradeband: H
+  confusable_ids: []
+- id: w0203
+  word: 小说
+  characters:
+  - 小
+  - 说
+  pinyin: xiǎo shuō
+  gradeband: H
+  confusable_ids: []
+- id: w0204
+  word: 议论
+  characters:
+  - 议
+  - 论
+  pinyin: yì lùn
+  gradeband: H
+  confusable_ids: []
+- id: w0205
+  word: 抒情
+  characters:
+  - 抒
+  - 情
+  pinyin: shū qíng
+  gradeband: H
+  confusable_ids: []
+- id: w0206
+  word: 记叙
+  characters:
+  - 记
+  - 叙
+  pinyin: jì xù
+  gradeband: H
+  confusable_ids: []
+- id: w0207
+  word: 描写
+  characters:
+  - 描
+  - 写
+  pinyin: miáo xiě
+  gradeband: H
+  confusable_ids: []
+- id: w0208
+  word: 修辞
+  characters:
+  - 修
+  - 辞
+  pinyin: xiū cí
+  gradeband: H
+  confusable_ids: []
+- id: w0209
+  word: 比喻
+  characters:
+  - 比
+  - 喻
+  pinyin: bǐ yù
+  gradeband: H
+  confusable_ids: []
+- id: w0210
+  word: 拟人
+  characters:
+  - 拟
+  - 人
+  pinyin: nǐ rén
+  gradeband: H
+  confusable_ids: []
+- id: w0211
+  word: 夸张
+  characters:
+  - 夸
+  - 张
+  pinyin: kuā zhāng
+  gradeband: H
+  confusable_ids: []
+- id: w0212
+  word: 排比
+  characters:
+  - 排
+  - 比
+  pinyin: pái bǐ
+  gradeband: H
+  confusable_ids: []
+- id: w0213
+  word: 对偶
+  characters:
+  - 对
+  - 偶
+  pinyin: duì ǒu
+  gradeband: H
+  confusable_ids: []
+- id: w0214
+  word: 反复
+  characters:
+  - 反
+  - 复
+  pinyin: fǎn fù
+  gradeband: H
+  confusable_ids: []
+- id: w0215
+  word: 设问
+  characters:
+  - 设
+  - 问
+  pinyin: shè wèn
+  gradeband: H
+  confusable_ids: []
+- id: w0216
+  word: 反问
+  characters:
+  - 反
+  - 问
+  pinyin: fǎn wèn
+  gradeband: H
+  confusable_ids: []
+- id: w0217
+  word: 借代
+  characters:
+  - 借
+  - 代
+  pinyin: jiè dài
+  gradeband: H
+  confusable_ids: []
+- id: w0218
+  word: 象征
+  characters:
+  - 象
+  - 征
+  pinyin: xiàng zhēng
+  gradeband: H
+  confusable_ids: []
+- id: w0219
+  word: 铺垫
+  characters:
+  - 铺
+  - 垫
+  pinyin: pū diàn
+  gradeband: H
+  confusable_ids: []
+- id: w0220
+  word: 伏笔
+  characters:
+  - 伏
+  - 笔
+  pinyin: fú bǐ
+  gradeband: H
+  confusable_ids: []
+- id: w0221
+  word: 呼应
+  characters:
+  - 呼
+  - 应
+  pinyin: hū yìng
+  gradeband: H
+  confusable_ids: []
+- id: w0222
+  word: 过渡
+  characters:
+  - 过
+  - 渡
+  pinyin: guò dù
+  gradeband: H
+  confusable_ids: []
+- id: w0223
+  word: 总结
+  characters:
+  - 总
+  - 结
+  pinyin: zǒng jié
+  gradeband: H
+  confusable_ids: []
+- id: w0224
+  word: 开头
+  characters:
+  - 开
+  - 头
+  pinyin: kāi tóu
+  gradeband: H
+  confusable_ids: []
+- id: w0225
+  word: 结尾
+  characters:
+  - 结
+  - 尾
+  pinyin: jié wěi
+  gradeband: H
+  confusable_ids: []
+confusion_pairs:
+- id: cf0001
+  type: form_similar
+  char_a: 未
+  char_b: 末
+  notes: 未 vs 末：上短下长 vs 上长下短
+- id: cf0002
+  type: form_similar
+  char_a: 己
+  char_b: 已
+  notes: 己 vs 已：开口 vs 半合
+- id: cf0003
+  type: form_similar
+  char_a: 已
+  char_b: 巳
+  notes: 已 vs 巳：半合 vs 全合
+- id: cf0004
+  type: form_similar
+  char_a: 人
+  char_b: 入
+  notes: 人 vs 入：撇捺舒展 vs 撇短捺长
+- id: cf0005
+  type: form_similar
+  char_a: 土
+  char_b: 士
+  notes: 土 vs 士：下长上短 vs 下短上长
+- id: cf0006
+  type: form_similar
+  char_a: 日
+  char_b: 曰
+  notes: 日 vs 曰：长方 vs 扁方
+- id: cf0007
+  type: form_similar
+  char_a: 目
+  char_b: 日
+  notes: 目 vs 日：多一横
+- id: cf0008
+  type: form_similar
+  char_a: 田
+  char_b: 由
+  notes: 田 vs 由：上不出 vs 上出
+- id: cf0009
+  type: form_similar
+  char_a: 由
+  char_b: 甲
+  notes: 由 vs 甲：上出 vs 下出
+- id: cf0010
+  type: form_similar
+  char_a: 甲
+  char_b: 申
+  notes: 甲 vs 申：上下出
+- id: cf0011
+  type: form_similar
+  char_a: 大
+  char_b: 太
+  notes: 大 vs 太：多一点
+- id: cf0012
+  type: form_similar
+  char_a: 大
+  char_b: 犬
+  notes: 大 vs 犬：多一点
+- id: cf0013
+  type: form_similar
+  char_a: 王
+  char_b: 玉
+  notes: 王 vs 玉：多一点
+- id: cf0014
+  type: form_similar
+  char_a: 王
+  char_b: 主
+  notes: 王 vs 主：上多一点
+- id: cf0015
+  type: form_similar
+  char_a: 主
+  char_b: 玉
+  notes: 主 vs 玉：点位置不同
+- id: cf0016
+  type: form_similar
+  char_a: 木
+  char_b: 本
+  notes: 木 vs 本：下加一横
+- id: cf0017
+  type: form_similar
+  char_a: 木
+  char_b: 未
+  notes: 木 vs 未：上加一横
+- id: cf0018
+  type: form_similar
+  char_a: 木
+  char_b: 末
+  notes: 木 vs 末：上加一长横
+- id: cf0019
+  type: form_similar
+  char_a: 米
+  char_b: 木
+  notes: 米 vs 木：上加点撇
+- id: cf0020
+  type: form_similar
+  char_a: 刀
+  char_b: 力
+  notes: 刀 vs 力：撇出头
+- id: cf0021
+  type: form_similar
+  char_a: 刀
+  char_b: 刃
+  notes: 刀 vs 刃：加一点
+- id: cf0022
+  type: form_similar
+  char_a: 口
+  char_b: 囗
+  notes: 口 vs 囗：小方 vs 大框
+- id: cf0023
+  type: form_similar
+  char_a: 日
+  char_b: 口
+  notes: 日 vs 口：多一横
+- id: cf0024
+  type: form_similar
+  char_a: 中
+  char_b: 申
+  notes: 中 vs 申：下出头
+- id: cf0025
+  type: form_similar
+  char_a: 午
+  char_b: 牛
+  notes: 午 vs 牛：下出头
+- id: cf0026
+  type: form_similar
+  char_a: 白
+  char_b: 日
+  notes: 白 vs 日：上多撇
+- id: cf0027
+  type: form_similar
+  char_a: 百
+  char_b: 白
+  notes: 百 vs 白：上多横
+- id: cf0028
+  type: form_similar
+  char_a: 自
+  char_b: 白
+  notes: 自 vs 白：多一横
+- id: cf0029
+  type: form_similar
+  char_a: 鸟
+  char_b: 乌
+  notes: 鸟 vs 乌：少一点
+- id: cf0030
+  type: form_similar
+  char_a: 乌
+  char_b: 鸟
+  notes: 乌 vs 鸟：少一点
+- id: cf0031
+  type: form_similar
+  char_a: 戊
+  char_b: 戌
+  notes: 戊 vs 戌：无点 vs 有点
+- id: cf0032
+  type: form_similar
+  char_a: 戌
+  char_b: 戍
+  notes: 戌 vs 戍：有点 vs 有撇
+- id: cf0033
+  type: form_similar
+  char_a: 戊
+  char_b: 戍
+  notes: 戊 vs 戍：无点 vs 有撇
+- id: cf0034
+  type: form_similar
+  char_a: 贝
+  char_b: 见
+  notes: 贝 vs 见：下不同
+- id: cf0035
+  type: form_similar
+  char_a: 见
+  char_b: 贝
+  notes: 见 vs 贝：下不同
+- id: cf0036
+  type: form_similar
+  char_a: 儿
+  char_b: 几
+  notes: 儿 vs 几：撇不同
+- id: cf0037
+  type: form_similar
+  char_a: 几
+  char_b: 儿
+  notes: 几 vs 儿：撇不同
+- id: cf0038
+  type: form_similar
+  char_a: 九
+  char_b: 丸
+  notes: 九 vs 丸：多一点
+- id: cf0039
+  type: form_similar
+  char_a: 了
+  char_b: 子
+  notes: 了 vs 子：多一横
+- id: cf0040
+  type: form_similar
+  char_a: 子
+  char_b: 了
+  notes: 子 vs 了：少一横
+- id: cf0041
+  type: form_similar
+  char_a: 月
+  char_b: 日
+  notes: 月 vs 日：多一横
+- id: cf0042
+  type: form_similar
+  char_a: 天
+  char_b: 夫
+  notes: 天 vs 夫：撇出头
+- id: cf0043
+  type: form_similar
+  char_a: 夫
+  char_b: 天
+  notes: 夫 vs 天：撇不出头
+- id: cf0044
+  type: form_similar
+  char_a: 问
+  char_b: 间
+  notes: 问 vs 间：内有口 vs 内有日
+- id: cf0045
+  type: form_similar
+  char_a: 问
+  char_b: 闻
+  notes: 问 vs 闻：内有口 vs 内有耳
+- id: cf0046
+  type: form_similar
+  char_a: 问
+  char_b: 闪
+  notes: 问 vs 闪：内有口 vs 内有人
+- id: cf0047
+  type: sound_similar
+  char_a: 在
+  char_b: 再
+  notes: 在 vs 再：zài 同音不同义
+- id: cf0048
+  type: sound_similar
+  char_a: 做
+  char_b: 作
+  notes: 做 vs 作：zuò 同音不同义
+- id: cf0049
+  type: sound_similar
+  char_a: 的
+  char_b: 得
+  notes: 的 vs 得：de 同音不同义
+- id: cf0050
+  type: sound_similar
+  char_a: 得
+  char_b: 地
+  notes: 得 vs 地：de 同音不同义
+- id: cf0051
+  type: sound_similar
+  char_a: 长
+  char_b: 常
+  notes: 长 vs 常：cháng 同音不同义
+- id: cf0052
+  type: sound_similar
+  char_a: 有
+  char_b: 又
+  notes: 有 vs 又：yǒu/yòu 音近
+- id: cf0053
+  type: sound_similar
+  char_a: 他
+  char_b: 她
+  notes: 他 vs 她：tā 同音不同义
+- id: cf0054
+  type: sound_similar
+  char_a: 它
+  char_b: 他
+  notes: 它 vs 他：tā 同音不同义
+- id: cf0055
+  type: sound_similar
+  char_a: 新
+  char_b: 心
+  notes: 新 vs 心：xīn 同音不同义
+- id: cf0056
+  type: sound_similar
+  char_a: 工
+  char_b: 公
+  notes: 工 vs 公：gōng 同音不同义
+- id: cf0057
+  type: sound_similar
+  char_a: 功
+  char_b: 工
+  notes: 功 vs 工：gōng 同音不同义
+- id: cf0058
+  type: sound_similar
+  char_a: 到
+  char_b: 道
+  notes: 到 vs 道：dào 同音不同义
+- id: cf0059
+  type: sound_similar
+  char_a: 坐
+  char_b: 座
+  notes: 坐 vs 座：zuò 同音不同义
+- id: cf0060
+  type: sound_similar
+  char_a: 向
+  char_b: 象
+  notes: 向 vs 象：xiàng 同音不同义
+- id: cf0061
+  type: sound_similar
+  char_a: 像
+  char_b: 象
+  notes: 像 vs 象：xiàng 同音不同义
+- id: cf0062
+  type: sound_similar
+  char_a: 进
+  char_b: 近
+  notes: 进 vs 近：jìn 同音不同义
+- id: cf0063
+  type: sound_similar
+  char_a: 声
+  char_b: 生
+  notes: 声 vs 生：shēng 同音不同义
+- id: cf0064
+  type: sound_similar
+  char_a: 升
+  char_b: 生
+  notes: 升 vs 生：shēng 同音不同义
+- id: cf0065
+  type: sound_similar
+  char_a: 身
+  char_b: 深
+  notes: 身 vs 深：shēn 同音不同义
+- id: cf0066
+  type: form_sound_similar
+  char_a: 辩
+  char_b: 辨
+  notes: 辩 vs 辨：言 vs 刀，biàn 同音
+- id: cf0067
+  type: form_sound_similar
+  char_a: 辨
+  char_b: 辫
+  notes: 辨 vs 辫：刀 vs 丝，biàn 同音
+- id: cf0068
+  type: form_sound_similar
+  char_a: 辩
+  char_b: 辫
+  notes: 辩 vs 辫：言 vs 丝，biàn 同音

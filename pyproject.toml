@@ -32,6 +32,9 @@ dependencies = [
     "alembic>=1.13",
     "pyyaml>=6.0",
     "ulid-py>=1.1",
+    # X8 理由：pypinyin（MIT）拼音生成，语文学科包运行时依赖
+    # license_id=lic-pypinyin-mit，已登记于 content/sources/registry.yaml
+    "pypinyin>=0.50",
 ]
 
 [project.optional-dependencies]

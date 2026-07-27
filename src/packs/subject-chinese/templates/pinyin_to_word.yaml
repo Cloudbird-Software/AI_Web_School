@@ -1,0 +1,48 @@
+# A 线母题模板：看拼音写词语（T-W2-032）
+#
+# 词库驱动：slot=目标词 + 拼音槽（由调用方经 pypinyin 计算后注入）；
+# presentation=拼音 + 田字格占位；answer_program=词本身（直接返回 word 槽值）。
+# 交互类型：text_blank（注册表 specs/contracts/registries/interaction.yaml）；
+# 评分器：exact_match（与 text_blank 兼容，见 scorer.yaml）。
+#
+# 宪法 D4：交互与评分器只复用注册表，禁止私造；
+# 宪法 X6：语文逻辑只在 src/packs/subject-chinese/ 下。
+template_version_id: sha256:tpl-chinese-pinyin-to-word-v1
+template_id: tpl-chinese-pinyin-to-word
+dsl_version: '1'
+spec:
+  objective:
+    kp_set:
+    - dimension: kp
+      code: chinese.word.pinyin-to-word
+    kp_set_mode: single
+    cognitive_level: remember
+    gradeband: L
+    graph_release: '2026.1'
+  slots:
+    # 目标词（来自字词库 words[*].word）
+    word:
+      type: string
+      difficulty_relevant: true
+    # 拼音（由 pinyin_pipeline.get_pinyin(word) 在实例化前预算注入）
+    pinyin:
+      type: string
+      difficulty_relevant: false
+  variation_axes:
+    axes: []
+  presentation:
+    blocks:
+    - kind: text
+      template: '看拼音，写词语：'
+    - kind: text
+      template: '{pinyin}'
+    - kind: text
+      # 田字格占位：6 个全角下划线表示一个空位（纸卷规范 interaction.text_blank.paper_spec）
+      template: '田字格：＿＿＿＿＿＿＿＿'
+  answer_program:
+    # 安全表达式求值器（T-W2-002）支持 Name 节点；word 槽值为字符串直接返回
+    expression: word
+    returns: string
+  distractor_rules:
+    # text_blank 交互无干扰项；error_bindings 由学生作答错因推断在评分阶段生成
+    rules: []
