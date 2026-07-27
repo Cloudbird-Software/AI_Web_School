@@ -77,6 +77,16 @@ from src.core.models.graph_release import (
     GraphReleasePydantic,
     graph_release_status_enum,
 )
+# 卷追溯（T-W2-037，迁移 0009；exposure FK 依赖 paper 表，须先于 exposure 导入）
+from src.core.models.paper import Paper
+from src.core.models.paper_item import PaperItem
+# 曝光账本双轨（T-W3-assembly，迁移 0010）
+from src.core.models.exposure import (
+    PaperExposure,
+    PaperExposurePydantic,
+    StudentExposure,
+    StudentExposurePydantic,
+)
 
 __all__ = [
     # Base + ENUM
@@ -107,6 +117,12 @@ __all__ = [
     # 闭包与图谱版本 ORM（T-W2-013）
     "KpClosure",
     "GraphRelease",
+    # 曝光账本双轨 ORM（T-W3-assembly）
+    "PaperExposure",
+    "StudentExposure",
+    # 卷追溯 ORM（T-W2-037）
+    "Paper",
+    "PaperItem",
     # Pydantic schema
     "ItemPydantic",
     "ItemVersionPydantic",
@@ -118,6 +134,8 @@ __all__ = [
     "CorpusAssetPydantic",
     "CorpusVersionPydantic",
     "MaterialLicensePydantic",
+    "PaperExposurePydantic",
+    "StudentExposurePydantic",
     # 六大块 Pydantic 子模型
     "Objective",
     "KpRef",
