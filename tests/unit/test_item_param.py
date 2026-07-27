@@ -18,8 +18,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.core.models.item_param import ItemParam
 
-pytestmark = pytest.mark.asyncio
-
 
 # ────────────────────────────────────────────────────────────────────
 # 辅助：准备 FK 依赖（item + item_version）
