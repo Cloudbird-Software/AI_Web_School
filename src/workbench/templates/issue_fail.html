@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% block title %}签发失败 · {{ version.item_version_id[:8] }}{% endblock %}
+{% block content %}
+<div class="card" style="border-left: 4px solid #dc3545;">
+  <h2 style="color: #dc3545;">✗ 签发未通过</h2>
+  <p>门编排最终判定：<strong style="color: #dc3545;">{{ final_verdict }}</strong>——未签发门证书，item_version 状态未前移（停留在 <span class="badge badge-{{ version.status }}">{{ version.status }}</span>）。</p>
+  {% if short_circuit_at %}
+  <p>短路位置：<code>{{ short_circuit_at }}</code>（阻断验证器 fail 后续验证器未被调用）。</p>
+  {% endif %}
+</div>
+
+<div class="card">
+  <h3>item_version 信息</h3>
+  <table>
+    <tr><th style="width: 200px;">item_version_id</th><td><code>{{ version.item_version_id }}</code></td></tr>
+    <tr><th>item_id</th><td><code>{{ version.item_id }}</code></td></tr>
+    <tr><th>当前状态</th><td><span class="badge badge-{{ version.status }}">{{ version.status }}</span></td></tr>
+  </table>
+</div>
+
+<div class="card">
+  <h3>验证器执行明细</h3>
+  <table>
+    <thead>
+      <tr><th>validator_id</th><th>verdict</th><th>blocking</th><th>short_circuited</th><th>耗时(ms)</th><th>证据</th></tr>
+    </thead>
+    <tbody>
+      {% for run in runs %}
+      <tr>
+        <td><code>{{ run.validator_id }}</code></td>
+        <td>
+          {% if run.verdict == 'pass' %}
+            <span style="color: #28a745;">{{ run.verdict }}</span>
+          {% elif run.verdict == 'fail' %}
+            <span style="color: #dc3545;">{{ run.verdict }}</span>
+          {% else %}
+            <span style="color: #ffc107;">{{ run.verdict }}</span>
+          {% endif %}
+        </td>
+        <td>{{ run.blocking }}</td>
+        <td>{{ run.short_circuited }}</td>
+        <td>{{ run.cost_ms }}</td>
+        <td><details><summary>查看</summary><pre>{{ run.evidence | tojson(indent=2) }}</pre></details></td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<div class="card">
+  <p style="color: #6c757d;">修改内容后产生新版本（新 item_version_id），重新触发签发；旧版本永久留存作审计证据（D1 无回边）。</p>
+  <a href="/items/{{ version.item_id }}" class="btn">返回详情</a>
+  <a href="/items" class="btn btn-secondary">返回题库</a>
+</div>
+{% endblock %}

@@ -1,0 +1,89 @@
+{% extends "base.html" %}
+{% block title %}题库详情 · {{ item.item_id[:8] }}{% endblock %}
+{% block content %}
+<div class="card">
+  <h2>题库详情</h2>
+  <table>
+    <tr><th style="width: 200px;">item_id</th><td><code>{{ item.item_id }}</code></td></tr>
+    <tr><th>pack_id</th><td>{{ item.pack_id }}</td></tr>
+    <tr><th>tier</th><td><span class="badge badge-tier">{{ item.tier }}</span></td></tr>
+    <tr><th>template_version_id</th><td><code>{{ item.template_version_id or '-' }}</code></td></tr>
+    <tr><th>current_version_id</th><td><code>{{ item.current_version_id or '-' }}</code></td></tr>
+    <tr><th>created_at</th><td>{{ item.created_at }}</td></tr>
+  </table>
+</div>
+
+{% if current_version %}
+<div class="card">
+  <h3>当前版本（current_version）</h3>
+  <table>
+    <tr><th style="width: 200px;">item_version_id</th><td><code>{{ current_version.item_version_id }}</code></td></tr>
+    <tr><th>status</th><td><span class="badge badge-{{ current_version.status }}">{{ current_version.status }}</span></td></tr>
+    <tr><th>gate_certificate_id</th><td><code>{{ current_version.gate_certificate_id or '无（未过门）' }}</code></td></tr>
+    <tr><th>published_at</th><td>{{ current_version.published_at or '-' }}</td></tr>
+    {% if current_version.gate_certificate_id %}
+    <tr><th>门证书</th><td><a href="/gate_certificates/{{ current_version.gate_certificate_id }}" class="btn btn-secondary">查看证书</a></td></tr>
+    {% endif %}
+  </table>
+</div>
+
+<div class="card">
+  <h3>objective（知识标注）</h3>
+  <pre>{{ current_version.objective | tojson(indent=2) }}</pre>
+</div>
+
+<div class="card">
+  <h3>content（题面 AST）</h3>
+  <pre>{{ current_version.content | tojson(indent=2) }}</pre>
+</div>
+
+<div class="card">
+  <h3>lineage（谱系）</h3>
+  <pre>{{ current_version.lineage | tojson(indent=2) }}</pre>
+</div>
+
+<div class="card">
+  <h3>interaction_ref / scoring_ref / error_bindings</h3>
+  <p><strong>interaction_ref：</strong></p>
+  <pre>{{ current_version.interaction_ref | tojson(indent=2) }}</pre>
+  <p><strong>scoring_ref：</strong></p>
+  <pre>{{ current_version.scoring_ref | tojson(indent=2) }}</pre>
+  <p><strong>error_bindings：</strong></p>
+  <pre>{{ current_version.error_bindings | tojson(indent=2) }}</pre>
+</div>
+{% else %}
+<div class="card">
+  <p style="color: #666;">该 item 尚无已发布版本（current_version 为空）。</p>
+</div>
+{% endif %}
+
+<div class="card">
+  <h3>版本历史（{{ versions|length }}）</h3>
+  {% if versions %}
+  <table>
+    <thead>
+      <tr><th>item_version_id</th><th>status</th><th>gate_certificate_id</th><th>created_at</th><th>操作</th></tr>
+    </thead>
+    <tbody>
+      {% for v in versions %}
+      <tr>
+        <td><code>{{ v.item_version_id[:24] }}…</code></td>
+        <td><span class="badge badge-{{ v.status }}">{{ v.status }}</span></td>
+        <td><code>{{ v.gate_certificate_id[:24] if v.gate_certificate_id else '-' }}{{ '…' if v.gate_certificate_id else '' }}</code></td>
+        <td>{{ v.created_at.strftime('%Y-%m-%d %H:%M') if v.created_at else '-' }}</td>
+        <td>
+          {% if v.status == 'draft' %}
+          <a href="/issue/{{ v.item_version_id }}" class="btn">签发</a>
+          {% else %}
+          <span style="color: #999;">-</span>
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p style="color: #666;">无版本。</p>
+  {% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% block title %}签发成功 · {{ version.item_version_id[:8] }}{% endblock %}
+{% block content %}
+<div class="card" style="border-left: 4px solid #28a745;">
+  <h2 style="color: #28a745;">✓ 签发成功</h2>
+  <p>item_version 已前移到 <span class="badge badge-published">published</span>，签发记录已写入 publication 表。</p>
+</div>
+
+<div class="card">
+  <h3>签发记录</h3>
+  <table>
+    <tr><th style="width: 200px;">item_version_id</th><td><code>{{ version.item_version_id }}</code></td></tr>
+    <tr><th>item_id</th><td><code>{{ version.item_id }}</code></td></tr>
+    <tr><th>publication_id</th><td><code>{{ publication_id }}</code></td></tr>
+    <tr><th>gate_certificate_id</th><td><code>{{ gate_certificate_id }}</code></td></tr>
+    <tr><th>status</th><td><span class="badge badge-{{ version.status }}">{{ version.status }}</span></td></tr>
+    <tr><th>published_at</th><td>{{ version.published_at }}</td></tr>
+  </table>
+</div>
+
+<div class="card">
+  <h3>门编排结果</h3>
+  <p>最终判定：<strong style="color: #28a745;">{{ outcome.final_verdict }}</strong></p>
+  <p>策略版本：<code>{{ outcome.policy_version }}</code></p>
+  <table>
+    <thead>
+      <tr><th>validator_id</th><th>verdict</th><th>blocking</th><th>耗时(ms)</th><th>证据</th></tr>
+    </thead>
+    <tbody>
+      {% for run in outcome.runs %}
+      <tr>
+        <td><code>{{ run.validator_id }}</code></td>
+        <td>
+          {% if run.verdict == 'pass' %}
+            <span style="color: #28a745;">{{ run.verdict }}</span>
+          {% elif run.verdict == 'fail' %}
+            <span style="color: #dc3545;">{{ run.verdict }}</span>
+          {% else %}
+            <span style="color: #ffc107;">{{ run.verdict }}</span>
+          {% endif %}
+        </td>
+        <td>{{ run.blocking }}</td>
+        <td>{{ run.cost_ms }}</td>
+        <td><details><summary>查看</summary><pre>{{ run.evidence | tojson(indent=2) }}</pre></details></td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<div class="card">
+  <a href="/items/{{ version.item_id }}" class="btn">返回详情</a>
+  <a href="/items" class="btn btn-secondary">返回题库</a>
+</div>
+{% endblock %}

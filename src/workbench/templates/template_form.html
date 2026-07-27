@@ -1,0 +1,127 @@
+{% extends "base.html" %}
+{% block title %}母题表单{% endblock %}
+{% block content %}
+<div class="card">
+  <h2 style="margin-top: 0;">母题表单 + 按轴抽样预览</h2>
+  <p class="info">W2 简化版：YAML 编辑 + Linter 校验 + 变式预览。完整 DSL 编辑器留后续波次。</p>
+
+  {% if saved %}
+  <div class="card" style="background: #d4edda; padding: 12px; margin-bottom: 16px;">
+    ✅ 草稿已保存：template_id=<code>{{ saved.template_id }}</code>，
+    template_version_id=<code>{{ saved.template_version_id[:32] }}…</code>
+  </div>
+  {% endif %}
+
+  {% if errors %}
+  <div class="card" style="background: #f8d7da; padding: 12px; margin-bottom: 16px;">
+    <strong>❌ 校验失败：</strong>
+    <ul style="margin: 8px 0 0 0;">
+      {% for err in errors %}
+      <li><code>{{ err.code }}</code> @ <code>{{ err.path }}</code>：{{ err.message }}</li>
+      {% endfor %}
+    </ul>
+  </div>
+  {% endif %}
+</div>
+
+<div class="card">
+  <h3>母题元信息 + DSL</h3>
+  <form method="POST" action="/templates/save">
+    <div class="form-row">
+      <div class="form-group">
+        <label for="template_id">template_id（留空自动生成）</label>
+        <input type="text" name="template_id" id="template_id" value="{{ template_id }}" placeholder="如 tpl-math-int-add">
+      </div>
+      <div class="form-group">
+        <label for="pack_id">pack_id</label>
+        <input type="text" name="pack_id" id="pack_id" value="{{ pack_id }}" required>
+      </div>
+      <div class="form-group">
+        <label for="dsl_version">dsl_version</label>
+        <input type="text" name="dsl_version" id="dsl_version" value="{{ dsl_version }}" required>
+      </div>
+    </div>
+    <div class="form-group">
+      <label for="spec_yaml">spec YAML（六大块）</label>
+      <textarea name="spec_yaml" id="spec_yaml">{{ spec_yaml }}</textarea>
+    </div>
+    <button type="submit" class="btn">保存草稿（Linter 校验）</button>
+  </form>
+</div>
+
+<div class="card">
+  <h3>按轴抽样预览</h3>
+  <form method="POST" action="/templates/preview">
+    <input type="hidden" name="spec_yaml" value="{{ spec_yaml }}">
+    <input type="hidden" name="pack_id" value="{{ pack_id }}">
+    <input type="hidden" name="interaction_id" value="{{ interaction_id }}">
+    <input type="hidden" name="scorer_id" value="{{ scorer_id }}">
+    <div class="form-row">
+      <div class="form-group">
+        <label for="base_params_yaml">基准参数 YAML（槽名 → 值）</label>
+        <textarea name="base_params_yaml" id="base_params_yaml" style="min-height: 100px;">{{ base_params_yaml }}</textarea>
+      </div>
+      <div class="form-group">
+        <label for="axis_id">变式轴 axis_id</label>
+        <input type="text" name="axis_id" id="axis_id" value="{{ axis_id }}" required>
+        <label for="preview_count">抽样数量</label>
+        <input type="number" name="preview_count" id="preview_count" value="{{ preview_count }}" min="1" max="100" required>
+        <label for="interaction_id">interaction_id</label>
+        <input type="text" name="interaction_id" id="interaction_id" value="{{ interaction_id }}" required>
+        <label for="scorer_id">scorer_id</label>
+        <input type="text" name="scorer_id" id="scorer_id" value="{{ scorer_id }}" required>
+      </div>
+    </div>
+    <button type="submit" class="btn">预览 {{ preview_count }} 例</button>
+  </form>
+</div>
+
+{% if preview_cards is not none %}
+<div class="card">
+  <h3>预览结果（{{ preview_cards|length }} 例）</h3>
+  {% if cert_summary %}
+  <div class="stats">
+    <div class="stat">
+      <div class="num">{{ "已认证" if cert_summary.certified else "UNPROVEN" }}</div>
+      <div class="label">变式证书</div>
+    </div>
+    <div class="stat">
+      <div class="num">{{ cert_summary.variant_count }}</div>
+      <div class="label">变式数量</div>
+    </div>
+    <div class="stat">
+      <div class="num">{{ cert_summary.axis_id }}</div>
+      <div class="label">变式轴</div>
+    </div>
+  </div>
+  <p><strong>axis_slots：</strong>{{ cert_summary.axis_slots | join(", ") }}</p>
+  <p><strong>frozen_slots：</strong>{{ cert_summary.frozen_slots | join(", ") }}</p>
+  <p><strong>理由：</strong>{{ cert_summary.reason }}</p>
+  {% endif %}
+
+  {% if preview_cards %}
+  <div class="grid">
+    {% for card in preview_cards %}
+    <div class="grid-item">
+      <h4>#{{ loop.index }}</h4>
+      <p>{{ card.stem }}</p>
+      <p style="font-size: 11px; color: #666; word-break: break-all;">
+        <code>{{ card.item_version_id[:24] }}…</code>
+      </p>
+      {% if card.options %}
+      <ul style="margin: 4px 0; padding-left: 20px; font-size: 12px;">
+        {% for opt in card.options %}
+        <li>{{ opt.value }}（{{ opt.label }}）→ {{ opt.error_type_id }}</li>
+        {% endfor %}
+      </ul>
+      {% endif %}
+      <div class="answer">正解：{{ card.answer }}</div>
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <p style="color: #dc3545;">实例化未产出变式（可能是 objective 依赖槽被变更，证书标 UNPROVEN）。</p>
+  {% endif %}
+</div>
+{% endif %}
+{% endblock %}
