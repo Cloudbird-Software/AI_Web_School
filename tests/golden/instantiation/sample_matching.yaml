@@ -1,0 +1,56 @@
+case_id: matching_number_hanzi
+description: 匹配连线题——数字配中文
+template_version:
+  template_version_id: sha256:fixture-template-matching-number-hanzi
+  template_id: tpl-003-matching-number-hanzi
+  dsl_version: '1'
+  spec:
+    objective:
+      kp_set:
+      - dimension: kp
+        code: math.nal.int.recognize
+      kp_set_mode: single
+      cognitive_level: remember
+      gradeband: L
+      graph_release: '2026.1'
+    slots:
+      first_num:
+        type: int
+        difficulty_relevant: false
+      first_text:
+        type: string
+        difficulty_relevant: false
+      second_num:
+        type: int
+        difficulty_relevant: false
+      second_text:
+        type: string
+        difficulty_relevant: false
+    variation_axes:
+      axes: []
+    presentation:
+      blocks:
+      - kind: text
+        template: 把数字与对应的中文连线：{first_num}—?, {second_num}—?
+    answer_program:
+      expression: first_num
+      returns: number
+    distractor_rules:
+      rules: []
+params:
+  first_num: 1
+  first_text: 一
+  second_num: 2
+  second_text: 二
+pack_digest: sha256:pack-math-fixture
+interaction_id: matching
+scorer_id: exact_match
+scorer_params:
+  answer:
+    pairs:
+    - '1': 一
+    - '2': 二
+locale: zh-CN
+corpus_digests: []
+seed: 0
+expected_item_version_id: sha256:f1d45df31f7f4281f995c7f253b15c9e8086ab22485e223328508febbe27c71d
