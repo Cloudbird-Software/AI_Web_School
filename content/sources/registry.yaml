@@ -1,0 +1,116 @@
+# 内容来源登记表（content/sources/registry.yaml）
+#
+# 宪法 R-Q-18：素材/语料库入库必须持 approved 状态的许可；
+# 无登记或 decision!=approved 的来源不得入库（CI 拦截：tools/ci/check_sources.py）。
+#
+# 字段对齐 src/core/models/material_license.py：
+#   license_id     : PK（被 material_version.license_id / corpus_version.license_id 引用）
+#   source         : 来源标识（公开名称）
+#   rights_holder  : 权利人
+#   scope          : 授权范围（用途限定）
+#   expires_at     : 期限（null = 永久；过去时间表示已过期）
+#   decision       : approved / rejected / expired
+# 本文件新增字段（YAML 元数据，不进 DB）：
+#   kind           : 来源类型（curriculum/wordlist/font/methodology/textbook/...）
+#   notes          : 备注（可商用初判、法务复核状态等）
+#   registered_at  : 登记日期（人类可读追溯）
+# ────────────────────────────────────────────────────────────────────────
+version: "1.0"
+records:
+  # ── 1. 课程标准（事实依据，永久可引用） ──
+  - license_id: lic-kebiao-math-2022
+    source: 义务教育数学课程标准（2022 年版）
+    rights_holder: 中华人民共和国教育部
+    scope: 数学 1-9 年级知识点锚定，事实引用（课标条目编号）
+    expires_at: null
+    decision: approved
+    kind: curriculum
+    notes: 官方公开，作事实引用
+    registered_at: "2026-07-27"
+
+  - license_id: lic-kebiao-chinese-2022
+    source: 义务教育语文课程标准（2022 年版）
+    rights_holder: 中华人民共和国教育部
+    scope: 语文 1-9 年级字词表/篇目锚定，事实引用
+    expires_at: null
+    decision: approved
+    kind: curriculum
+    notes: 官方公开
+    registered_at: "2026-07-27"
+
+  # ── 2. 拼音库（MIT，可商用） ──
+  - license_id: lic-pypinyin-mit
+    source: pypinyin
+    rights_holder: Mozlcff (clearday)
+    scope: 拼音转换函数库，作为 SubjectPack 运行时依赖
+    expires_at: null
+    decision: approved
+    kind: library
+    notes: MIT 许可证，已核（通用可商用）
+    registered_at: "2026-07-27"
+
+  # ── 3. 古诗文原文（公有领域） ──
+  - license_id: lic-gushiwen-public-domain
+    source: 古诗文原文（唐诗三百首 / 古诗十九首 等）
+    rights_holder: 公有领域
+    scope: 古诗文原文篇目引用（禁整理/注释版）
+    expires_at: null
+    decision: approved
+    kind: text-corpus
+    notes: 公有领域，可引用原文
+    registered_at: "2026-07-27"
+
+  # ── 4. 人教版课本（课堂教学合理使用） ──
+  - license_id: lic-renjiaoben-math-textbook
+    source: 义务教育教科书·数学（人民教育出版社）
+    rights_holder: 人民教育出版社
+    scope: 数学 1-6 年级课本例题参考，事实/结构引用
+    expires_at: "2030-08-31T00:00:00Z"
+    decision: approved
+    kind: textbook
+    notes: 教育部审定教材，校内课堂教学合理使用范围内
+    registered_at: "2026-07-27"
+
+  # ── 5. 笔顺矢量（待复核，rejected） ──
+  - license_id: lic-makemeahanzi-arphic
+    source: Make Me a Hanzi
+    rights_holder: Arphic Public License + 附加条件
+    scope: 汉字笔顺矢量数据
+    expires_at: null
+    decision: rejected
+    kind: font-data
+    notes: 倾向可用，但附加条件需法务复核；复核前按不可用处理
+    registered_at: "2026-07-27"
+
+  # ── 6. THUOCL 词库（表述模糊，rejected） ──
+  - license_id: lic-thuocl-wordlist
+    source: THUOCL 清华大学开放中文词库
+    rights_holder: 清华大学
+    scope: 中文词库
+    expires_at: null
+    decision: rejected
+    kind: wordlist
+    notes: 许可表述模糊，复核前按不可用
+    registered_at: "2026-07-27"
+
+  # ── 7. Eedi 方法论（仅方法借鉴，rejected） ──
+  - license_id: lic-eedi-neurips2020
+    source: Eedi/NeurIPS2020 Education Challenge
+    rights_holder: Eedi
+    scope: 学生作答数据集与教学方法论
+    expires_at: null
+    decision: rejected
+    kind: methodology
+    notes: 仅研究用途，仅借鉴方法，不入内容仓库
+    registered_at: "2026-07-27"
+
+  # ── 8. NUCLE/CoNLL-2014（非商业，rejected） ──
+  - license_id: lic-nucle-conll2014
+    source: NUCLE/CoNLL-2014 Grammatical Error Correction
+    rights_holder: NUS / CoNLL
+    scope: 语法错误标注语料
+    expires_at: "2025-12-31T00:00:00Z"
+    decision: expired
+    kind: methodology
+    notes: 非商业许可，2025-12-31 已过期；仅借鉴方法
+    registered_at: "2026-07-27"

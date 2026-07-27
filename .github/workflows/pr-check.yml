@@ -39,6 +39,8 @@ jobs:
         with: {python-version: "3.12"}
       - run: pip install -r requirements-dev.txt
       - run: pip install -r requirements.txt   # 生产依赖（W1 起 tests/unit import src/ 代码）
+      - name: 来源登记表 CI 拦截（T-W2-015）
+        run: python tools/ci/check_sources.py
       - name: 准备 .env 与数据库（W1 起 tests/unit 含 DB 测试）
         run: |
           cp .env.example .env
