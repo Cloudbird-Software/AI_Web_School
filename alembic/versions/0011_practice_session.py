@@ -25,8 +25,8 @@ from alembic import op
 from sqlalchemy.dialects.postgresql import JSONB
 
 # revision identifiers, used by Alembic.
-revision: str = "0010"
-down_revision: Union[str, None] = "0009"
+revision: str = "0011"
+down_revision: Union[str, None] = "0010"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
