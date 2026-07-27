@@ -32,6 +32,9 @@ dependencies = [
     "alembic>=1.13",
     "pyyaml>=6.0",
     "ulid-py>=1.1",
+    # T-W2-026: 数学双实现验算器需要 SymPy 独立重算答案（与实例化引擎的安全
+    # 求值器 AST 白名单完全独立，避免同源 bug）；分数化简/有理化/方程求解。
+    "sympy>=1.12",
 ]
 
 [project.optional-dependencies]
