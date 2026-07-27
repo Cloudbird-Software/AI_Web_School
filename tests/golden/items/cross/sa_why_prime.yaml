@@ -1,0 +1,50 @@
+case_id: sa_why_prime
+description: 简答——为什么 7 是质数
+template_version:
+  template_version_id: sha256:4fa2121e55599b90b89be518fdf738de1964a47005634195026d6131725b362b
+  template_id: tpl-sa-why-prime
+  dsl_version: '1'
+  spec:
+    objective:
+      kp_set:
+      - dimension: kp
+        code: math.nal.int.prime
+      kp_set_mode: single
+      cognitive_level: understand
+      gradeband: L
+      graph_release: '2026.1'
+    slots:
+      num:
+        type: int
+        difficulty_relevant: true
+    variation_axes:
+      axes: []
+    presentation:
+      blocks:
+      - kind: text
+        template: 为什么 {num} 是质数？请简答。
+    answer_program:
+      expression: num
+      returns: number
+    distractor_rules:
+      rules: []
+params:
+  num: 7
+pack_digest: sha256:2b2c873ec2ce739722d6a3a34b77943221856efc3a201f7f023b8ea85715cf29
+interaction_id: short_answer
+scorer_id: keypoint_hit
+scorer_params:
+  keypoints:
+  - text: 只能被1和自身整除
+    required: true
+  - text: 没有其他因数
+    required: false
+locale: zh-CN
+corpus_digests: []
+seed: 0
+expected_item_version_id: sha256:194dfc2efdbce45b3c425960f358b10396c39e3ab5b0ac64217ac7b60af6d676
+expected_content_snapshot:
+  blocks:
+  - kind: text
+    template: 为什么 {num} 是质数？请简答。
+    rendered: 为什么 7 是质数？请简答。

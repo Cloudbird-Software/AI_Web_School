@@ -1,0 +1,57 @@
+case_id: w_explain_commutative
+description: 写作——解释乘法交换律
+template_version:
+  template_version_id: sha256:8db858f5852bc028ebdc20083972b6de1cb86c6a68c9664e5573629c6323f03b
+  template_id: tpl-w-commutative
+  dsl_version: '1'
+  spec:
+    objective:
+      kp_set:
+      - dimension: kp
+        code: math.nal.int.mul
+      kp_set_mode: single
+      cognitive_level: understand
+      gradeband: L
+      graph_release: '2026.1'
+    slots:
+      a:
+        type: int
+        difficulty_relevant: true
+      b:
+        type: int
+        difficulty_relevant: true
+    variation_axes:
+      axes: []
+    presentation:
+      blocks:
+      - kind: text
+        template: 用 100 字以内解释乘法交换律，以 {a}×{b} 为例。
+    answer_program:
+      expression: a * b
+      returns: number
+    distractor_rules:
+      rules: []
+params:
+  a: 3
+  b: 4
+pack_digest: sha256:2b2c873ec2ce739722d6a3a34b77943221856efc3a201f7f023b8ea85715cf29
+interaction_id: writing
+scorer_id: ai_rubric
+scorer_params:
+  rubric:
+    dimensions:
+    - name: 正确性
+      max_score: 5
+      anchors: a×b=b×a
+    - name: 举例
+      max_score: 3
+      anchors: 给出具体例子
+locale: zh-CN
+corpus_digests: []
+seed: 0
+expected_item_version_id: sha256:9c05e9b71a44eb98f02d60ae49d18b4968588caa7a0a24b4a538bd0d1c0e2e62
+expected_content_snapshot:
+  blocks:
+  - kind: text
+    template: 用 100 字以内解释乘法交换律，以 {a}×{b} 为例。
+    rendered: 用 100 字以内解释乘法交换律，以 3×4 为例。

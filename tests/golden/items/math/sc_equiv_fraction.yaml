@@ -1,0 +1,66 @@
+case_id: sc_equiv_fraction
+description: 单选——等价分数（1/2 = ?/6）
+template_version:
+  template_version_id: sha256:06f20fb52e663b0146656a221c9a7a80724477cb40f171c146a89102f2fce598
+  template_id: tpl-sc-equiv-frac
+  dsl_version: '1'
+  spec:
+    objective:
+      kp_set:
+      - dimension: kp
+        code: math.nal.fraction.equivalent
+      kp_set_mode: single
+      cognitive_level: apply
+      gradeband: L
+      graph_release: '2026.1'
+    slots:
+      num:
+        type: int
+        difficulty_relevant: true
+      den:
+        type: int
+        difficulty_relevant: true
+      target_den:
+        type: int
+        difficulty_relevant: true
+    variation_axes:
+      axes: []
+    presentation:
+      blocks:
+      - kind: text
+        template: '{num}/{den} = ? / {target_den}'
+    answer_program:
+      expression: num * target_den // den
+      returns: number
+    distractor_rules:
+      rules:
+      - rule_type: deterministic
+        error_type_id: err.frac.equiv.plus_one
+        expression: num * target_den // den + 1
+        label: 多1
+      - rule_type: deterministic
+        error_type_id: err.frac.equiv.minus_one
+        expression: num * target_den // den - 1
+        label: 少1
+      - rule_type: deterministic
+        error_type_id: err.frac.equiv.add_num
+        expression: num + target_den
+        label: 相加
+params:
+  num: 1
+  den: 2
+  target_den: 6
+pack_digest: sha256:2b2c873ec2ce739722d6a3a34b77943221856efc3a201f7f023b8ea85715cf29
+interaction_id: single_choice
+scorer_id: exact_match
+scorer_params:
+  answer: '3'
+locale: zh-CN
+corpus_digests: []
+seed: 0
+expected_item_version_id: sha256:941ca6b2d518b505d48f463f1ffb62720f2af27e57aec0a1fb8b8778c68d54c4
+expected_content_snapshot:
+  blocks:
+  - kind: text
+    template: '{num}/{den} = ? / {target_den}'
+    rendered: 1/2 = ? / 6

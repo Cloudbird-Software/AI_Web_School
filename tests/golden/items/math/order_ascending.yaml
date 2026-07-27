@@ -1,0 +1,57 @@
+case_id: order_ascending
+description: 排序——数字从小到大
+template_version:
+  template_version_id: sha256:8ee4027d89c53e9e2bd541ed08a833f64c932c2b09f6ef4988e298e919526fdd
+  template_id: tpl-order-asc
+  dsl_version: '1'
+  spec:
+    objective:
+      kp_set:
+      - dimension: kp
+        code: math.nal.int.compare
+      kp_set_mode: single
+      cognitive_level: understand
+      gradeband: L
+      graph_release: '2026.1'
+    slots:
+      a:
+        type: int
+        difficulty_relevant: true
+      b:
+        type: int
+        difficulty_relevant: true
+      c:
+        type: int
+        difficulty_relevant: true
+    variation_axes:
+      axes: []
+    presentation:
+      blocks:
+      - kind: text
+        template: 把 {a}、{b}、{c} 从小到大排列
+    answer_program:
+      expression: a + b + c
+      returns: number
+    distractor_rules:
+      rules: []
+params:
+  a: 8
+  b: 3
+  c: 5
+pack_digest: sha256:2b2c873ec2ce739722d6a3a34b77943221856efc3a201f7f023b8ea85715cf29
+interaction_id: ordering
+scorer_id: exact_match
+scorer_params:
+  answer:
+  - '3'
+  - '5'
+  - '8'
+locale: zh-CN
+corpus_digests: []
+seed: 0
+expected_item_version_id: sha256:a9e69df21ec763747d1c80dd147508576aa3efe0ebf2699b29107084a371adf2
+expected_content_snapshot:
+  blocks:
+  - kind: text
+    template: 把 {a}、{b}、{c} 从小到大排列
+    rendered: 把 8、3、5 从小到大排列

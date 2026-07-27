@@ -1,0 +1,63 @@
+case_id: match_num_hanzi
+description: 匹配——数字与中文配对
+template_version:
+  template_version_id: sha256:83a61e3119216911430c3ff41e6d20258b3c946cfcaa85547e9a537c3c9f3950
+  template_id: tpl-match-num-han
+  dsl_version: '1'
+  spec:
+    objective:
+      kp_set:
+      - dimension: kp
+        code: math.nal.int.recognize
+      kp_set_mode: single
+      cognitive_level: remember
+      gradeband: L
+      graph_release: '2026.1'
+    slots:
+      first_num:
+        type: int
+        difficulty_relevant: false
+      first_text:
+        type: string
+        difficulty_relevant: false
+      second_num:
+        type: int
+        difficulty_relevant: false
+      second_text:
+        type: string
+        difficulty_relevant: false
+    variation_axes:
+      axes: []
+    presentation:
+      blocks:
+      - kind: text
+        template: 把数字与对应的中文连线：{first_num}—?, {second_num}—?
+    answer_program:
+      expression: first_num
+      returns: number
+    distractor_rules:
+      rules: []
+params:
+  first_num: 1
+  first_text: 一
+  second_num: 2
+  second_text: 二
+pack_digest: sha256:2b2c873ec2ce739722d6a3a34b77943221856efc3a201f7f023b8ea85715cf29
+interaction_id: matching
+scorer_id: exact_match
+scorer_params:
+  answer:
+    pairs:
+    - left: '1'
+      right: 一
+    - left: '2'
+      right: 二
+locale: zh-CN
+corpus_digests: []
+seed: 0
+expected_item_version_id: sha256:5cdbaf72b73d17f39cabe65d8972a3b19a343722f4a5e01a3b95dfd093af277a
+expected_content_snapshot:
+  blocks:
+  - kind: text
+    template: 把数字与对应的中文连线：{first_num}—?, {second_num}—?
+    rendered: 把数字与对应的中文连线：1—?, 2—?

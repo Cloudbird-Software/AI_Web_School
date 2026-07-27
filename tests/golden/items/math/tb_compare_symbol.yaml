@@ -1,0 +1,50 @@
+case_id: tb_compare_symbol
+description: 文本填空——填写比较符号
+template_version:
+  template_version_id: sha256:9dfb37fb1b9c1c03537a6394619a3bab339050a30ce7b2a275aa21e9ddf33453
+  template_id: tpl-tb-compare-symbol
+  dsl_version: '1'
+  spec:
+    objective:
+      kp_set:
+      - dimension: kp
+        code: math.nal.int.compare
+      kp_set_mode: single
+      cognitive_level: apply
+      gradeband: L
+      graph_release: '2026.1'
+    slots:
+      a:
+        type: int
+        difficulty_relevant: true
+      b:
+        type: int
+        difficulty_relevant: true
+    variation_axes:
+      axes: []
+    presentation:
+      blocks:
+      - kind: text
+        template: 在 ○ 里填 >、< 或 =：{a} ○ {b}
+    answer_program:
+      expression: a - b
+      returns: number
+    distractor_rules:
+      rules: []
+params:
+  a: 5
+  b: 3
+pack_digest: sha256:2b2c873ec2ce739722d6a3a34b77943221856efc3a201f7f023b8ea85715cf29
+interaction_id: text_blank
+scorer_id: exact_match
+scorer_params:
+  answer: '>'
+locale: zh-CN
+corpus_digests: []
+seed: 0
+expected_item_version_id: sha256:3e3d4ad5cca615c4e83f5e4d5918db259c709803d47004f23162df1681e26db4
+expected_content_snapshot:
+  blocks:
+  - kind: text
+    template: 在 ○ 里填 >、< 或 =：{a} ○ {b}
+    rendered: 在 ○ 里填 >、< 或 =：5 ○ 3

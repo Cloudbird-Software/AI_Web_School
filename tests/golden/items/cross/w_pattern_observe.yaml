@@ -1,0 +1,57 @@
+case_id: w_pattern_observe
+description: 写作——观察数列规律
+template_version:
+  template_version_id: sha256:6da9b54c72d181ac7869a3d42e253f261fe5efca96030323440bf79285962daa
+  template_id: tpl-w-pattern
+  dsl_version: '1'
+  spec:
+    objective:
+      kp_set:
+      - dimension: kp
+        code: math.nal.seq.pattern
+      kp_set_mode: single
+      cognitive_level: analyze
+      gradeband: L
+      graph_release: '2026.1'
+    slots:
+      first:
+        type: int
+        difficulty_relevant: true
+      step:
+        type: int
+        difficulty_relevant: true
+    variation_axes:
+      axes: []
+    presentation:
+      blocks:
+      - kind: text
+        template: 观察数列 {first}, {first}+{step}, ... 写出规律和下一个数。
+    answer_program:
+      expression: first + step
+      returns: number
+    distractor_rules:
+      rules: []
+params:
+  first: 1
+  step: 3
+pack_digest: sha256:2b2c873ec2ce739722d6a3a34b77943221856efc3a201f7f023b8ea85715cf29
+interaction_id: writing
+scorer_id: ai_rubric
+scorer_params:
+  rubric:
+    dimensions:
+    - name: 规律
+      max_score: 4
+      anchors: 每次+3
+    - name: 下一个数
+      max_score: 2
+      anchors: '13'
+locale: zh-CN
+corpus_digests: []
+seed: 0
+expected_item_version_id: sha256:c83ea80963bbd1d6e28b4286ad5645fea83b2fd93a7cf7af163cede511732715
+expected_content_snapshot:
+  blocks:
+  - kind: text
+    template: 观察数列 {first}, {first}+{step}, ... 写出规律和下一个数。
+    rendered: 观察数列 1, 1+3, ... 写出规律和下一个数。

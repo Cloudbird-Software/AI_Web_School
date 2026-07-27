@@ -1,0 +1,62 @@
+case_id: sc_int_sub
+description: 单选——整数减法
+template_version:
+  template_version_id: sha256:4958a21d5d40715cc0a9928cdfb2df788c9dd974ce811f415d757e25a7e515c8
+  template_id: tpl-sc-int-sub
+  dsl_version: '1'
+  spec:
+    objective:
+      kp_set:
+      - dimension: kp
+        code: math.nal.int.sub
+      kp_set_mode: single
+      cognitive_level: apply
+      gradeband: L
+      graph_release: '2026.1'
+    slots:
+      a:
+        type: int
+        difficulty_relevant: true
+      b:
+        type: int
+        difficulty_relevant: true
+    variation_axes:
+      axes: []
+    presentation:
+      blocks:
+      - kind: text
+        template: '{a} - {b} = ?'
+    answer_program:
+      expression: a - b
+      returns: number
+    distractor_rules:
+      rules:
+      - rule_type: deterministic
+        error_type_id: err.calc.sub.off-by-one
+        expression: a - b + 1
+        label: 多1
+      - rule_type: deterministic
+        error_type_id: err.calc.sub.minus-one
+        expression: a - b - 1
+        label: 少1
+      - rule_type: deterministic
+        error_type_id: err.calc.sub.add
+        expression: a + b
+        label: 加减混
+params:
+  a: 78
+  b: 34
+pack_digest: sha256:2b2c873ec2ce739722d6a3a34b77943221856efc3a201f7f023b8ea85715cf29
+interaction_id: single_choice
+scorer_id: exact_match
+scorer_params:
+  answer: '44'
+locale: zh-CN
+corpus_digests: []
+seed: 0
+expected_item_version_id: sha256:4b70364476eb7955220e63b63d85a8f93ff867422c7e56c3cedfb46a9a471a46
+expected_content_snapshot:
+  blocks:
+  - kind: text
+    template: '{a} - {b} = ?'
+    rendered: 78 - 34 = ?

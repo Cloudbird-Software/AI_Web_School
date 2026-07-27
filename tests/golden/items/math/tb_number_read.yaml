@@ -1,0 +1,46 @@
+case_id: tb_number_read
+description: 文本填空——数字读法
+template_version:
+  template_version_id: sha256:1a43fb1a9802eb466520a7436afc49689c7e33c7ffe5446c8aef4c368f3fbe7c
+  template_id: tpl-tb-num-read
+  dsl_version: '1'
+  spec:
+    objective:
+      kp_set:
+      - dimension: kp
+        code: math.nal.int.read
+      kp_set_mode: single
+      cognitive_level: remember
+      gradeband: L
+      graph_release: '2026.1'
+    slots:
+      num:
+        type: int
+        difficulty_relevant: true
+    variation_axes:
+      axes: []
+    presentation:
+      blocks:
+      - kind: text
+        template: 数字 {num} 读作（  ）
+    answer_program:
+      expression: num
+      returns: number
+    distractor_rules:
+      rules: []
+params:
+  num: 123
+pack_digest: sha256:2b2c873ec2ce739722d6a3a34b77943221856efc3a201f7f023b8ea85715cf29
+interaction_id: text_blank
+scorer_id: exact_match
+scorer_params:
+  answer: 一百二十三
+locale: zh-CN
+corpus_digests: []
+seed: 0
+expected_item_version_id: sha256:31836e7f5bc6452f7fef857ce092c7ea1164a8bada4ff42ba236565b71c54c21
+expected_content_snapshot:
+  blocks:
+  - kind: text
+    template: 数字 {num} 读作（  ）
+    rendered: 数字 123 读作（  ）

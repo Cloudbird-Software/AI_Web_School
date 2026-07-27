@@ -23,7 +23,8 @@ GOLDEN_PATH_QUICK=1 python -m pytest tests/golden-path -q || { echo "❌ 黄金�
 [ ! -d tests/unit ] || python -m pytest tests/unit -q || { echo "❌ 单元测试"; exit 1; }
 
 # 4. 任务专属验收：任务卡 acceptance 段指定的脚本（若存在）
-SPECIFIC=$(grep -E '^\s*accept_script:' "$CARD" | awk '{print $2}' || true)
+# 注：先剥离行尾 YAML 注释（# 及之后），避免 `accept_script:  # 注释` 误把 `#` 当成脚本路径。
+SPECIFIC=$(grep -E '^\s*accept_script:' "$CARD" | sed 's/#.*//' | awk '{print $2}' || true)
 if [ -n "${SPECIFIC:-}" ]; then
   bash "$SPECIFIC" || { echo "❌ 任务专属验收 ${SPECIFIC}"; exit 1; }
 fi

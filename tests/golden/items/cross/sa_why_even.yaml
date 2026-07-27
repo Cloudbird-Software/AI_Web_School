@@ -1,0 +1,50 @@
+case_id: sa_why_even
+description: 简答——为什么 8 是偶数
+template_version:
+  template_version_id: sha256:ecf828da5efeb044d05fd057104fb7904ed00f6b8074fbd8c453a6b109d3e434
+  template_id: tpl-sa-why-even
+  dsl_version: '1'
+  spec:
+    objective:
+      kp_set:
+      - dimension: kp
+        code: math.nal.int.even
+      kp_set_mode: single
+      cognitive_level: understand
+      gradeband: L
+      graph_release: '2026.1'
+    slots:
+      num:
+        type: int
+        difficulty_relevant: true
+    variation_axes:
+      axes: []
+    presentation:
+      blocks:
+      - kind: text
+        template: 为什么 {num} 是偶数？请简答。
+    answer_program:
+      expression: num
+      returns: number
+    distractor_rules:
+      rules: []
+params:
+  num: 8
+pack_digest: sha256:2b2c873ec2ce739722d6a3a34b77943221856efc3a201f7f023b8ea85715cf29
+interaction_id: short_answer
+scorer_id: keypoint_hit
+scorer_params:
+  keypoints:
+  - text: 能被2整除
+    required: true
+  - text: 除以2
+    required: false
+locale: zh-CN
+corpus_digests: []
+seed: 0
+expected_item_version_id: sha256:e7ffa14302a7cc38a2463d155062ae57b85dc1f418e6a6f8c8f9f331d7a540cc
+expected_content_snapshot:
+  blocks:
+  - kind: text
+    template: 为什么 {num} 是偶数？请简答。
+    rendered: 为什么 8 是偶数？请简答。

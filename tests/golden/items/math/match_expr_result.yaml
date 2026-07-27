@@ -1,0 +1,63 @@
+case_id: match_expr_result
+description: 匹配——算式与结果配对
+template_version:
+  template_version_id: sha256:e064c6db8e85123fbd6d106fa9141bd9977230a76b10a8e35f87e54b246460ac
+  template_id: tpl-match-expr-res
+  dsl_version: '1'
+  spec:
+    objective:
+      kp_set:
+      - dimension: kp
+        code: math.nal.int.add
+      kp_set_mode: single
+      cognitive_level: apply
+      gradeband: L
+      graph_release: '2026.1'
+    slots:
+      a:
+        type: int
+        difficulty_relevant: false
+      b:
+        type: int
+        difficulty_relevant: false
+      c:
+        type: int
+        difficulty_relevant: false
+      d:
+        type: int
+        difficulty_relevant: false
+    variation_axes:
+      axes: []
+    presentation:
+      blocks:
+      - kind: text
+        template: 把算式与结果连线：{a}+{b}—?, {c}×{d}—?
+    answer_program:
+      expression: a + b
+      returns: number
+    distractor_rules:
+      rules: []
+params:
+  a: 2
+  b: 3
+  c: 4
+  d: 2
+pack_digest: sha256:2b2c873ec2ce739722d6a3a34b77943221856efc3a201f7f023b8ea85715cf29
+interaction_id: matching
+scorer_id: exact_match
+scorer_params:
+  answer:
+    pairs:
+    - left: 2+3
+      right: '5'
+    - left: 4×2
+      right: '8'
+locale: zh-CN
+corpus_digests: []
+seed: 0
+expected_item_version_id: sha256:9cacccd0b9ba7451aefee48fb51a3db2228d47830ec4213ecc97981dc513ecca
+expected_content_snapshot:
+  blocks:
+  - kind: text
+    template: 把算式与结果连线：{a}+{b}—?, {c}×{d}—?
+    rendered: 把算式与结果连线：2+3—?, 4×2—?

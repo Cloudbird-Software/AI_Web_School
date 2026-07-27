@@ -1,0 +1,49 @@
+case_id: do_complete_symmetry
+description: 作图——补全对称图形
+template_version:
+  template_version_id: sha256:e698022cf589f7db66f992745798c77144cd72dac64e88e70b766cf6cc4bd9f6
+  template_id: tpl-do-symmetry
+  dsl_version: '1'
+  spec:
+    objective:
+      kp_set:
+      - dimension: kp
+        code: math.gm.symmetry
+      kp_set_mode: single
+      cognitive_level: apply
+      gradeband: L
+      graph_release: '2026.1'
+    slots:
+      shape:
+        type: string
+        difficulty_relevant: false
+    variation_axes:
+      axes: []
+    presentation:
+      blocks:
+      - kind: text
+        template: 补全{shape}的对称图形的另一半。
+    answer_program:
+      expression: shape
+      returns: string
+    distractor_rules:
+      rules: []
+params:
+  shape: 三角形
+pack_digest: sha256:2b2c873ec2ce739722d6a3a34b77943221856efc3a201f7f023b8ea85715cf29
+interaction_id: drawing_operation
+scorer_id: exact_match
+scorer_params:
+  answer:
+  - p1
+  - p2
+  - p3
+locale: zh-CN
+corpus_digests: []
+seed: 0
+expected_item_version_id: sha256:42eb21a89ae87af4f6c35d89097e193e13928996edca331b9eaa413a3005120d
+expected_content_snapshot:
+  blocks:
+  - kind: text
+    template: 补全{shape}的对称图形的另一半。
+    rendered: 补全三角形的对称图形的另一半。

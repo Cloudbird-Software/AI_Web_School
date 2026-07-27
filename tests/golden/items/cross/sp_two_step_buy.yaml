@@ -1,0 +1,64 @@
+case_id: sp_two_step_buy
+description: 分步——两步计算购物找零
+template_version:
+  template_version_id: sha256:2cb349c1744395b50faf2adeef993e479faba1f62f557efba6dd70e8d45be19b
+  template_id: tpl-sp-two-step-buy
+  dsl_version: '1'
+  spec:
+    objective:
+      kp_set:
+      - dimension: kp
+        code: math.nal.int.sub
+      kp_set_mode: single
+      cognitive_level: apply
+      gradeband: L
+      graph_release: '2026.1'
+    slots:
+      money:
+        type: int
+        difficulty_relevant: true
+      count:
+        type: int
+        difficulty_relevant: true
+      price:
+        type: int
+        difficulty_relevant: true
+    variation_axes:
+      axes: []
+    presentation:
+      blocks:
+      - kind: text
+        template: 小明有 {money} 元，买 {count} 个本子每个 {price} 元。第一步：算总价。第二步：算剩余。
+    answer_program:
+      expression: money - count * price
+      returns: number
+    distractor_rules:
+      rules: []
+params:
+  money: 10
+  count: 3
+  price: 2
+pack_digest: sha256:2b2c873ec2ce739722d6a3a34b77943221856efc3a201f7f023b8ea85715cf29
+interaction_id: stepwise_process
+scorer_id: stepwise_rubric
+scorer_params:
+  steps:
+  - step_id: s1
+    scorer: exact_match
+    scorer_params:
+      answer: '6'
+    max_score: 5
+  - step_id: s2
+    scorer: exact_match
+    scorer_params:
+      answer: '4'
+    max_score: 5
+locale: zh-CN
+corpus_digests: []
+seed: 0
+expected_item_version_id: sha256:fc345fbcf64fe1055639d3f9c8a3ab1c9980ea4d79a07c9b443ca2cf70446ea2
+expected_content_snapshot:
+  blocks:
+  - kind: text
+    template: 小明有 {money} 元，买 {count} 个本子每个 {price} 元。第一步：算总价。第二步：算剩余。
+    rendered: 小明有 10 元，买 3 个本子每个 2 元。第一步：算总价。第二步：算剩余。

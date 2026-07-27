@@ -1,0 +1,54 @@
+case_id: sa_unit_relation
+description: 简答——解释米与厘米关系
+template_version:
+  template_version_id: sha256:5972a9dcd138bb04341f2438270a7f66ea1868f91062942cdc8877a49d4eedaa
+  template_id: tpl-sa-unit-rel
+  dsl_version: '1'
+  spec:
+    objective:
+      kp_set:
+      - dimension: kp
+        code: math.meas.unit.convert
+      kp_set_mode: single
+      cognitive_level: understand
+      gradeband: L
+      graph_release: '2026.1'
+    slots:
+      meters:
+        type: int
+        difficulty_relevant: true
+      cm_per_m:
+        type: int
+        difficulty_relevant: true
+    variation_axes:
+      axes: []
+    presentation:
+      blocks:
+      - kind: text
+        template: 解释 {meters} 米和 {cm_per_m} 厘米的关系。
+    answer_program:
+      expression: meters * cm_per_m
+      returns: number
+    distractor_rules:
+      rules: []
+params:
+  meters: 1
+  cm_per_m: 100
+pack_digest: sha256:2b2c873ec2ce739722d6a3a34b77943221856efc3a201f7f023b8ea85715cf29
+interaction_id: short_answer
+scorer_id: keypoint_hit
+scorer_params:
+  keypoints:
+  - text: 1米=100厘米
+    required: true
+  - text: 100倍
+    required: false
+locale: zh-CN
+corpus_digests: []
+seed: 0
+expected_item_version_id: sha256:5d2e0b756345ac61b28eb2a7c2f8bc58a95a87b74f0816f87d01b6a9654b1227
+expected_content_snapshot:
+  blocks:
+  - kind: text
+    template: 解释 {meters} 米和 {cm_per_m} 厘米的关系。
+    rendered: 解释 1 米和 100 厘米的关系。

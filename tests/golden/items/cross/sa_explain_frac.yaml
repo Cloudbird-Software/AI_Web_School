@@ -1,0 +1,60 @@
+case_id: sa_explain_frac
+description: 简答——解释分数大小比较
+template_version:
+  template_version_id: sha256:93b3fc9305f54b83e4c79f7ae7f0aa6d36cbe228fbae92f01ff5b6aa09197150
+  template_id: tpl-sa-explain-frac
+  dsl_version: '1'
+  spec:
+    objective:
+      kp_set:
+      - dimension: kp
+        code: math.nal.fraction.compare
+      kp_set_mode: single
+      cognitive_level: understand
+      gradeband: L
+      graph_release: '2026.1'
+    slots:
+      a_num:
+        type: int
+        difficulty_relevant: true
+      a_den:
+        type: int
+        difficulty_relevant: true
+      b_den:
+        type: int
+        difficulty_relevant: true
+    variation_axes:
+      axes: []
+    presentation:
+      blocks:
+      - kind: text
+        template: 解释为什么 {a_num}/{a_den} > {a_num}/{b_den}？
+    answer_program:
+      expression: a_num
+      returns: number
+    distractor_rules:
+      rules: []
+params:
+  a_num: 1
+  a_den: 2
+  b_den: 3
+pack_digest: sha256:2b2c873ec2ce739722d6a3a34b77943221856efc3a201f7f023b8ea85715cf29
+interaction_id: short_answer
+scorer_id: keypoint_hit
+scorer_params:
+  keypoints:
+  - text: 分子相同
+    required: true
+  - text: 分母小
+    required: true
+  - text: 分数大
+    required: false
+locale: zh-CN
+corpus_digests: []
+seed: 0
+expected_item_version_id: sha256:c8b7579e6d3f00a85c55445f4b166af8fcea6b4b6d91040ba437fb430fa5617e
+expected_content_snapshot:
+  blocks:
+  - kind: text
+    template: 解释为什么 {a_num}/{a_den} > {a_num}/{b_den}？
+    rendered: 解释为什么 1/2 > 1/3？

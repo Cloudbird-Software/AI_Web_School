@@ -1,0 +1,69 @@
+case_id: sp_verify_div
+description: 分步——验证除法
+template_version:
+  template_version_id: sha256:a8a3cc0d97ff60d2837c52f20430ab44645cf38375933ae7e45bc96400445210
+  template_id: tpl-sp-verify-div
+  dsl_version: '1'
+  spec:
+    objective:
+      kp_set:
+      - dimension: kp
+        code: math.nal.int.div
+      kp_set_mode: single
+      cognitive_level: analyze
+      gradeband: L
+      graph_release: '2026.1'
+    slots:
+      dividend:
+        type: int
+        difficulty_relevant: true
+      divisor:
+        type: int
+        difficulty_relevant: true
+      quotient:
+        type: int
+        difficulty_relevant: true
+    variation_axes:
+      axes: []
+    presentation:
+      blocks:
+      - kind: text
+        template: 验证 {dividend} ÷ {divisor} = {quotient}。分三步：部分商×除数、余数×除数、相加。
+    answer_program:
+      expression: dividend
+      returns: number
+    distractor_rules:
+      rules: []
+params:
+  dividend: 144
+  divisor: 6
+  quotient: 24
+pack_digest: sha256:2b2c873ec2ce739722d6a3a34b77943221856efc3a201f7f023b8ea85715cf29
+interaction_id: stepwise_process
+scorer_id: stepwise_rubric
+scorer_params:
+  steps:
+  - step_id: s1
+    scorer: exact_match
+    scorer_params:
+      answer: '120'
+    max_score: 5
+  - step_id: s2
+    scorer: exact_match
+    scorer_params:
+      answer: '24'
+    max_score: 5
+  - step_id: s3
+    scorer: exact_match
+    scorer_params:
+      answer: '144'
+    max_score: 5
+locale: zh-CN
+corpus_digests: []
+seed: 0
+expected_item_version_id: sha256:c85272b57d1c235bcf1fadae32bc4a04ad5e640c43ef5873fccf63432ebd3aa2
+expected_content_snapshot:
+  blocks:
+  - kind: text
+    template: 验证 {dividend} ÷ {divisor} = {quotient}。分三步：部分商×除数、余数×除数、相加。
+    rendered: 验证 144 ÷ 6 = 24。分三步：部分商×除数、余数×除数、相加。

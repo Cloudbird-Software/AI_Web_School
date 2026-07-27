@@ -1,0 +1,186 @@
+# 数学包 assembly overlay 预设（T-W2-030）
+#
+# 来源：架构 v2 §4.4「组装域：约束集四维编译 + 确定性求解」
+#   AssemblyProfile = base ∪ subject_overlay ∪ purpose_overlay ∪ gradeband_overlay
+#   本文件提供数学包的 subject_overlay + purpose_overlay 预设模板。
+#
+# 学科特定约束说明（数学包，3-4 年级聚焦，可向下/上扩展）：
+#   - 计算复杂度限制：位数上限、允许运算符、是否允许分数/小数
+#   - 图形题比例：数轴/方格/几何 SVG 的题目占比
+#   - 单位换算域：允许的单位类别（长度/质量/时间）
+#
+# 纪律（宪法 D5）：参数按 source（先验/实测）与场景（practice/diagnosis/measurement）
+# 分开，禁止混估。本文件为"先验"参数（preset），实测参数由数据飞轮回流后另写。
+#
+# 用途：W2 周更批处理消费此预设生成 AssemblyProfile；
+#   组卷求解器（OR-Tools CP-SAT）按这些约束做候选筛选与硬约束求解。
+
+overlay_id: subject-math
+overlay_version: "1.0.0"
+status: frozen-candidate   # 人类逐行审查批准后转为 frozen
+pack_id: subject-math
+source_sections:
+  - "架构v2 §4.4 组装域：约束集四维编译"
+  - "架构v2 §5.2 三科包要点（数学包约束 overlay）"
+
+# ── 数学学科通用约束（subject_overlay 维度，跨用途生效） ──
+# 这些约束是数学包特有的，与平台基础约束正交。
+subject_constraints:
+  # 计算复杂度限制：防止超纲计算出现在不该出现的场景
+  computation_complexity:
+    # 位数上限（按学段细化在 gradeband_overlay 承载，此处给学科上限）
+    max_digits_per_operand: 5        # 单个操作数最多 5 位（万以内）
+    max_operands: 4                  # 单题最多 4 个操作数连算
+    allowed_operations: [add, sub, mul, div]
+    allow_parentheses: true          # 允许括号（运算顺序考查）
+    allow_fraction: true            # 允许分数（中高段）
+    allow_decimal: true              # 允许小数
+    allow_negative_intermediate: false  # 中间结果不得为负（小学约定）
+
+  # 单位换算域：限制可考查的单位类别
+  unit_conversion:
+    allowed_categories: [length, mass, time]
+    length_units: [m, cm, mm, km]
+    mass_units: [kg, g]
+    time_units: [min, s, h]
+    cross_category_conversion: false  # 禁止跨类别换算（如长度→质量）
+
+  # 图形题约束：数学包特有（数轴/方格/几何 SVG）
+  figure_constraints:
+    allowed_types: [number_line, grid, geometry_svg, bar_chart, pie_chart]
+    max_complexity: moderate          # simple | moderate | complex
+    require_labels: true              # 图形必须有标注（防止无标签误读）
+
+# ── 用途约束模板（purpose_overlay 维度） ──
+# 三类场景的约束参数模板，与 subject_constraints 正交组合。
+# 组卷求解器按场景选择对应模板，并叠加 gradeband_overlay 调整。
+purpose_presets:
+
+  # ── 练习（practice）：低压力、高反馈、允许提示重做 ──
+  practice:
+    description: 日常练习场景：题量小、时长宽松、允许提示与重做
+    time_limit_max_minutes: 30       # 时长上限（分钟）
+    item_count_range: [8, 15]        # 题量区间 [min, max]
+    figure_ratio_range: [0.2, 0.5]  # 图形题占比区间 [min, max]
+    computation_complexity:
+      max_digits_per_operand: 4      # 练习场景降一档（千以内）
+      max_operands: 3
+      allowed_operations: [add, sub, mul, div]
+      allow_parentheses: true
+      allow_fraction: true
+      allow_decimal: true
+      allow_negative_intermediate: false
+    # 练习特有：允许提示、允许重做（不计入测量账本）
+    allow_hint: true
+    allow_retry: true
+    max_hints_per_item: 2
+    # 知识点覆盖：练习场景要求广覆盖
+    kp_coverage:
+      min_kp_per_session: 5          # 单次练习至少覆盖 5 个知识点
+      min_items_per_kp: 1            # 每个知识点至少 1 题
+    # 难度目标（与参数标定的场景分开，禁止混估）
+    difficulty_target:
+      source: priori                  # 先验参数（实测参数由数据飞轮另写）
+      target_p_correct_range: [0.70, 0.90]  # 目标准确率区间
+
+  # ── 诊断（diagnosis）：定位错误类型、孤立题强制 ──
+  diagnosis:
+    description: 诊断场景：题量适中、孤立题强制、错误类型归因
+    time_limit_max_minutes: 45
+    item_count_range: [15, 25]
+    figure_ratio_range: [0.15, 0.30]  # 诊断以计算为主，图形题降比
+    computation_complexity:
+      max_digits_per_operand: 5       # 诊断可考查满复杂度
+      max_operands: 4
+      allowed_operations: [add, sub, mul, div]
+      allow_parentheses: true
+      allow_fraction: true
+      allow_decimal: true
+      allow_negative_intermediate: false
+    # 诊断特有：孤立题强制（架构 v2 §4.4 约束目录）
+    isolation_rules:
+      require_isolated_items: true   # 必须有孤立题（每知识点≥3 题）
+      min_items_per_isolated_kp: 3
+      multi_point_relation_check: true  # 多点关系声明核验
+    # 诊断特有：不允许提示与重做（保证诊断信号纯净）
+    allow_hint: false
+    allow_retry: false
+    # 错误类型归因：每个选项必须绑定 error_type_id
+    error_binding_required: true
+    # 难度目标：诊断要求难度梯度覆盖
+    difficulty_target:
+      source: priori
+      target_p_correct_range: [0.30, 0.85]  # 梯度覆盖（含易错题）
+      require_gradient: true          # 必须有难度梯度
+
+  # ── 测量（measurement）：标准化、等值、双向细目表 ──
+  # 注：测量场景首年为预留，参数为候选值；正式启用需等值锚题就位。
+  measurement:
+    description: 测量场景：标准化测评、双向细目表、等值锚题
+    time_limit_max_minutes: 60
+    item_count_range: [20, 30]
+    figure_ratio_range: [0.10, 0.25]  # 测量以标准化题为主，图形题降比
+    computation_complexity:
+      max_digits_per_operand: 5
+      max_operands: 4
+      allowed_operations: [add, sub, mul, div]
+      allow_parentheses: true
+      allow_fraction: true
+      allow_decimal: true
+      allow_negative_intermediate: false
+    # 测量特有：双向细目表（架构 v2 §4.4 约束目录）
+    blueprint:
+      require_two_way_table: true     # 必须有双向细目表
+      dimensions: [content, cognitive]  # 内容 × 认知二维
+      cell_count_constraints: true    # 单元格计数约束
+    # 测量特有：等值锚题
+    anchoring:
+      require_anchor_items: true      # 必须含等值锚题
+      min_anchor_items: 3             # 最少 3 个锚题
+    # 测量特有：不允许提示与重做
+    allow_hint: false
+    allow_retry: false
+    # 难度目标：测量要求难度集中（区分度最大化）
+    difficulty_target:
+      source: priori
+      target_p_correct_range: [0.30, 0.70]  # 集中在区分度高的区间
+      require_gradient: true
+
+# ── 组卷约束（通用，跨用途） ──
+# 这些约束与 purpose_presets 正交，所有场景都必须满足。
+assembly_constraints:
+  # 题组上限（架构 v2 §4.4：题组≤6）
+  max_items_per_group: 6
+  # 序列梯度单调（先修闭包+难度序列约束）
+  require_gradient_monotone: true
+  # 内容配比：新学/复习/易混淆交错
+  content_mix:
+    new_learning_ratio: [0.4, 0.6]    # 新学题占比
+    review_ratio: [0.2, 0.4]          # 复习题占比
+    confusable_ratio: [0.1, 0.2]      # 易混淆题占比
+  # 曝光互斥（架构 v2 §4.4：同母题不同卷、跨期不重复）
+  exposure_mutex:
+    same_template_different_paper: true  # 同母题不出现在同卷
+    cross_period_repeat: false           # 跨期不重复（默认开）
+
+# ── Schema 元数据（供契约测试校验） ──
+schema:
+  required_top_level:
+    - overlay_id
+    - overlay_version
+    - status
+    - pack_id
+    - source_sections
+    - subject_constraints
+    - purpose_presets
+    - assembly_constraints
+  required_purpose_keys:
+    - description
+    - time_limit_max_minutes
+    - item_count_range
+    - figure_ratio_range
+    - computation_complexity
+    - difficulty_target
+  purpose_preset_names: [practice, diagnosis, measurement]
+  status_enum: [frozen-candidate, frozen]
+  source_enum: [priori, empirical]   # 先验/实测（宪法 D5）

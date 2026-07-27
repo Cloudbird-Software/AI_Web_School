@@ -1,0 +1,57 @@
+case_id: w_real_division
+description: 写作——描述生活中的除法
+template_version:
+  template_version_id: sha256:fc934a0836e2d580cda64623cea0b3387ef947d58128db6ac26ef17c365e34a1
+  template_id: tpl-w-real-div
+  dsl_version: '1'
+  spec:
+    objective:
+      kp_set:
+      - dimension: kp
+        code: math.nal.int.div
+      kp_set_mode: single
+      cognitive_level: apply
+      gradeband: L
+      graph_release: '2026.1'
+    slots:
+      total:
+        type: int
+        difficulty_relevant: true
+      groups:
+        type: int
+        difficulty_relevant: true
+    variation_axes:
+      axes: []
+    presentation:
+      blocks:
+      - kind: text
+        template: 描述一个生活中使用除法的场景（如 {total} 个物品平均分成 {groups} 组）。
+    answer_program:
+      expression: total // groups
+      returns: number
+    distractor_rules:
+      rules: []
+params:
+  total: 12
+  groups: 4
+pack_digest: sha256:2b2c873ec2ce739722d6a3a34b77943221856efc3a201f7f023b8ea85715cf29
+interaction_id: writing
+scorer_id: ai_rubric
+scorer_params:
+  rubric:
+    dimensions:
+    - name: 场景
+      max_score: 3
+      anchors: 生活化场景
+    - name: 算式
+      max_score: 3
+      anchors: 正确除法算式
+locale: zh-CN
+corpus_digests: []
+seed: 0
+expected_item_version_id: sha256:2931f0ae8da7027c6387ac599745a281af5ad4cbd271c38475ff4b2fba3b1eba
+expected_content_snapshot:
+  blocks:
+  - kind: text
+    template: 描述一个生活中使用除法的场景（如 {total} 个物品平均分成 {groups} 组）。
+    rendered: 描述一个生活中使用除法的场景（如 12 个物品平均分成 4 组）。

@@ -1,0 +1,65 @@
+case_id: mc_even_pick
+description: 多选——选出偶数
+template_version:
+  template_version_id: sha256:5c25e8248fd454352cdabefdca58b21394039bd35af1ae0b043a2c70d187ad86
+  template_id: tpl-mc-even
+  dsl_version: '1'
+  spec:
+    objective:
+      kp_set:
+      - dimension: kp
+        code: math.nal.int.even
+      kp_set_mode: single
+      cognitive_level: understand
+      gradeband: L
+      graph_release: '2026.1'
+    slots:
+      a:
+        type: int
+        difficulty_relevant: true
+      b:
+        type: int
+        difficulty_relevant: true
+      c:
+        type: int
+        difficulty_relevant: true
+    variation_axes:
+      axes: []
+    presentation:
+      blocks:
+      - kind: text
+        template: 下列哪些是偶数？{a}、{b}、{c}
+    answer_program:
+      expression: a + b + c
+      returns: number
+    distractor_rules:
+      rules:
+      - rule_type: deterministic
+        error_type_id: err.even.odd_one
+        expression: a - 1
+        label: 误选奇数1
+      - rule_type: deterministic
+        error_type_id: err.even.odd_two
+        expression: c + 1
+        label: 误选奇数7
+params:
+  a: 2
+  b: 4
+  c: 6
+pack_digest: sha256:2b2c873ec2ce739722d6a3a34b77943221856efc3a201f7f023b8ea85715cf29
+interaction_id: multi_choice
+scorer_id: exact_match
+scorer_params:
+  answer:
+  - '2'
+  - '4'
+  - '6'
+locale: zh-CN
+corpus_digests: []
+seed: 0
+expected_item_version_id: sha256:532c31943f52088c17279fd097bba25d45e88390ef5b675fb34c3ab679f43276
+expected_content_snapshot:
+  blocks:
+  - kind: text
+    template: 下列哪些是偶数？{a}、{b}、{c}
+    rendered: 下列哪些是偶数？2、4、6

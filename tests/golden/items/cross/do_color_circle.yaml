@@ -1,0 +1,47 @@
+case_id: do_color_circle
+description: 作图——给圆形涂色
+template_version:
+  template_version_id: sha256:6cd91eac0aff4fc813c3f9227851339a55cfb71b06137de70466c605a9ef2e6c
+  template_id: tpl-do-color
+  dsl_version: '1'
+  spec:
+    objective:
+      kp_set:
+      - dimension: kp
+        code: math.gm.shape.circle
+      kp_set_mode: single
+      cognitive_level: remember
+      gradeband: L
+      graph_release: '2026.1'
+    slots:
+      shape:
+        type: string
+        difficulty_relevant: false
+    variation_axes:
+      axes: []
+    presentation:
+      blocks:
+      - kind: text
+        template: 给图中的{shape}涂上红色。
+    answer_program:
+      expression: shape
+      returns: string
+    distractor_rules:
+      rules: []
+params:
+  shape: 圆形
+pack_digest: sha256:2b2c873ec2ce739722d6a3a34b77943221856efc3a201f7f023b8ea85715cf29
+interaction_id: drawing_operation
+scorer_id: exact_match
+scorer_params:
+  answer:
+  - circle
+locale: zh-CN
+corpus_digests: []
+seed: 0
+expected_item_version_id: sha256:abac8b6ea7328f978ba188b12aa2ee7256a2bc50d289bb6d08bc653a7d012419
+expected_content_snapshot:
+  blocks:
+  - kind: text
+    template: 给图中的{shape}涂上红色。
+    rendered: 给图中的圆形涂上红色。

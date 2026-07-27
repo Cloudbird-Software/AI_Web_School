@@ -1,0 +1,50 @@
+case_id: nb_area_rect
+description: 数值填空——长方形面积
+template_version:
+  template_version_id: sha256:f27b90ffa1a079c327d25af63485844c63821b1b5d99f906b8734be06be1d9cd
+  template_id: tpl-nb-area-rect
+  dsl_version: '1'
+  spec:
+    objective:
+      kp_set:
+      - dimension: kp
+        code: math.gm.area.rectangle
+      kp_set_mode: single
+      cognitive_level: apply
+      gradeband: L
+      graph_release: '2026.1'
+    slots:
+      len:
+        type: int
+        difficulty_relevant: true
+      wid:
+        type: int
+        difficulty_relevant: true
+    variation_axes:
+      axes: []
+    presentation:
+      blocks:
+      - kind: text
+        template: 长方形长 {len} 厘米、宽 {wid} 厘米，面积是（  ）平方厘米
+    answer_program:
+      expression: len * wid
+      returns: number
+    distractor_rules:
+      rules: []
+params:
+  len: 5
+  wid: 4
+pack_digest: sha256:2b2c873ec2ce739722d6a3a34b77943221856efc3a201f7f023b8ea85715cf29
+interaction_id: numeric_blank
+scorer_id: exact_match
+scorer_params:
+  answer: '20'
+locale: zh-CN
+corpus_digests: []
+seed: 0
+expected_item_version_id: sha256:8663d2ea0623680851ba70e7c1cb6cf738b21a596c41e363836b1a217229a522
+expected_content_snapshot:
+  blocks:
+  - kind: text
+    template: 长方形长 {len} 厘米、宽 {wid} 厘米，面积是（  ）平方厘米
+    rendered: 长方形长 5 厘米、宽 4 厘米，面积是（  ）平方厘米
