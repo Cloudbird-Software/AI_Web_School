@@ -31,6 +31,14 @@ jobs:
       - name: 契约测试全量
         run: python -m pytest tests/contract -q
 
+      # W2 出口检查（T-W2-045）：黄金回归上面已覆盖；此处执行 w2.sh 出口脚本。
+      # w2.sh 内含 E2E-1 现场演示（生成真实 PDF）：ubuntu 无 Edge，
+      # demo 自动回退 playwright 后端，需先安装 chromium 浏览器二进制。
+      - name: W2 出口检查（w2.sh，含 E2E-1 真实 PDF 演示）
+        run: |
+          python -m playwright install --with-deps chromium
+          bash scripts/wave-exit/w2.sh
+
       - name: 失败即创建 issue（红灯置顶）
         if: failure()
         uses: actions/github-script@v7

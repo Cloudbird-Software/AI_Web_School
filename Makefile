@@ -6,7 +6,7 @@ TASK ?=
 -include .env
 export POSTGRES_USER POSTGRES_PASSWORD POSTGRES_DB MINIO_ROOT_USER MINIO_ROOT_PASSWORD
 
-.PHONY: bootstrap up down migrate test accept contract golden golden-path nightly dashboard sync-rules model-bench demo-w0
+.PHONY: bootstrap up down migrate test accept contract golden golden-path nightly dashboard sync-rules model-bench demo-w0 demo-w2
 
 ## 环境一键搭建与自检（新机器第一步）
 bootstrap:
@@ -47,5 +47,8 @@ sync-rules: ; bash tools/sync_rules.sh
 
 ## W0 出口演示
 demo-w0: ; bash scripts/wave-exit/w0.sh
+
+## W2 出口演示与门禁检查（E2E-9 唯一验收入口）
+demo-w2: ; bash scripts/wave-exit/w2.sh
 
 nightly: migrate-check contract golden golden-path
