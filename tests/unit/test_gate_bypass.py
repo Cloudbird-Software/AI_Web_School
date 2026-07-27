@@ -47,37 +47,58 @@ from src.core.gate.validator import ValidatorResult
 # 目标；issue_certificate 路径在测试中可能与其他测试共享 DB 状态，TRUNCATE 清场
 # 后必须重新插入占位行。
 @pytest_asyncio.fixture(autouse=True)
-async def _truncate_gate_tables(async_session: AsyncSession):
+async def _truncate_gate_tables(async_engine: AsyncEngine):
     """每测试前清空 gate 三表 + 内容版本表（item_version/material_version 等）+ 插入 cert:none 占位行.
 
     为什么 TRUNCATE 内容版本表：serving 视图测试需要从空表开始预插数据；其他
     测试文件（如 test_writer/test_triggers）可能留下 published 行，会让
     v_serving_* 视图返回非预期数据。本 fixture 清场后由具体测试 setup 控制。
     TRUNCATE CASCADE 自动级联到外键依赖（gate_run → gate_certificate 等）。
+
+    W2a-integrate 修复：用独立连接真正提交 TRUNCATE，而非复用 async_session。
+    - 原实现：TRUNCATE 在 async_session 的 savepoint 内执行，commit() 退化为
+      RELEASE SAVEPOINT，TRUNCATE 持有的 ACCESS EXCLUSIVE 锁仍归属外层事务，
+      直到测试结束外层事务回滚才释放。
+    - 问题：serving_reader 角色测试用独立 engine 执行 INSERT/UPDATE/DELETE，
+      这些操作要获取 ROW EXCLUSIVE 锁，与 TRUNCATE 的 ACCESS EXCLUSIVE 冲突。
+      PostgreSQL 锁获取在权限检查之前，serving_reader 操作被阻塞 → asyncpg
+      超时关闭连接 → 报 ConnectionDoesNotExistError 而非预期的 ProgrammingError。
+    - 修复：用 async_engine 的独立连接执行 TRUNCATE + commit，锁在 fixture
+      setup 完成后立即释放。测试用 async_session 在 savepoint 内操作，事务
+      回滚隔离仍生效（savepoint 内写入不持久化，但 TRUNCATE 已持久化清场）。
+    - 为什么不改用 DELETE：DELETE 用 ROW EXCLUSIVE 锁确实与 INSERT 兼容，但
+      不会重置 IDENTITY 序列；保持 TRUNCATE RESTART IDENTITY 语义不变。
     """
-    # 顺序：先清子表（被 FK 引用），后清父表
-    await async_session.execute(
-        text(
-            "TRUNCATE TABLE gate_verdict, gate_run, gate_certificate,"
-            " item_kp, publication, item_group,"
-            " corpus_version, corpus_asset,"
-            " material_version, material,"
-            " item_version, item,"
-            " item_template_version, item_template,"
-            " material_license"
-            " RESTART IDENTITY CASCADE"
-        )
-    )
-    # cert:none 占位（编排器失败路径用；issue_certificate 不依赖此占位）
-    await async_session.execute(
-        text(
-            "INSERT INTO gate_certificate (cert_id, artifact_ref, cert_type,"
-            " policy_version, issued_by)"
-            " VALUES ('cert:none', 'placeholder-for-failed-run', 'publish',"
-            " 'no-policy', 'system')"
-        )
-    )
-    await async_session.commit()
+    # 用独立连接执行 TRUNCATE + INSERT(cert:none) + 真正提交，释放 ACCESS EXCLUSIVE 锁
+    async with async_engine.connect() as conn:
+        tran = await conn.begin()
+        try:
+            # 顺序：先清子表（被 FK 引用），后清父表
+            await conn.execute(
+                text(
+                    "TRUNCATE TABLE gate_verdict, gate_run, gate_certificate,"
+                    " item_kp, publication, item_group,"
+                    " corpus_version, corpus_asset,"
+                    " material_version, material,"
+                    " item_version, item,"
+                    " item_template_version, item_template,"
+                    " material_license"
+                    " RESTART IDENTITY CASCADE"
+                )
+            )
+            # cert:none 占位（编排器失败路径用；issue_certificate 不依赖此占位）
+            await conn.execute(
+                text(
+                    "INSERT INTO gate_certificate (cert_id, artifact_ref, cert_type,"
+                    " policy_version, issued_by)"
+                    " VALUES ('cert:none', 'placeholder-for-failed-run', 'publish',"
+                    " 'no-policy', 'system')"
+                )
+            )
+            await tran.commit()  # 真正提交，释放 ACCESS EXCLUSIVE 锁
+        except Exception:
+            await tran.rollback()
+            raise
     yield
 
 

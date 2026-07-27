@@ -12,6 +12,16 @@ T-W2-019 测试隔离：async_session 通过「外层事务 + SAVEPOINT」实现
 - 测试结束后 ROLLBACK 外层事务，所有写入丢弃
 - 测试可重复运行，不污染开发/测试数据库，可并发
 - PostgreSQL 的 DDL 触发器、CHECK 约束在 SAVEPOINT 内同样生效（与原 W1 测试兼容）
+
+W2a-integrate 调整：
+- async_engine 改为 function 级（原 session 级在 sync/async 混合测试时连接会被
+  event loop 切换关闭）。
+- async_session teardown rollback 容错：某些测试使用独立 engine 执行会被 DB
+  拒绝的 SQL，连接关闭会导致外层事务 rollback 抛 InterfaceError，捕获避免掩盖
+  测试结果。
+- 移除僵尸连接清理（原 subprocess 调 docker compose exec 在 Windows 下可能卡住）：
+  test_gate_bypass.py 的 TRUNCATE 已改用独立连接真正提交，不再持锁跨测试；
+  PostgreSQL 在连接关闭时自动回滚事务释放锁，无需外部清理。
 """
 from __future__ import annotations
 
@@ -78,12 +88,28 @@ def _build_async_dsn() -> str:
     return f"postgresql+asyncpg://{user}:{password}@{host}:{port}/{db}"
 
 
-@pytest_asyncio.fixture(scope="session")
+@pytest_asyncio.fixture
 async def async_engine() -> AsyncIterator[AsyncEngine]:
-    """会话级 AsyncEngine。
+    """函数级 AsyncEngine。
 
-    为什么 session 级：建连接池代价高，单个测试会话复用一个引擎；
-    测试间用事务回滚隔离（见 async_session fixture）。
+    为什么 function 级（W2a-integrate 调整）：
+    - 原 session 级在 sync 测试与 async 测试混合运行时，event loop 跨测试切换
+      会导致 asyncpg 连接在中途被关闭（ConnectionDoesNotExistError）。
+    - function 级每个测试自建自毁引擎，连接池不跨测试复用，规避连接陈旧问题；
+      建引擎本身代价低（懒建连接），整体测试耗时影响可接受。
+    - 测试间隔离仍由 async_session 的事务回滚保证（见下）。
+
+    W2a-integrate 移除僵尸连接清理：
+    - 原实现用 subprocess.run 调用 docker compose exec psql 终止残留连接，
+      但在 Windows + Docker Desktop 环境下 subprocess 可能卡住（Docker 未响应
+      时 timeout 不生效），导致整个 pytest 卡死。
+    - 实际上僵尸连接清理已不必要：
+      (1) test_gate_bypass.py 的 _truncate_gate_tables 已改用独立连接真正提交
+          TRUNCATE，不再在 savepoint 内持有 ACCESS EXCLUSIVE 锁跨测试。
+      (2) 其他测试文件的 TRUNCATE 在 savepoint 内执行，async_session teardown
+          时外层事务回滚释放锁。
+      (3) 即使 rollback 失败（连接关闭），PostgreSQL 在连接关闭时自动回滚
+          事务释放所有锁，不会留下持锁的僵尸事务。
     """
     engine = create_async_engine(_build_async_dsn(), echo=False, pool_pre_ping=True)
     try:
@@ -114,6 +140,12 @@ async def async_session(async_engine: AsyncEngine) -> AsyncIterator[AsyncSession
     为什么改用事务回滚（取代 W1 注释中「每测试后 TRUNCATE」方案）：
     TRUNCATE 破坏只增不改表的语义、代价高且不可与并发测试共用 DB；
     事务回滚是 SQLAlchemy 官方推荐的测试隔离模式，且天然支持并发。
+
+    W2a-integrate：rollback 容错。某些测试（如 test_gate_bypass）使用独立的
+    serving_reader_engine 执行会被 DB 拒绝的 SQL，DB 拒绝可能触发 asyncpg
+    关闭同一进程内的其他连接（推测是 asyncpg 连接池的级联失效）。此时外层
+    事务的 rollback 会抛 InterfaceError（connection is closed）。本 fixture
+    捕获该异常，避免 teardown 报错掩盖测试本身的结果。
     """
     async with async_engine.connect() as connection:
         # 外层事务：所有测试写入都封装在此事务内，结束时整体回滚
@@ -126,7 +158,12 @@ async def async_session(async_engine: AsyncEngine) -> AsyncIterator[AsyncSession
             ) as session:
                 yield session
         finally:
-            await transaction.rollback()
+            try:
+                await transaction.rollback()
+            except Exception as exc:
+                # 连接已被关闭（级联失效或僵尸清理），rollback 失败可接受——
+                # 事务本身会随连接关闭而自动回滚，无需再显式 rollback
+                print(f"[async_session teardown] rollback failed (acceptable): {exc}", flush=True)
 
 
 @pytest_asyncio.fixture
