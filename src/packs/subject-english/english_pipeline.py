@@ -55,6 +55,7 @@ from src.core.gate.validators.generic import (  # noqa: E402
 from src.core.instantiation.engine import ENGINE_DIGEST, instantiate  # noqa: E402
 from src.core.models.item_template import ItemTemplate  # noqa: E402
 from src.core.models.item_template_version import ItemTemplateVersion  # noqa: E402
+from src.core.models.item_version import ItemVersion  # noqa: E402
 
 # ────────────────────────────────────────────────────────────────────
 # 路径与摘要常量
@@ -316,34 +317,44 @@ async def _process_one(
     html = render_html(item_version_dict, kind=kind)
     publish_result = None
     if cert_id:
-        version_data = {
-            "pack_id": "subject-english",
-            "tier": "A",
-            "status": "published",
-            "template_version_id": template_version["template_version_id"],
-            "template_version_digest": template_version["template_version_id"],
-            "pack_digest": _PACK_DIGEST,
-            "engine_digest": ENGINE_DIGEST,
-            "corpus_digests": [_CORPUS_DIGEST],
-            "normalized_params": item_version_dict["lineage"]["params"]["normalized"],
-            "locale": "zh-CN",
-            "objective": item_version_dict["objective"],
-            "interaction_ref": item_version_dict["interaction_ref"],
-            "content": item_version_dict["content"],
-            "scoring_ref": item_version_dict["scoring_ref"],
-            "error_bindings": item_version_dict["error_bindings"],
-            "lineage": item_version_dict["lineage"],
-            "rendered_snapshot": {"html": html},
-        }
-        try:
-            publish_result = await publish_item_version(
-                item_id=None,
-                version_data=version_data,
-                gate_certificate_id=cert_id,
-                db=db,
-            )
-        except Exception as e:
-            publish_result = {"error": str(e)}
+        # 幂等：内容寻址同 id 已入库则跳过重复 INSERT（D1 只增不改；
+        # 直接重插会因 PK 冲突把调用方事务打入 aborted 状态）
+        existing = await db.get(ItemVersion, item_version_id)
+        if existing is not None:
+            publish_result = {
+                "skipped": "already_exists",
+                "status": existing.status,
+                "item_version_id": item_version_id,
+            }
+        else:
+            version_data = {
+                "pack_id": "subject-english",
+                "tier": "A",
+                "status": "published",
+                "template_version_id": template_version["template_version_id"],
+                "template_version_digest": template_version["template_version_id"],
+                "pack_digest": _PACK_DIGEST,
+                "engine_digest": ENGINE_DIGEST,
+                "corpus_digests": [_CORPUS_DIGEST],
+                "normalized_params": item_version_dict["lineage"]["params"]["normalized"],
+                "locale": "zh-CN",
+                "objective": item_version_dict["objective"],
+                "interaction_ref": item_version_dict["interaction_ref"],
+                "content": item_version_dict["content"],
+                "scoring_ref": item_version_dict["scoring_ref"],
+                "error_bindings": item_version_dict["error_bindings"],
+                "lineage": item_version_dict["lineage"],
+                "rendered_snapshot": {"html": html},
+            }
+            try:
+                publish_result = await publish_item_version(
+                    item_id=None,
+                    version_data=version_data,
+                    gate_certificate_id=cert_id,
+                    db=db,
+                )
+            except Exception as e:
+                publish_result = {"error": str(e)}
 
     return {
         "kind": kind,

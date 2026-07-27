@@ -168,6 +168,11 @@ def build_scoring_trace(scorer_id: str, result: ScoreResult) -> dict[str, Any]:
 
     confidence 只承载评分层（+可选识别层，拍照链路传入）；
     推断层置信度在 error_inferences[].confidence，不在此混合（§4.5 四层分离）。
+
+    dimension_scores 随轨迹落账（契约 §3 为可扩展对象，只增不改）：
+    S8 CTT 标定的正确性信号取数位置正是
+    scoring_trace->'dimension_scores'->>'correct'（见 src/core/data/ctt.py）——
+    缺了它，在线作答事件对参数标定不可见，数据飞轮断链。
     """
     confidence: dict[str, Any] = {
         "scoring": float(result.confidence.get("scoring", 1.0)),
@@ -178,6 +183,7 @@ def build_scoring_trace(scorer_id: str, result: ScoreResult) -> dict[str, Any]:
     return {
         "scorer_id": scorer_id,
         "scorer_version": result.scorer_version,
+        "dimension_scores": dict(result.dimension_scores),
         "process": result.evidence,
         "confidence": confidence,
     }
