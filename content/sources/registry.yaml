@@ -114,3 +114,14 @@ records:
     kind: methodology
     notes: 非商业许可，2025-12-31 已过期；仅借鉴方法
     registered_at: "2026-07-27"
+
+  # ── 9. 平台自研数学函数库 v1（自有，永久可引用） ──
+  - license_id: lic-platform-math-functions-v1
+    source: 平台自研数学函数库 v1
+    rights_holder: 平台
+    scope: 数学 SubjectPack 函数库 v1，作为 answer_program 安全表达式求值器的扩展函数源
+    expires_at: null
+    decision: approved
+    kind: library
+    notes: 平台自研，永久可入库与运行时引用
+    registered_at: "2026-07-27"

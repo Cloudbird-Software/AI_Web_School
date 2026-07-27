@@ -1,0 +1,202 @@
+# 数学 SubjectPack 函数库 v1（T-W2-016）
+#
+# 地位：作为母题 DSL answer_program 的扩展函数源（架构 v2 §5.2「数学包」语料库）
+# 宪法 A5：本库属学科包语料，pack_id=subject-math；核心域零学科特判。
+# 宪法 R-Q-18：license_id 必须在 content/sources/registry.yaml 中 approved。
+# 宪法 D3：函数库版本化，函数签名与定义分离；同一 version_id 下函数集合不变。
+#
+# YAML 结构说明：
+#   schema_version  : 本文件 schema 版本（区别于函数库语义版本）
+#   pack_id         : 所属学科包（与 SubjectPack manifest 一致）
+#   kind            : corpus_asset.kind（function_lib 表示函数库语料）
+#   license_id      : 来源登记表 PK（被 corpus_version.license_id 引用）
+#   library_version : 函数库语义版本（semver），用于 corpus_version.lineage.pipeline.version
+#   functions       : 函数定义列表
+#     - name        : 函数名（DSL 内调用标识）
+#     - version     : 单函数版本（独立于库版本；可单独升级）
+#     - signature   : 参数与返回类型（expr_eval 注册时用）
+#     - safety      : 安全标记（pure/no_io/deterministic/no_loops）
+#     - description : 人类可读说明
+#     - examples    : 调用样例（参数→预期返回，便于回归）
+#
+# 安全契约（架构 v2 §4.2）：
+#   - 所有函数必须 pure=true, no_io=true, deterministic=true
+#   - no_loops=true 表示实现内无显式循环（递归同样受限）
+#   - 任何违反安全契约的函数禁止被 expr_eval 注册
+# ────────────────────────────────────────────────────────────────────────
+schema_version: "1.0"
+pack_id: subject-math
+kind: function_lib
+license_id: lic-platform-math-functions-v1
+library_version: "1.0.0"
+
+functions:
+  # ── 1. 数论基础 ──
+  - name: gcd
+    version: "1.0.0"
+    signature:
+      params:
+        - {name: a, type: integer, min: 0}
+        - {name: b, type: integer, min: 0}
+      return: integer
+    safety: {pure: true, no_io: true, deterministic: true, no_loops: false}
+    description: 最大公约数（欧几里得辗转相除法）。
+
+  - name: lcm
+    version: "1.0.0"
+    signature:
+      params:
+        - {name: a, type: integer, min: 1}
+        - {name: b, type: integer, min: 1}
+      return: integer
+    safety: {pure: true, no_io: true, deterministic: true, no_loops: false}
+    description: 最小公倍数 = |a*b| / gcd(a,b)。
+
+  - name: is_prime
+    version: "1.0.0"
+    signature:
+      params:
+        - {name: n, type: integer, min: 0}
+      return: boolean
+    safety: {pure: true, no_io: true, deterministic: true, no_loops: false}
+    description: 判定自然数是否为质数（0/1 视为非质数）。
+
+  - name: prime_decomposition
+    version: "1.0.0"
+    signature:
+      params:
+        - {name: n, type: integer, min: 2}
+      return: {type: array, items: {type: array, items: integer}}
+    description: 质因数分解，返回 [(prime, exponent), ...]。
+    safety: {pure: true, no_io: true, deterministic: true, no_loops: false}
+
+  # ── 2. 分数与有理数 ──
+  - name: fraction_simplify
+    version: "1.0.0"
+    signature:
+      params:
+        - {name: numerator, type: integer}
+        - {name: denominator, type: integer, nonzero: true}
+      return:
+        type: object
+        fields: {numerator: integer, denominator: integer}
+    safety: {pure: true, no_io: true, deterministic: true, no_loops: false}
+    description: 分数化简（约分并归一符号到分子）。
+
+  - name: fraction_add
+    version: "1.0.0"
+    signature:
+      params:
+        - {name: a, type: object, fields: {numerator: integer, denominator: integer}}
+        - {name: b, type: object, fields: {numerator: integer, denominator: integer}}
+      return:
+        type: object
+        fields: {numerator: integer, denominator: integer}
+    safety: {pure: true, no_io: true, deterministic: true, no_loops: false}
+    description: 分数加法 a+b（结果为最简分数）。
+
+  - name: fraction_multiply
+    version: "1.0.0"
+    signature:
+      params:
+        - {name: a, type: object, fields: {numerator: integer, denominator: integer}}
+        - {name: b, type: object, fields: {numerator: integer, denominator: integer}}
+      return:
+        type: object
+        fields: {numerator: integer, denominator: integer}
+    safety: {pure: true, no_io: true, deterministic: true, no_loops: false}
+    description: 分数乘法 a*b（结果为最简分数）。
+
+  - name: decimal_to_fraction
+    version: "1.0.0"
+    signature:
+      params:
+        - {name: value, type: string}
+      return:
+        type: object
+        fields: {numerator: integer, denominator: integer}
+    safety: {pure: true, no_io: true, deterministic: true, no_loops: false}
+    description: 有限小数字符串转分数（避免浮点漂移；输入如 "0.75" → {3,4}）。
+
+  # ── 3. 单位换算 ──
+  - name: unit_convert
+    version: "1.0.0"
+    signature:
+      params:
+        - {name: value, type: number}
+        - {name: from_unit, type: string}
+        - {name: to_unit, type: string}
+      return: number
+    safety: {pure: true, no_io: true, deterministic: true, no_loops: true}
+    description: |
+      同类量单位换算（长度/质量/面积/体积/时间）。
+      换算因子表内置；跨类换算抛 ValueError。
+      示例：unit_convert(1.5, "km", "m") = 1500。
+
+  # ── 4. 数值规整 ──
+  - name: round_half_up
+    version: "1.0.0"
+    signature:
+      params:
+        - {name: value, type: number}
+        - {name: precision, type: integer, min: 0, max: 10}
+      return: number
+    safety: {pure: true, no_io: true, deterministic: true, no_loops: true}
+    description: |
+      四舍五入到指定小数位（half-up 语义；与小学教材一致）。
+      禁用 banker's rounding（与课标不一致）。
+
+  - name: significant_figures
+    version: "1.0.0"
+    signature:
+      params:
+        - {name: value, type: number}
+        - {name: sig_figs, type: integer, min: 1, max: 12}
+      return: number
+    safety: {pure: true, no_io: true, deterministic: true, no_loops: true}
+    description: 按有效数字位数舍入（科学计数法语境）。
+
+  # ── 5. 中文数字 ──
+  - name: number_to_chinese
+    version: "1.0.0"
+    signature:
+      params:
+        - {name: value, type: integer, min: 0, max: 99999999}
+      return: string
+    safety: {pure: true, no_io: true, deterministic: true, no_loops: false}
+    description: |
+      整数转中文读法（小学中段）。
+      示例：number_to_chinese(12345) = "一万二千三百四十五"。
+      仅支持非负整数；负数/小数不在本函数范围内。
+
+  - name: chinese_to_number
+    version: "1.0.0"
+    signature:
+      params:
+        - {name: text, type: string}
+      return: integer
+    safety: {pure: true, no_io: true, deterministic: true, no_loops: false}
+    description: |
+      中文数字转整数（number_to_chinese 的逆运算）。
+      非法输入抛 ValueError。
+
+  # ── 6. 几何辅助 ──
+  - name: rectangle_area
+    version: "1.0.0"
+    signature:
+      params:
+        - {name: length, type: number, min: 0}
+        - {name: width, type: number, min: 0}
+      return: number
+    safety: {pure: true, no_io: true, deterministic: true, no_loops: true}
+    description: 长方形面积 = 长 × 宽。
+
+  - name: triangle_area
+    version: "1.0.0"
+    signature:
+      params:
+        - {name: base, type: number, min: 0}
+        - {name: height, type: number, min: 0}
+      return: number
+    safety: {pure: true, no_io: true, deterministic: true, no_loops: true}
+    description: 三角形面积 = 底 × 高 / 2。
