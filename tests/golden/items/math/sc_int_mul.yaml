@@ -1,0 +1,62 @@
+case_id: sc_int_mul
+description: 单选——整数乘法
+template_version:
+  template_version_id: sha256:c42baca88ba114e032312fe59acc78f97a0aae5f2c7fe63977699660967494fe
+  template_id: tpl-sc-int-mul
+  dsl_version: '1'
+  spec:
+    objective:
+      kp_set:
+      - dimension: kp
+        code: math.nal.int.mul
+      kp_set_mode: single
+      cognitive_level: apply
+      gradeband: L
+      graph_release: '2026.1'
+    slots:
+      a:
+        type: int
+        difficulty_relevant: true
+      b:
+        type: int
+        difficulty_relevant: true
+    variation_axes:
+      axes: []
+    presentation:
+      blocks:
+      - kind: text
+        template: '{a} × {b} = ?'
+    answer_program:
+      expression: a * b
+      returns: number
+    distractor_rules:
+      rules:
+      - rule_type: deterministic
+        error_type_id: err.calc.mul.add
+        expression: a + b
+        label: 加代乘
+      - rule_type: deterministic
+        error_type_id: err.calc.mul.off-by-one
+        expression: a * b + 1
+        label: 多1
+      - rule_type: deterministic
+        error_type_id: err.calc.mul.minus-one
+        expression: a * b - 1
+        label: 少1
+params:
+  a: 6
+  b: 7
+pack_digest: sha256:2b2c873ec2ce739722d6a3a34b77943221856efc3a201f7f023b8ea85715cf29
+interaction_id: single_choice
+scorer_id: exact_match
+scorer_params:
+  answer: '42'
+locale: zh-CN
+corpus_digests: []
+seed: 0
+expected_item_version_id: sha256:0d8280ecc3bef12a30630a812f98dcf46b2e5adce15f19eee1395742983ddce8
+expected_content_snapshot:
+  blocks:
+  - kind: text
+    template: '{a} × {b} = ?'
+    rendered: 6 × 7 = ?

@@ -1,0 +1,62 @@
+case_id: sc_multiple_relation
+description: 单选——倍数关系
+template_version:
+  template_version_id: sha256:95d2e39fb197e5f55a1f8f6e9d300f3f13e1d1172e7ef98ea0524b2436961522
+  template_id: tpl-sc-multiple
+  dsl_version: '1'
+  spec:
+    objective:
+      kp_set:
+      - dimension: kp
+        code: math.nal.int.multiple
+      kp_set_mode: single
+      cognitive_level: apply
+      gradeband: L
+      graph_release: '2026.1'
+    slots:
+      big:
+        type: int
+        difficulty_relevant: true
+      small:
+        type: int
+        difficulty_relevant: true
+    variation_axes:
+      axes: []
+    presentation:
+      blocks:
+      - kind: text
+        template: '{big} 是 {small} 的几倍？'
+    answer_program:
+      expression: big // small
+      returns: number
+    distractor_rules:
+      rules:
+      - rule_type: deterministic
+        error_type_id: err.multiple.add
+        expression: big + small
+        label: 相加
+      - rule_type: deterministic
+        error_type_id: err.multiple.sub
+        expression: big - small
+        label: 相减
+      - rule_type: deterministic
+        error_type_id: err.multiple.mul
+        expression: big * small
+        label: 相乘
+params:
+  big: 12
+  small: 4
+pack_digest: sha256:2b2c873ec2ce739722d6a3a34b77943221856efc3a201f7f023b8ea85715cf29
+interaction_id: single_choice
+scorer_id: exact_match
+scorer_params:
+  answer: '3'
+locale: zh-CN
+corpus_digests: []
+seed: 0
+expected_item_version_id: sha256:6bdbe27e2bf92ee87212ed9e60f3226212f6e4077e1e41044c16b721d49dd411
+expected_content_snapshot:
+  blocks:
+  - kind: text
+    template: '{big} 是 {small} 的几倍？'
+    rendered: 12 是 4 的几倍？

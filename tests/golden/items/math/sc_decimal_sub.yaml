@@ -1,0 +1,62 @@
+case_id: sc_decimal_sub
+description: 单选——小数减法
+template_version:
+  template_version_id: sha256:85ed14f2e2cef877ab1d905e3a7fe7de598e4355e82ae7a5fc5a739424a5cf56
+  template_id: tpl-sc-dec-sub
+  dsl_version: '1'
+  spec:
+    objective:
+      kp_set:
+      - dimension: kp
+        code: math.nal.decimal.sub
+      kp_set_mode: single
+      cognitive_level: apply
+      gradeband: L
+      graph_release: '2026.1'
+    slots:
+      a:
+        type: decimal
+        difficulty_relevant: true
+      b:
+        type: decimal
+        difficulty_relevant: true
+    variation_axes:
+      axes: []
+    presentation:
+      blocks:
+      - kind: text
+        template: '{a} - {b} = ?'
+    answer_program:
+      expression: a - b
+      returns: number
+    distractor_rules:
+      rules:
+      - rule_type: deterministic
+        error_type_id: err.dec.sub.add
+        expression: a + b
+        label: 加减混
+      - rule_type: deterministic
+        error_type_id: err.dec.sub.b
+        expression: b
+        label: 选了减数
+      - rule_type: deterministic
+        error_type_id: err.dec.sub.a
+        expression: a
+        label: 选了被减数
+params:
+  a: '0.8'
+  b: '0.3'
+pack_digest: sha256:2b2c873ec2ce739722d6a3a34b77943221856efc3a201f7f023b8ea85715cf29
+interaction_id: single_choice
+scorer_id: exact_match
+scorer_params:
+  answer: '0.5'
+locale: zh-CN
+corpus_digests: []
+seed: 0
+expected_item_version_id: sha256:04560d2d467550e95353bfe5be42b45a442ea600d167a7d748dedcc0d65ad146
+expected_content_snapshot:
+  blocks:
+  - kind: text
+    template: '{a} - {b} = ?'
+    rendered: 0.8 - 0.3 = ?

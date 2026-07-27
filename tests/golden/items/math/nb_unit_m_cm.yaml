@@ -1,0 +1,46 @@
+case_id: nb_unit_m_cm
+description: 数值填空——米化厘米（单位换算）
+template_version:
+  template_version_id: sha256:410e311c42154fa04253dd318cf06d61a91c3867f7ad8eb5483a4036e9dd5cad
+  template_id: tpl-nb-unit-m-cm
+  dsl_version: '1'
+  spec:
+    objective:
+      kp_set:
+      - dimension: kp
+        code: math.meas.unit.convert
+      kp_set_mode: single
+      cognitive_level: apply
+      gradeband: L
+      graph_release: '2026.1'
+    slots:
+      m:
+        type: int
+        difficulty_relevant: true
+    variation_axes:
+      axes: []
+    presentation:
+      blocks:
+      - kind: text
+        template: '{m} 米 = （  ） 厘米'
+    answer_program:
+      expression: m * 100
+      returns: number
+    distractor_rules:
+      rules: []
+params:
+  m: 3
+pack_digest: sha256:2b2c873ec2ce739722d6a3a34b77943221856efc3a201f7f023b8ea85715cf29
+interaction_id: numeric_blank
+scorer_id: exact_match
+scorer_params:
+  answer: '300'
+locale: zh-CN
+corpus_digests: []
+seed: 0
+expected_item_version_id: sha256:ad024f8e70c08228c637d10611d95b4b38f37b0c1f511b1d13f81a4c2cb6231a
+expected_content_snapshot:
+  blocks:
+  - kind: text
+    template: '{m} 米 = （  ） 厘米'
+    rendered: 3 米 = （  ） 厘米

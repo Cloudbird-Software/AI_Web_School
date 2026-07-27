@@ -1,0 +1,46 @@
+case_id: nb_perimeter_square
+description: 数值填空——正方形周长
+template_version:
+  template_version_id: sha256:556c78518f90fe7cafd5e5c887ec9e70e3a0824d9b3afcbe0133f5abff9e8112
+  template_id: tpl-nb-peri-square
+  dsl_version: '1'
+  spec:
+    objective:
+      kp_set:
+      - dimension: kp
+        code: math.gm.perimeter.square
+      kp_set_mode: single
+      cognitive_level: apply
+      gradeband: L
+      graph_release: '2026.1'
+    slots:
+      side:
+        type: int
+        difficulty_relevant: true
+    variation_axes:
+      axes: []
+    presentation:
+      blocks:
+      - kind: text
+        template: 正方形边长 {side} 厘米，周长是（  ）厘米
+    answer_program:
+      expression: side * 4
+      returns: number
+    distractor_rules:
+      rules: []
+params:
+  side: 3
+pack_digest: sha256:2b2c873ec2ce739722d6a3a34b77943221856efc3a201f7f023b8ea85715cf29
+interaction_id: numeric_blank
+scorer_id: exact_match
+scorer_params:
+  answer: '12'
+locale: zh-CN
+corpus_digests: []
+seed: 0
+expected_item_version_id: sha256:f7b79831c06ecfd8a424ed12f81881afa645c3167c7db3872854ad7b6a27190e
+expected_content_snapshot:
+  blocks:
+  - kind: text
+    template: 正方形边长 {side} 厘米，周长是（  ）厘米
+    rendered: 正方形边长 3 厘米，周长是（  ）厘米

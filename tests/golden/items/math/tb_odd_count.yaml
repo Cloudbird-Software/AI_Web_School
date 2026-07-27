@@ -1,0 +1,58 @@
+case_id: tb_odd_count
+description: 文本填空——奇数个数统计
+template_version:
+  template_version_id: sha256:f1c07d51c7ba50a0bffe1cb39de2793cf5097e5b7a214c6bd14effb9fa0b4327
+  template_id: tpl-tb-odd-count
+  dsl_version: '1'
+  spec:
+    objective:
+      kp_set:
+      - dimension: kp
+        code: math.nal.int.odd
+      kp_set_mode: single
+      cognitive_level: understand
+      gradeband: L
+      graph_release: '2026.1'
+    slots:
+      n1:
+        type: int
+        difficulty_relevant: true
+      n2:
+        type: int
+        difficulty_relevant: true
+      n3:
+        type: int
+        difficulty_relevant: true
+      n4:
+        type: int
+        difficulty_relevant: true
+    variation_axes:
+      axes: []
+    presentation:
+      blocks:
+      - kind: text
+        template: 在 {n1}、{n2}、{n3}、{n4} 中，奇数有几个？
+    answer_program:
+      expression: (n1 % 2) + (n2 % 2) + (n3 % 2) + (n4 % 2)
+      returns: number
+    distractor_rules:
+      rules: []
+params:
+  n1: 2
+  n2: 3
+  n3: 4
+  n4: 5
+pack_digest: sha256:2b2c873ec2ce739722d6a3a34b77943221856efc3a201f7f023b8ea85715cf29
+interaction_id: text_blank
+scorer_id: exact_match
+scorer_params:
+  answer: '2'
+locale: zh-CN
+corpus_digests: []
+seed: 0
+expected_item_version_id: sha256:a606e0423256591f43eed1fa2f2b1ccb859296d85247f2ab43bc699d0670906d
+expected_content_snapshot:
+  blocks:
+  - kind: text
+    template: 在 {n1}、{n2}、{n3}、{n4} 中，奇数有几个？
+    rendered: 在 2、3、4、5 中，奇数有几个？

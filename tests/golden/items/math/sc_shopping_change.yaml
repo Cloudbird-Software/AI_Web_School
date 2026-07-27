@@ -1,0 +1,62 @@
+case_id: sc_shopping_change
+description: 单选——购物找零应用题
+template_version:
+  template_version_id: sha256:62049b92d93893aecffc47cf6d181a0a338e770831c6fe7c56e7c43c3e202c25
+  template_id: tpl-sc-shopping
+  dsl_version: '1'
+  spec:
+    objective:
+      kp_set:
+      - dimension: kp
+        code: math.nal.int.sub
+      kp_set_mode: single
+      cognitive_level: apply
+      gradeband: L
+      graph_release: '2026.1'
+    slots:
+      pay:
+        type: int
+        difficulty_relevant: true
+      price:
+        type: int
+        difficulty_relevant: true
+    variation_axes:
+      axes: []
+    presentation:
+      blocks:
+      - kind: text
+        template: 小明付了 {pay} 元，买文具花了 {price} 元，应找回多少元？
+    answer_program:
+      expression: pay - price
+      returns: number
+    distractor_rules:
+      rules:
+      - rule_type: deterministic
+        error_type_id: err.shop.add
+        expression: pay + price
+        label: 相加
+      - rule_type: deterministic
+        error_type_id: err.shop.off-by-one
+        expression: pay - price + 1
+        label: 多1
+      - rule_type: deterministic
+        error_type_id: err.shop.mul
+        expression: pay * price
+        label: 相乘
+params:
+  pay: 50
+  price: 32
+pack_digest: sha256:2b2c873ec2ce739722d6a3a34b77943221856efc3a201f7f023b8ea85715cf29
+interaction_id: single_choice
+scorer_id: exact_match
+scorer_params:
+  answer: '18'
+locale: zh-CN
+corpus_digests: []
+seed: 0
+expected_item_version_id: sha256:ffecba2791d9e95f085d859aece2408c8c1dfa8515c17f66d0def1c10870adcd
+expected_content_snapshot:
+  blocks:
+  - kind: text
+    template: 小明付了 {pay} 元，买文具花了 {price} 元，应找回多少元？
+    rendered: 小明付了 50 元，买文具花了 32 元，应找回多少元？

@@ -1,0 +1,46 @@
+case_id: nb_unit_kg_g
+description: 数值填空——千克化克（单位换算）
+template_version:
+  template_version_id: sha256:264ff56ecb13f7916ce26047ed4898f8f55b0b6c55dbe9545482a1f034f95a69
+  template_id: tpl-nb-unit-kg-g
+  dsl_version: '1'
+  spec:
+    objective:
+      kp_set:
+      - dimension: kp
+        code: math.meas.unit.convert
+      kp_set_mode: single
+      cognitive_level: apply
+      gradeband: L
+      graph_release: '2026.1'
+    slots:
+      kg:
+        type: int
+        difficulty_relevant: true
+    variation_axes:
+      axes: []
+    presentation:
+      blocks:
+      - kind: text
+        template: '{kg} 千克 = （  ） 克'
+    answer_program:
+      expression: kg * 1000
+      returns: number
+    distractor_rules:
+      rules: []
+params:
+  kg: 2
+pack_digest: sha256:2b2c873ec2ce739722d6a3a34b77943221856efc3a201f7f023b8ea85715cf29
+interaction_id: numeric_blank
+scorer_id: exact_match
+scorer_params:
+  answer: '2000'
+locale: zh-CN
+corpus_digests: []
+seed: 0
+expected_item_version_id: sha256:32b6c304b0ab2357b8f15cb7aaa31b61aa37a8da18f1175f6ac4db456d8fefab
+expected_content_snapshot:
+  blocks:
+  - kind: text
+    template: '{kg} 千克 = （  ） 克'
+    rendered: 2 千克 = （  ） 克

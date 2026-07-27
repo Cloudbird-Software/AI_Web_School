@@ -1,0 +1,50 @@
+case_id: tb_money_convert
+description: 文本填空——元角换算
+template_version:
+  template_version_id: sha256:26b44e0645ea99cf1e2d0e563134c0ad798027feba0725d864f5e25705fbfac7
+  template_id: tpl-tb-money
+  dsl_version: '1'
+  spec:
+    objective:
+      kp_set:
+      - dimension: kp
+        code: math.meas.money.convert
+      kp_set_mode: single
+      cognitive_level: apply
+      gradeband: L
+      graph_release: '2026.1'
+    slots:
+      yuan:
+        type: int
+        difficulty_relevant: true
+      jiao:
+        type: int
+        difficulty_relevant: true
+    variation_axes:
+      axes: []
+    presentation:
+      blocks:
+      - kind: text
+        template: '{yuan} 元 {jiao} 角 = （  ） 角'
+    answer_program:
+      expression: yuan * 10 + jiao
+      returns: number
+    distractor_rules:
+      rules: []
+params:
+  yuan: 3
+  jiao: 5
+pack_digest: sha256:2b2c873ec2ce739722d6a3a34b77943221856efc3a201f7f023b8ea85715cf29
+interaction_id: text_blank
+scorer_id: exact_match
+scorer_params:
+  answer: '35'
+locale: zh-CN
+corpus_digests: []
+seed: 0
+expected_item_version_id: sha256:30209eb7f4f7c00094c144f905249b23cd81b03562e5d9abddde257f99e48edd
+expected_content_snapshot:
+  blocks:
+  - kind: text
+    template: '{yuan} 元 {jiao} 角 = （  ） 角'
+    rendered: 3 元 5 角 = （  ） 角

@@ -1,0 +1,62 @@
+case_id: sc_int_div
+description: 单选——整数除法
+template_version:
+  template_version_id: sha256:628c4ab592ec3c990080cf9c3d0653d8ed548ccefadc811e346d3941bfeffbbb
+  template_id: tpl-sc-int-div
+  dsl_version: '1'
+  spec:
+    objective:
+      kp_set:
+      - dimension: kp
+        code: math.nal.int.div
+      kp_set_mode: single
+      cognitive_level: apply
+      gradeband: L
+      graph_release: '2026.1'
+    slots:
+      a:
+        type: int
+        difficulty_relevant: true
+      b:
+        type: int
+        difficulty_relevant: true
+    variation_axes:
+      axes: []
+    presentation:
+      blocks:
+      - kind: text
+        template: '{a} ÷ {b} = ?'
+    answer_program:
+      expression: a // b
+      returns: number
+    distractor_rules:
+      rules:
+      - rule_type: deterministic
+        error_type_id: err.calc.div.mul
+        expression: a * b
+        label: 乘代除
+      - rule_type: deterministic
+        error_type_id: err.calc.div.add
+        expression: a + b
+        label: 加代除
+      - rule_type: deterministic
+        error_type_id: err.calc.div.off-by-one
+        expression: a // b + 1
+        label: 多1
+params:
+  a: 56
+  b: 8
+pack_digest: sha256:2b2c873ec2ce739722d6a3a34b77943221856efc3a201f7f023b8ea85715cf29
+interaction_id: single_choice
+scorer_id: exact_match
+scorer_params:
+  answer: '7'
+locale: zh-CN
+corpus_digests: []
+seed: 0
+expected_item_version_id: sha256:8be5bd2bba3ef07aeb3b07c764ca67a0824dbc25762b6b242bff6848ec6c55f8
+expected_content_snapshot:
+  blocks:
+  - kind: text
+    template: '{a} ÷ {b} = ?'
+    rendered: 56 ÷ 8 = ?

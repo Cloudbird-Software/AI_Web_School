@@ -1,0 +1,56 @@
+case_id: mc_prime_pick
+description: 多选——选出质数
+template_version:
+  template_version_id: sha256:4f3a53f6523fd2547225576cacdd6d280f2d5a1a97e773dd8aa04b0aca743d2f
+  template_id: tpl-mc-prime
+  dsl_version: '1'
+  spec:
+    objective:
+      kp_set:
+      - dimension: kp
+        code: math.nal.int.prime
+      kp_set_mode: single
+      cognitive_level: understand
+      gradeband: L
+      graph_release: '2026.1'
+    slots:
+      a:
+        type: int
+        difficulty_relevant: true
+      b:
+        type: int
+        difficulty_relevant: true
+    variation_axes:
+      axes: []
+    presentation:
+      blocks:
+      - kind: text
+        template: 下列哪些是质数？{a}、{b}
+    answer_program:
+      expression: a + b
+      returns: number
+    distractor_rules:
+      rules:
+      - rule_type: deterministic
+        error_type_id: err.prime.composite
+        expression: a + 1
+        label: 误选合数
+params:
+  a: 5
+  b: 7
+pack_digest: sha256:2b2c873ec2ce739722d6a3a34b77943221856efc3a201f7f023b8ea85715cf29
+interaction_id: multi_choice
+scorer_id: exact_match
+scorer_params:
+  answer:
+  - '5'
+  - '7'
+locale: zh-CN
+corpus_digests: []
+seed: 0
+expected_item_version_id: sha256:9e2c5b98136d79ba65bc2ae6ac5127c0d91444bfcc9fb8d80698e209cf7c4c92
+expected_content_snapshot:
+  blocks:
+  - kind: text
+    template: 下列哪些是质数？{a}、{b}
+    rendered: 下列哪些是质数？5、7
