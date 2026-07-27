@@ -328,6 +328,10 @@ def score(
         response: 学生作答。支持：
             - str：表达式字符串（如 "1/2", "0.5", "100cm"）
             - dict: {"value": str, "unit": str|None} 显式分离
+            - dict: {"blanks": {blank_id: {...}}} —— interaction.yaml
+              numeric_blank/text_blank 的标准作答形态（W3-S4 增补）；
+              仅支持单空（本评分器是单值等价判定），多空返回 scoring=0.0
+              并说明原因（多空题应走 exact_match 逐空或 stepwise_rubric）。
         item_version: ItemVersion 快照（用于读取 scoring_ref/params）。
             本评分器主要使用 params 中的 answer_expr；item_version 仅作审计字段。
         params: 评分参数（覆盖 item_version.scoring_params）。期望字段：
@@ -367,6 +371,23 @@ def score(
         tolerance = DEFAULT_TOLERANCE
 
     # 解析学生作答（始终尝试分离数值与单位，便于单位校验）
+    # W3-S4 增补：解包 interaction.yaml 标准 blanks 形态（单空）
+    if isinstance(response, dict) and "blanks" in response and "value" not in response:
+        blanks = response.get("blanks") or {}
+        if len(blanks) == 1:
+            response = next(iter(blanks.values()))
+        else:
+            return ScoreResult(
+                dimension_scores={"correct": 0.0},
+                error_inferences=[],
+                confidence={"scoring": 0.0},
+                evidence={
+                    "reason": "math_equivalence 仅支持单空作答；"
+                              "多空题请用 exact_match 逐空或 stepwise_rubric",
+                    "blank_count": len(blanks),
+                },
+                scorer_version=SCORER_VERSION,
+            )
     if isinstance(response, dict):
         actual_value_str = str(response.get("value", "")).strip()
         actual_unit = response.get("unit")
