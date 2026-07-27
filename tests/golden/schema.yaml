@@ -1,0 +1,129 @@
+# 黄金数据集 schema（T-W2-022）
+# 定义 tests/golden/items/**/*.yaml 的结构契约。
+# 来源：ADR/OPC-AI原生开发组织方案.md#5（防线5 黄金数据集回归）；
+#       specs/contracts/db/item-model.md#2（ItemVersion 六大块）。
+#
+# 黄金用例 = 一个母题版本 + 一组实例化参数 + 期望产物（item_version_id + content 快照）。
+# 实例化引擎对 (template_version, params, ...) 确定性产出 item_version_id（D3）；
+# 回归测试比对实际实例化结果与本文件的 expected_* 字段——逐字节一致才算通过。
+# 这就是 W2 防线 5：实例化引擎/DSL/评分器任何变更若破坏既有产物，黄金回归立刻报红。
+
+$schema: https://json-schema.org/draft/2020-12/schema
+$id: https://devos.example/schemas/golden-case.schema.json
+title: GoldenCase
+description: |
+  黄金数据集单条用例结构。每条用例独立可复现：
+  给定 template_version + params + 上下文（pack/interaction/scorer/locale/...），
+  实例化引擎必产出 expected_item_version_id 与 expected_content_snapshot。
+type: object
+required:
+  - case_id
+  - description
+  - template_version
+  - params
+  - pack_digest
+  - interaction_id
+  - scorer_id
+  - scorer_params
+  - locale
+  - corpus_digests
+  - seed
+  - expected_item_version_id
+  - expected_content_snapshot
+additionalProperties: false
+properties:
+  case_id:
+    type: string
+    minLength: 1
+    description: 用例唯一 id（snake_case，文件名建议与之一致）
+  description:
+    type: string
+    description: 用例人类可读说明（题型/年级/考查点一句话）
+  template_version:
+    type: object
+    description: 母题版本（item_template_version 的序列化形态）
+    required:
+      - template_version_id
+      - template_id
+      - dsl_version
+      - spec
+    additionalProperties: false
+    properties:
+      template_version_id:
+        type: string
+        pattern: '^sha256:[0-9a-f]{64}$'
+        description: 母题版本内容寻址摘要
+      template_id:
+        type: string
+        minLength: 1
+        description: 母题不变身份 id
+      dsl_version:
+        type: string
+        description: DSL 语法版本（与 ItemTemplateSpec 对齐）
+      spec:
+        type: object
+        description: |
+          母题六大块（objective/slots/variation_axes/presentation/
+          answer_program/distractor_rules）。结构校验由
+          src/core/instantiation/dsl/schema.py 的 ItemTemplateSpec 承载，
+          本 schema 只断言 spec 是 object，避免与 DSL schema 双重维护。
+  params:
+    type: object
+    minProperties: 1
+    description: |
+      实例化参数（槽名 → 值）。键必须存在于 spec.slots；
+      规范化由引擎 normalize_params 承载，本 schema 只断言非空 object。
+  pack_digest:
+    type: string
+    pattern: '^sha256:[0-9a-f]{64}$'
+    description: 所属学科包摘要（进入公式一）
+  interaction_id:
+    type: string
+    minLength: 1
+    description: 交互类型 id（必须在 interaction.yaml 注册，D4）
+  scorer_id:
+    type: string
+    minLength: 1
+    description: 评分器 id（必须在 scorer.yaml 注册，D4）
+  scorer_params:
+    type: object
+    description: 评分器参数（与 scorer.yaml params_schema 对齐）
+  locale:
+    type: string
+    description: 语言/地区（zh-CN 等，进入公式一）
+  corpus_digests:
+    type: array
+    items:
+      type: string
+      pattern: '^sha256:[0-9a-f]{64}$'
+    description: 语料库版本摘要链（进入公式一，顺序敏感）
+  seed:
+    type: integer
+    minimum: 0
+    description: 实例化随机种子（保留扩展点；当前确定性实例化不使用，仅记入 lineage）
+  expected_item_version_id:
+    type: string
+    pattern: '^sha256:[0-9a-f]{64}$'
+    description: |
+      期望实例 id（公式一 H(tvd, np, pd, ed, cd, l)）。
+      实际实例化结果必须与此逐字节一致——这是回归防线核心断言。
+      id 由实际引擎实例化确认后固定（禁止手算，T-W2-023/024 验收 §2）。
+  expected_content_snapshot:
+    type: object
+    description: |
+      期望 content 快照（ItemVersionResult.content，含 blocks 列表）。
+      实际实例化的 content.model_dump() 必须与此深相等——
+      捕获 id 之外的内容漂移（如 presentation 插值、干扰项装配的回归）。
+    required:
+      - blocks
+    properties:
+      blocks:
+        type: array
+        minItems: 1
+        items:
+          type: object
+          required:
+            - kind
+            - template
+            - rendered
+        description: presentation 块序列（kind/template/rendered 三段）
