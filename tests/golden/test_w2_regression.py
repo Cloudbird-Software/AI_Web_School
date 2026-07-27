@@ -92,3 +92,38 @@ def test_golden_cases_cover_at_least_6_interactions() -> None:
     assert len(interactions) >= 6, (
         f"交互类型覆盖 {len(interactions)} 种 < 6：{interactions}"
     )
+
+
+def test_golden_cases_cover_all_10_active_interactions() -> None:
+    """T-W2-024 验收 §1：合计覆盖 10 种现役交互类型.
+
+    10 种现役交互（interaction.yaml status=active）：
+      single_choice / multi_choice / text_blank / numeric_blank /
+      matching / ordering / short_answer / stepwise_process /
+      writing / drawing_operation
+    """
+    from tests.golden.conftest import discover_golden_case_paths, load_golden_case
+
+    required = {
+        "single_choice", "multi_choice", "text_blank", "numeric_blank",
+        "matching", "ordering", "short_answer", "stepwise_process",
+        "writing", "drawing_operation",
+    }
+    covered: set[str] = set()
+    for p in discover_golden_case_paths():
+        case = load_golden_case(p)
+        covered.add(case.interaction_id)
+    missing = required - covered
+    assert not missing, (
+        f"未覆盖交互类型 {missing}；已覆盖 {len(covered)}：{sorted(covered)}"
+    )
+
+
+def test_golden_cases_total_at_least_50() -> None:
+    """T-W2-024 验收 §3 / E2E-3：50 母题回归全绿（总数 ≥50）."""
+    from tests.golden.conftest import discover_golden_case_paths
+
+    paths = discover_golden_case_paths()
+    assert len(paths) >= 50, (
+        f"黄金用例总数 {len(paths)} < 50（E2E-3 要求）"
+    )

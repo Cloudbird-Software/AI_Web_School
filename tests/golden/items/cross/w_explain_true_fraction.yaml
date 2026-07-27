@@ -1,0 +1,57 @@
+case_id: w_explain_true_fraction
+description: 写作——解释真分数
+template_version:
+  template_version_id: sha256:08c616995e9ec748022ede694ef349436d23dda79eb8a5a10e44cb9f97c8d56e
+  template_id: tpl-w-true-frac
+  dsl_version: '1'
+  spec:
+    objective:
+      kp_set:
+      - dimension: kp
+        code: math.nal.fraction.proper
+      kp_set_mode: single
+      cognitive_level: understand
+      gradeband: L
+      graph_release: '2026.1'
+    slots:
+      num:
+        type: int
+        difficulty_relevant: true
+      den:
+        type: int
+        difficulty_relevant: true
+    variation_axes:
+      axes: []
+    presentation:
+      blocks:
+      - kind: text
+        template: 解释为什么 {num}/{den} 是真分数。
+    answer_program:
+      expression: num
+      returns: number
+    distractor_rules:
+      rules: []
+params:
+  num: 2
+  den: 5
+pack_digest: sha256:2b2c873ec2ce739722d6a3a34b77943221856efc3a201f7f023b8ea85715cf29
+interaction_id: writing
+scorer_id: ai_rubric
+scorer_params:
+  rubric:
+    dimensions:
+    - name: 定义
+      max_score: 3
+      anchors: 分子<分母
+    - name: 判断
+      max_score: 3
+      anchors: 2<5 所以为真分数
+locale: zh-CN
+corpus_digests: []
+seed: 0
+expected_item_version_id: sha256:e7c830e994778f74c195c7e4ab5c5637b8a557f0da1d2340ce9869464607f6f4
+expected_content_snapshot:
+  blocks:
+  - kind: text
+    template: 解释为什么 {num}/{den} 是真分数。
+    rendered: 解释为什么 2/5 是真分数。

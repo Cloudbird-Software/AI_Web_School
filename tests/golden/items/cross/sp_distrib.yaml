@@ -1,0 +1,69 @@
+case_id: sp_distrib
+description: 分步——分配律
+template_version:
+  template_version_id: sha256:845436334ed9c91e9664fac6613c22dd1c01659f4716fb7651334bd41b67ec68
+  template_id: tpl-sp-distrib
+  dsl_version: '1'
+  spec:
+    objective:
+      kp_set:
+      - dimension: kp
+        code: math.nal.int.mul
+      kp_set_mode: single
+      cognitive_level: apply
+      gradeband: L
+      graph_release: '2026.1'
+    slots:
+      a:
+        type: int
+        difficulty_relevant: true
+      b:
+        type: int
+        difficulty_relevant: true
+      c:
+        type: int
+        difficulty_relevant: true
+    variation_axes:
+      axes: []
+    presentation:
+      blocks:
+      - kind: text
+        template: 用分配律算 {a}×({b}+{c})。分三步。
+    answer_program:
+      expression: a * (b + c)
+      returns: number
+    distractor_rules:
+      rules: []
+params:
+  a: 8
+  b: 5
+  c: 3
+pack_digest: sha256:2b2c873ec2ce739722d6a3a34b77943221856efc3a201f7f023b8ea85715cf29
+interaction_id: stepwise_process
+scorer_id: stepwise_rubric
+scorer_params:
+  steps:
+  - step_id: s1
+    scorer: exact_match
+    scorer_params:
+      answer: '40'
+    max_score: 5
+  - step_id: s2
+    scorer: exact_match
+    scorer_params:
+      answer: '24'
+    max_score: 5
+  - step_id: s3
+    scorer: exact_match
+    scorer_params:
+      answer: '64'
+    max_score: 5
+locale: zh-CN
+corpus_digests: []
+seed: 0
+expected_item_version_id: sha256:5f590244ef31d75d683a952d430cad8d26a0d1d2b207deb6deb72d19bd8f4dfa
+expected_content_snapshot:
+  blocks:
+  - kind: text
+    template: 用分配律算 {a}×({b}+{c})。分三步。
+    rendered: 用分配律算 8×(5+3)。分三步。

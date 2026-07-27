@@ -1,0 +1,60 @@
+case_id: sp_unit_convert
+description: 分步——复合单位换算
+template_version:
+  template_version_id: sha256:e47d62c1479b1fc4b15b5f1a4b38e4d73418a7b796ff31f8c29ffa09920c09d6
+  template_id: tpl-sp-unit-convert
+  dsl_version: '1'
+  spec:
+    objective:
+      kp_set:
+      - dimension: kp
+        code: math.meas.unit.convert
+      kp_set_mode: single
+      cognitive_level: apply
+      gradeband: L
+      graph_release: '2026.1'
+    slots:
+      km:
+        type: int
+        difficulty_relevant: true
+      m:
+        type: int
+        difficulty_relevant: true
+    variation_axes:
+      axes: []
+    presentation:
+      blocks:
+      - kind: text
+        template: 把 {km} 千米 {m} 米换算成米。第一步：千米化米。第二步：相加。
+    answer_program:
+      expression: km * 1000 + m
+      returns: number
+    distractor_rules:
+      rules: []
+params:
+  km: 2
+  m: 500
+pack_digest: sha256:2b2c873ec2ce739722d6a3a34b77943221856efc3a201f7f023b8ea85715cf29
+interaction_id: stepwise_process
+scorer_id: stepwise_rubric
+scorer_params:
+  steps:
+  - step_id: s1
+    scorer: exact_match
+    scorer_params:
+      answer: '2000'
+    max_score: 5
+  - step_id: s2
+    scorer: exact_match
+    scorer_params:
+      answer: '2500'
+    max_score: 5
+locale: zh-CN
+corpus_digests: []
+seed: 0
+expected_item_version_id: sha256:40a69881617451c27dbd8ef804108ed0922d32245cd707a9f8251e4060210128
+expected_content_snapshot:
+  blocks:
+  - kind: text
+    template: 把 {km} 千米 {m} 米换算成米。第一步：千米化米。第二步：相加。
+    rendered: 把 2 千米 500 米换算成米。第一步：千米化米。第二步：相加。

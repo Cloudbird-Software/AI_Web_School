@@ -1,0 +1,54 @@
+case_id: sa_area_explain
+description: 简答——解释长方形面积公式
+template_version:
+  template_version_id: sha256:6272a5f0c87d7588f95e901e74b52ceb473a327329a02088973d363917fe9f08
+  template_id: tpl-sa-area-explain
+  dsl_version: '1'
+  spec:
+    objective:
+      kp_set:
+      - dimension: kp
+        code: math.gm.area.rectangle
+      kp_set_mode: single
+      cognitive_level: understand
+      gradeband: L
+      graph_release: '2026.1'
+    slots:
+      len:
+        type: int
+        difficulty_relevant: true
+      wid:
+        type: int
+        difficulty_relevant: true
+    variation_axes:
+      axes: []
+    presentation:
+      blocks:
+      - kind: text
+        template: 解释长方形面积为什么是 {len}×{wid}。
+    answer_program:
+      expression: len * wid
+      returns: number
+    distractor_rules:
+      rules: []
+params:
+  len: 6
+  wid: 4
+pack_digest: sha256:2b2c873ec2ce739722d6a3a34b77943221856efc3a201f7f023b8ea85715cf29
+interaction_id: short_answer
+scorer_id: keypoint_hit
+scorer_params:
+  keypoints:
+  - text: 长乘宽
+    required: true
+  - text: 面积=长×宽
+    required: true
+locale: zh-CN
+corpus_digests: []
+seed: 0
+expected_item_version_id: sha256:a124aef7564e54a2b9f5b26d46efeca5c14b83f8e838060093207d299afc33e6
+expected_content_snapshot:
+  blocks:
+  - kind: text
+    template: 解释长方形面积为什么是 {len}×{wid}。
+    rendered: 解释长方形面积为什么是 6×4。

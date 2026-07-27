@@ -1,0 +1,61 @@
+case_id: w_solve_equation
+description: 写作——解方程并写过程
+template_version:
+  template_version_id: sha256:9ceb6ccf6b49531ea5a0e394af277d7a7af5b5dbb5badd80f67c2ebbe43981df
+  template_id: tpl-w-solve-eq
+  dsl_version: '1'
+  spec:
+    objective:
+      kp_set:
+      - dimension: kp
+        code: math.alg.equation.solve
+      kp_set_mode: single
+      cognitive_level: apply
+      gradeband: L
+      graph_release: '2026.1'
+    slots:
+      coef:
+        type: int
+        difficulty_relevant: true
+      const:
+        type: int
+        difficulty_relevant: true
+      result:
+        type: int
+        difficulty_relevant: true
+    variation_axes:
+      axes: []
+    presentation:
+      blocks:
+      - kind: text
+        template: 解方程 {coef}x + {const} = {result}，写出完整解题过程。
+    answer_program:
+      expression: (result - const) // coef
+      returns: number
+    distractor_rules:
+      rules: []
+params:
+  coef: 3
+  const: 5
+  result: 20
+pack_digest: sha256:2b2c873ec2ce739722d6a3a34b77943221856efc3a201f7f023b8ea85715cf29
+interaction_id: writing
+scorer_id: ai_rubric
+scorer_params:
+  rubric:
+    dimensions:
+    - name: 步骤
+      max_score: 4
+      anchors: 移项/合并/化简
+    - name: 结果
+      max_score: 2
+      anchors: x=5
+locale: zh-CN
+corpus_digests: []
+seed: 0
+expected_item_version_id: sha256:d666a2eced250bb1e38f42152141d9d41fe20887f8db53842b381b343fc83bb9
+expected_content_snapshot:
+  blocks:
+  - kind: text
+    template: 解方程 {coef}x + {const} = {result}，写出完整解题过程。
+    rendered: 解方程 3x + 5 = 20，写出完整解题过程。

@@ -1,0 +1,47 @@
+case_id: do_find_right_angle
+description: 作图——找出直角
+template_version:
+  template_version_id: sha256:b64a61bf543f4334dcba8053ddaf310fc3ac542e7684a3e04082fa842103ef54
+  template_id: tpl-do-right-angle
+  dsl_version: '1'
+  spec:
+    objective:
+      kp_set:
+      - dimension: kp
+        code: math.gm.angle.right
+      kp_set_mode: single
+      cognitive_level: understand
+      gradeband: L
+      graph_release: '2026.1'
+    slots:
+      count:
+        type: int
+        difficulty_relevant: true
+    variation_axes:
+      axes: []
+    presentation:
+      blocks:
+      - kind: text
+        template: 在图中找出 {count} 个直角并标注。
+    answer_program:
+      expression: count
+      returns: number
+    distractor_rules:
+      rules: []
+params:
+  count: 1
+pack_digest: sha256:2b2c873ec2ce739722d6a3a34b77943221856efc3a201f7f023b8ea85715cf29
+interaction_id: drawing_operation
+scorer_id: exact_match
+scorer_params:
+  answer:
+  - angle2
+locale: zh-CN
+corpus_digests: []
+seed: 0
+expected_item_version_id: sha256:a96beb4a564f67713e1a84a3fffa1f89fc4fd900cef645bdb56fdc311504e5a6
+expected_content_snapshot:
+  blocks:
+  - kind: text
+    template: 在图中找出 {count} 个直角并标注。
+    rendered: 在图中找出 1 个直角并标注。

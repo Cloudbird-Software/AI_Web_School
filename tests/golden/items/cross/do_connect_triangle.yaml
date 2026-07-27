@@ -1,0 +1,57 @@
+case_id: do_connect_triangle
+description: 作图——连接三点成三角形
+template_version:
+  template_version_id: sha256:2469dc9f7c8e0f09fa8f663ed0e5b709b961eb6bd95ea76130fa27fb3d03ad98
+  template_id: tpl-do-connect-tri
+  dsl_version: '1'
+  spec:
+    objective:
+      kp_set:
+      - dimension: kp
+        code: math.gm.shape.triangle
+      kp_set_mode: single
+      cognitive_level: apply
+      gradeband: L
+      graph_release: '2026.1'
+    slots:
+      p1:
+        type: string
+        difficulty_relevant: false
+      p2:
+        type: string
+        difficulty_relevant: false
+      p3:
+        type: string
+        difficulty_relevant: false
+    variation_axes:
+      axes: []
+    presentation:
+      blocks:
+      - kind: text
+        template: 连接 {p1}、{p2}、{p3} 三点形成三角形。
+    answer_program:
+      expression: p1
+      returns: string
+    distractor_rules:
+      rules: []
+params:
+  p1: A
+  p2: B
+  p3: C
+pack_digest: sha256:2b2c873ec2ce739722d6a3a34b77943221856efc3a201f7f023b8ea85715cf29
+interaction_id: drawing_operation
+scorer_id: exact_match
+scorer_params:
+  answer:
+  - A
+  - B
+  - C
+locale: zh-CN
+corpus_digests: []
+seed: 0
+expected_item_version_id: sha256:a7873f5803c473f81beed886cd85024d96ff0cd866050fedc3e5720b70090e53
+expected_content_snapshot:
+  blocks:
+  - kind: text
+    template: 连接 {p1}、{p2}、{p3} 三点形成三角形。
+    rendered: 连接 A、B、C 三点形成三角形。

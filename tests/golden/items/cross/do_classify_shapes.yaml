@@ -1,0 +1,48 @@
+case_id: do_classify_shapes
+description: 作图——选出三角形
+template_version:
+  template_version_id: sha256:b75c4a86219dac6fd085fd2de3e560859417b7d25ab4bef2469651933a75c381
+  template_id: tpl-do-classify
+  dsl_version: '1'
+  spec:
+    objective:
+      kp_set:
+      - dimension: kp
+        code: math.gm.shape.triangle
+      kp_set_mode: single
+      cognitive_level: understand
+      gradeband: L
+      graph_release: '2026.1'
+    slots:
+      target_shape:
+        type: string
+        difficulty_relevant: false
+    variation_axes:
+      axes: []
+    presentation:
+      blocks:
+      - kind: text
+        template: 从图形中选出所有的{target_shape}。
+    answer_program:
+      expression: target_shape
+      returns: string
+    distractor_rules:
+      rules: []
+params:
+  target_shape: 三角形
+pack_digest: sha256:2b2c873ec2ce739722d6a3a34b77943221856efc3a201f7f023b8ea85715cf29
+interaction_id: drawing_operation
+scorer_id: exact_match
+scorer_params:
+  answer:
+  - shape1
+  - shape3
+locale: zh-CN
+corpus_digests: []
+seed: 0
+expected_item_version_id: sha256:974b1f6a44549da8ef427b578c3d6cd8df5d9597a57680138a2fb683c545a7c4
+expected_content_snapshot:
+  blocks:
+  - kind: text
+    template: 从图形中选出所有的{target_shape}。
+    rendered: 从图形中选出所有的三角形。
