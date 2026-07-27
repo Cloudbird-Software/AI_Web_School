@@ -255,7 +255,7 @@ async def publish_material(
 
 
 # ────────────────────────────────────────────────────────────────────
-# publish_corpus_asset（骨架，两段式：corpus_asset + corpus_version）
+# publish_corpus_asset（两段式：corpus_asset + corpus_version，T-W2-018 修复门字段）
 # ────────────────────────────────────────────────────────────────────
 
 async def publish_corpus_asset(
@@ -265,6 +265,10 @@ async def publish_corpus_asset(
 ) -> dict:
     """语料库入库：corpus_asset（身份）+ corpus_version（版本）两段式.
 
+    T-W2-018 修复：corpus_version 门字段（status / gate_certificate_id /
+    published_at / retired_at）与 material_version / item_version 对齐
+    （契约 §2.5 v1.1.1 补丁；原 W1 骨架漏写这些字段）。
+
     Args:
         corpus_data: 含 kind / pack_id / content_ref / license_id /
             status / lineage。
@@ -273,6 +277,10 @@ async def publish_corpus_asset(
 
     Returns:
         {"asset_id": ..., "version_id": ...}
+
+    Raises:
+        GateEnforcementError: status='published' 但 gate_certificate_id 为 None。
+        ValueError: db 未提供。
     """
     if db is None:
         raise ValueError("db (AsyncSession) 必填")
@@ -280,7 +288,8 @@ async def publish_corpus_asset(
     status = corpus_data.get("status", "draft")
     if status == "published" and not gate_certificate_id:
         raise GateEnforcementError(
-            "门强制失败：corpus status='published' 必须提供 gate_certificate_id"
+            "门强制失败：corpus status='published' 必须提供合法 gate_certificate_id"
+            "（契约 §4 规则 1 / §2.5）"
         )
 
     # ── 创建 corpus_asset 身份 ──
@@ -293,16 +302,24 @@ async def publish_corpus_asset(
     db.add(asset)
     await db.flush()
 
-    # ── 创建 corpus_version ──
+    # ── 创建 corpus_version（门字段与 material_version 对齐） ──
     version_id = compute_material_version_id(corpus_data["content_ref"])
-    cv = CorpusVersion(
-        version_id=version_id,
-        asset_id=asset_id,
-        content_ref=corpus_data["content_ref"],
-        license_id=corpus_data["license_id"],
-        lineage=corpus_data["lineage"],
-        status=status,
-    )
+    now = datetime.now(timezone.utc)
+    cv_kwargs: dict[str, Any] = {
+        "version_id": version_id,
+        "asset_id": asset_id,
+        "content_ref": corpus_data["content_ref"],
+        "license_id": corpus_data["license_id"],
+        "lineage": corpus_data["lineage"],
+        "status": status,
+    }
+    if status == "published":
+        cv_kwargs["gate_certificate_id"] = gate_certificate_id
+        cv_kwargs["published_at"] = now
+    elif status == "retired":
+        cv_kwargs["retired_at"] = now
+
+    cv = CorpusVersion(**cv_kwargs)
     db.add(cv)
     await db.commit()
 

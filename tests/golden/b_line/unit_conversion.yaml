@@ -1,0 +1,115 @@
+# T-W2-017 B 线语料装配线 · 单位换算题型黄金样例
+#
+# 验收对照：
+#   §1 assemble(template, corpus_refs, params) 返回 ItemVersion dict
+#   §2 1 模板 + 3 组 (params, corpus_refs) → 3 个不同 ItemVersion，id 按公式二稳定
+#   §3 产物 lineage.corpus_refs 非空，digest 与 corpus_version_id 对应
+#   §4 同输入同 id（内容寻址稳定性，由测试运行时二次装配断言）
+#
+# 设计说明：
+#   - 1 个框架模板（unit_conversion_v1）：定义单位换算题型的结构骨架
+#   - 1 个共享语料引用（math-functions-v1，对应 src/packs/subject-math/corpora/functions.yaml）
+#   - 3 组实证案例：长度 / 时间 / 质量 三个不同量纲，每组 params 不同 → content 不同 → id 不同
+#   - corpus_version_id 为占位值（以 sha256:math-functions-v1 表意）；测试运行时
+#     可选覆盖为真实 corpus_loader.compute_corpus_version_id() 计算结果，
+#     但不强制——B 线装配器不校验 corpus_version_id 是否真实存在于 DB（
+#     DB 存在性校验属校验门职责，不属装配器职责）。
+#
+# 为什么 scoring_ref.scorer_params.answer_key 用 {answer} 占位：
+#   B 线框架模板的"半模板"性质——正解由调用方在 params.answer 直接给出
+#   （上游可调用 A 线 expr_eval 算 unit_convert(value, from_unit, to_unit)
+#   后注入 params.answer）。B 线装配器只做模板填充，不做表达式求值。
+# ────────────────────────────────────────────────────────────────────────
+
+template:
+  template_id: tpl-unit-conversion-v1
+  template_version: "1.0.0"
+  pack_id: subject-math
+  description: |
+    B 线单位换算题型框架模板（T-W2-017 实证）。
+    覆盖小学 3-4 年级数学"测量"单元：长度/时间/质量单位换算。
+  slots:
+    - name: value
+      type: number
+      required: true
+      description: 待换算数值
+    - name: from_unit
+      type: string
+      required: true
+      description: 源单位（如 km / hour / g）
+    - name: to_unit
+      type: string
+      required: true
+      description: 目标单位（如 m / minute / kg）
+    - name: answer
+      type: number
+      required: true
+      description: |
+        正确答案（数值）。
+        由上游调用 A 线 expr_eval 算出 unit_convert(value, from_unit, to_unit)
+        后注入；本装配器不做表达式求值。
+  presentation:
+    - type: text
+      template: "把 {value} {from_unit} 换算成 {to_unit}（结果保留两位小数）。"
+  objective:
+    kp_set:
+      - {dimension: kp, code: math.nal.unit_conversion}
+    kp_set_mode: single
+    cognitive_level: apply
+    gradeband: M
+    graph_release: "2026.1"
+  interaction_ref:
+    interaction_id: numeric_blank
+    interaction_params:
+      placeholder: "数值"
+      precision: 2
+  scoring_ref:
+    scorer_id: exact_match
+    scorer_params:
+      # answer_key 含 {answer} 占位：装配时与 presentation 同步替换
+      answer_key: "{answer}"
+      tolerance: 0.01
+  error_bindings:
+    - error_type: math.unit.scale_wrong
+      description: 量级错误（如 km→m 时除以 1000 而非乘 1000）
+    - error_type: math.unit.cross_kind
+      description: 跨类换算（如 km→kg）
+
+corpus_refs:
+  - corpus_version_id: "sha256:math-functions-v1"
+    digest: "sha256:math-functions-v1"
+    # 注：测试运行时可选覆盖为真实 compute_corpus_version_id(functions.yaml)
+
+cases:
+  # ── 案例 1：长度换算（km → m）──
+  - case_id: unit_km_to_m
+    description: 1.5 千米换算成米
+    params:
+      value: 1.5
+      from_unit: "km"
+      to_unit: "m"
+      answer: 1500
+    # 期望题面（用于断言 presentation 渲染结果）
+    expected_value: "把 1.5 km 换算成 m（结果保留两位小数）。"
+    # 期望 item_version_id 不在 yaml 中固化（lineage.signed_at 影响 id；
+    # 测试固定 signed_at 后断言"同输入同 id"即可证明 D3 稳定性）
+
+  # ── 案例 2：时间换算（hour → minute）──
+  - case_id: unit_hour_to_min
+    description: 2 小时换算成分钟
+    params:
+      value: 2
+      from_unit: "hour"
+      to_unit: "minute"
+      answer: 120
+    expected_value: "把 2 hour 换算成 minute（结果保留两位小数）。"
+
+  # ── 案例 3：质量换算（g → kg）──
+  - case_id: unit_g_to_kg
+    description: 500 克换算成千克
+    params:
+      value: 500
+      from_unit: "g"
+      to_unit: "kg"
+      answer: 0.5
+    expected_value: "把 500 g 换算成 kg（结果保留两位小数）。"

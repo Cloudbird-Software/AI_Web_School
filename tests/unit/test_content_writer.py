@@ -419,3 +419,147 @@ async def test_publish_corpus_creates_two_stage(async_session):
     assert cv is not None
     assert cv.asset_id == a.asset_id
     assert cv.status == "draft"
+
+
+# ────────────────────────────────────────────────────────────────────
+# §11 T-W2-018 publish_corpus_asset 门字段对齐断言
+# ────────────────────────────────────────────────────────────────────
+# 修复 W1 遗留：published 状态必须写入 gate_certificate_id + published_at；
+# retired 状态写入 retired_at；draft 状态保持 NULL（与 material_version 对齐）。
+
+async def _seed_license(async_session) -> str:
+    """创建 approved 状态的 material_license 行并返回 license_id."""
+    license_id = _uid("license")
+    await async_session.execute(
+        text(
+            "INSERT INTO material_license (license_id, decision) "
+            "VALUES (:lid, 'approved')"
+        ),
+        {"lid": license_id},
+    )
+    await async_session.flush()
+    return license_id
+
+
+def _make_corpus_data(license_id: str, status: str = "draft") -> dict:
+    """构造一份最小可用的 corpus_data."""
+    return {
+        "kind": "wordlist",
+        "pack_id": "platform",
+        "content_ref": f"minio:corpus/sha256:{uuid.uuid4().hex[:8]}",
+        "license_id": license_id,
+        "status": status,
+        "lineage": {
+            "tier": "C",
+            "pipeline": {"id": "upload", "version": "1.0"},
+            "signed_by": "test",
+            "signed_at": "2026-01-01T00:00:00Z",
+        },
+    }
+
+
+async def test_publish_corpus_draft_has_no_gate_fields(async_session):
+    """T-W2-018 验收 #1：draft 状态不写 gate_certificate_id 与 published_at."""
+    license_id = await _seed_license(async_session)
+    corpus_data = _make_corpus_data(license_id, status="draft")
+
+    result = await publish_corpus_asset(corpus_data=corpus_data, db=async_session)
+    cv = await async_session.get(CorpusVersion, result["version_id"])
+
+    assert cv.status == "draft"
+    assert cv.gate_certificate_id is None
+    assert cv.published_at is None
+    assert cv.retired_at is None
+
+
+async def test_publish_corpus_published_without_gate_fails(async_session):
+    """T-W2-018 验收 #2：published 状态无 gate_certificate_id → GateEnforcementError."""
+    license_id = await _seed_license(async_session)
+    corpus_data = _make_corpus_data(license_id, status="published")
+
+    with pytest.raises(GateEnforcementError):
+        await publish_corpus_asset(
+            corpus_data=corpus_data,
+            gate_certificate_id=None,
+            db=async_session,
+        )
+
+    await async_session.rollback()
+
+
+async def test_publish_corpus_published_with_gate_writes_fields(async_session):
+    """T-W2-018 验收 #1：published + gate_cert → gate_certificate_id 与 published_at 写入."""
+    license_id = await _seed_license(async_session)
+    corpus_data = _make_corpus_data(license_id, status="published")
+    cert_id = _make_cert_id()
+
+    result = await publish_corpus_asset(
+        corpus_data=corpus_data,
+        gate_certificate_id=cert_id,
+        db=async_session,
+    )
+    cv = await async_session.get(CorpusVersion, result["version_id"])
+
+    assert cv.status == "published"
+    # 关键门字段对齐（原 W1 骨架漏写这里）
+    assert cv.gate_certificate_id == cert_id, "gate_certificate_id 未写入"
+    assert cv.published_at is not None, "published_at 未写入"
+    assert cv.retired_at is None
+
+
+async def test_publish_corpus_retired_writes_retired_at(async_session):
+    """T-W2-018 验收 #1：retired 状态写入 retired_at（与 material_version 对齐）."""
+    license_id = await _seed_license(async_session)
+    corpus_data = _make_corpus_data(license_id, status="retired")
+
+    result = await publish_corpus_asset(corpus_data=corpus_data, db=async_session)
+    cv = await async_session.get(CorpusVersion, result["version_id"])
+
+    assert cv.status == "retired"
+    assert cv.retired_at is not None, "retired_at 未写入"
+    # retired 状态不需要 gate_certificate_id（语义：从已发布退役，门证书已在 published 版本中）
+    assert cv.gate_certificate_id is None
+    assert cv.published_at is None
+
+
+async def test_publish_corpus_gate_enforcement_error_is_raised_before_db_write(async_session):
+    """T-W2-018 验收 #2：门强制失败时 DB 不应被污染（无 corpus_asset / corpus_version 行）."""
+    from sqlalchemy import func, select
+
+    license_id = await _seed_license(async_session)
+    corpus_data = _make_corpus_data(license_id, status="published")
+
+    with pytest.raises(GateEnforcementError):
+        await publish_corpus_asset(
+            corpus_data=corpus_data,
+            gate_certificate_id=None,
+            db=async_session,
+        )
+    await async_session.rollback()
+
+    asset_count = await async_session.scalar(
+        select(func.count()).select_from(CorpusAsset)
+    )
+    version_count = await async_session.scalar(
+        select(func.count()).select_from(CorpusVersion)
+    )
+    assert asset_count == 0, "GateEnforcementError 前不应创建 corpus_asset"
+    assert version_count == 0, "GateEnforcementError 前不应创建 corpus_version"
+
+
+async def test_publish_corpus_status_field_alignment_with_material(async_session):
+    """T-W2-018 验收 #1：corpus_version.status 接受四态（draft/quarantined/published/retired）.
+
+    与 material_version / item_version 共用 item_version_status_enum；
+    任何 enum 外的值应被数据库拒绝（CHECK 约束）。
+    """
+    license_id = await _seed_license(async_session)
+
+    # quarantined 状态也应能写入（不要求 gate_certificate_id）
+    corpus_data = _make_corpus_data(license_id, status="quarantined")
+    result = await publish_corpus_asset(corpus_data=corpus_data, db=async_session)
+    cv = await async_session.get(CorpusVersion, result["version_id"])
+    assert cv.status == "quarantined"
+    # quarantined 同样不写 published_at（语义：未签发）
+    assert cv.published_at is None
+    assert cv.gate_certificate_id is None
