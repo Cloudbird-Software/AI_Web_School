@@ -1,0 +1,221 @@
+/* T-W2-036 品牌模板 v1：A4 静态卷默认样式.
+ *
+ * 设计目标：
+ *  - A4 版式（210mm × 297mm），可打印
+ *  - 题号、选项、填空下划线清晰
+ *  - 页眉卷名 / 页脚页码（@page + 固定定位）
+ *  - 卷码 QR 区块样式
+ *  - 与 html_renderer.py 产出的 class 命名对齐
+ */
+
+/* ── A4 页面尺寸 ──────────────────────────────────────────────── */
+@page {
+  size: A4;
+  margin: 18mm 16mm 20mm 16mm;
+}
+
+html, body {
+  margin: 0;
+  padding: 0;
+  font-family: "Noto Sans CJK SC", "Microsoft YaHei", "PingFang SC", sans-serif;
+  font-size: 11pt;
+  line-height: 1.6;
+  color: #1a1a1a;
+  background: #ffffff;
+}
+
+/* ── 页面容器 ──────────────────────────────────────────────────── */
+.paper-page {
+  width: 210mm;
+  min-height: 297mm;
+  box-sizing: border-box;
+  padding: 0;
+  margin: 0 auto;
+}
+
+/* ── 页眉：卷名 + 卷码 ─────────────────────────────────────────── */
+.paper-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 2px solid #1a1a1a;
+  padding-bottom: 6px;
+  margin-bottom: 14px;
+}
+
+.paper-title {
+  font-size: 16pt;
+  font-weight: 700;
+  letter-spacing: 1px;
+}
+
+.paper-code {
+  font-family: "Consolas", "Courier New", monospace;
+  font-size: 10pt;
+  color: #555;
+}
+
+/* ── 卷码 QR 区块 ──────────────────────────────────────────────── */
+.paper-qr {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.paper-qr svg,
+.paper-qr img {
+  width: 24mm;
+  height: 24mm;
+}
+
+.paper-qr-caption {
+  font-size: 9pt;
+  color: #666;
+}
+
+/* ── 题目容器（与 html_renderer.render_item 对齐） ─────────────── */
+.item {
+  margin: 10px 0 14px 0;
+  page-break-inside: avoid;
+}
+
+.item[data-page-break-before="true"] {
+  page-break-before: always;
+}
+
+.item[data-keep-with-next="true"] {
+  page-break-after: avoid;
+}
+
+/* ── 题号 ──────────────────────────────────────────────────────── */
+.item-number {
+  font-weight: 700;
+  font-size: 11pt;
+  margin-bottom: 4px;
+  display: inline-block;
+}
+
+.item-body {
+  display: block;
+}
+
+/* ── 文本块 ────────────────────────────────────────────────────── */
+.item-text {
+  margin: 4px 0;
+  text-indent: 0;
+}
+
+/* ── 选择题选项 ────────────────────────────────────────────────── */
+ul.options {
+  list-style: none;
+  padding-left: 28px;
+  margin: 6px 0;
+}
+
+ul.options li {
+  margin: 4px 0;
+  display: flex;
+  align-items: baseline;
+}
+
+ul.options[data-preferred-columns="2"],
+.item[data-preferred-columns="2"] ul.options {
+  column-count: 2;
+  column-gap: 16px;
+}
+
+.option-label {
+  display: inline-block;
+  min-width: 22px;
+  font-weight: 700;
+  margin-right: 6px;
+}
+
+.option-label::before {
+  content: "";
+}
+
+.option-text {
+  flex: 1;
+}
+
+/* 多选标注 */
+ul.options.multi::before {
+  content: "（多选）";
+  font-size: 9pt;
+  color: #666;
+  display: block;
+  margin-bottom: 4px;
+}
+
+/* ── 填空下划线 ────────────────────────────────────────────────── */
+.blank {
+  display: inline-block;
+  min-width: 8ch;
+  width: var(--blank-width, 12ch);
+  border-bottom: 1px solid #1a1a1a;
+  margin: 0 2px;
+  height: 1.2em;
+  vertical-align: baseline;
+}
+
+/* ── 数学 SVG ──────────────────────────────────────────────────── */
+figure.math-svg {
+  margin: 8px auto;
+  text-align: center;
+  page-break-inside: avoid;
+}
+
+figure.math-svg svg {
+  max-width: 100%;
+  height: auto;
+}
+
+figure.math-svg figcaption {
+  font-size: 9pt;
+  color: #666;
+  margin-top: 4px;
+}
+
+/* ── 题组 ──────────────────────────────────────────────────────── */
+.group {
+  margin: 12px 0;
+  padding: 8px 12px;
+  border-left: 3px solid #ddd;
+  page-break-inside: avoid;
+}
+
+.group-material {
+  font-size: 10.5pt;
+  margin-bottom: 8px;
+  text-indent: 2em;
+}
+
+.group-items .item {
+  margin: 6px 0;
+}
+
+/* ── 页脚：页码 ────────────────────────────────────────────────── */
+.paper-footer {
+  position: fixed;
+  bottom: 8mm;
+  left: 16mm;
+  right: 16mm;
+  text-align: center;
+  font-size: 9pt;
+  color: #666;
+  border-top: 1px solid #ccc;
+  padding-top: 4px;
+}
+
+/* ── 打印优化 ──────────────────────────────────────────────────── */
+@media print {
+  .paper-page {
+    width: auto;
+    min-height: auto;
+  }
+  .no-print {
+    display: none;
+  }
+}

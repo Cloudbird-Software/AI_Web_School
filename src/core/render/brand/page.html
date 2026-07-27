@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{{ paper_title }}{% if paper_code %} · {{ paper_code }}{% endif %}</title>
+  <style>
+{{ css_text }}
+  </style>
+</head>
+<body>
+  <div class="paper-page">
+    <header class="paper-header">
+      <div class="paper-title">{{ paper_title }}</div>
+      {% if paper_code %}<div class="paper-code">{{ paper_code }}</div>{% endif %}
+    </header>
+
+    {% if qr_svg %}
+    <div class="paper-qr">
+      {{ qr_svg | safe }}
+      <div class="paper-qr-caption">扫码核验卷码</div>
+    </div>
+    {% endif %}
+
+    <main class="paper-body">
+      {{ items_html | safe }}
+    </main>
+
+    <footer class="paper-footer">
+      {{ paper_title }}{% if paper_code %} · {{ paper_code }}{% endif %}
+      · 第 <span class="page-num"></span> 页
+    </footer>
+  </div>
+</body>
+</html>
