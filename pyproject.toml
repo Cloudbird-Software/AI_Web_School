@@ -9,6 +9,10 @@
 # - pyyaml：注册表 YAML 解析（W0 已用，保留为运行时依赖）
 # - ulid-py：契约规定 C/D 级 item_id/material_id 用 ULID（全局唯一 id 生成，
 #   替代 uuid4 hex 冒充——W1 修复包 P7）
+# - jinja2：品牌模板 page.html 渲染（T-W2-036）；FastAPI 间接依赖但显式声明
+# - qrcode + pypng：卷码 QR 码生成（T-W2-037，QR 只含卷 Spec ID+校验位）
+# - playwright：PDF 导出备选后端（T-W2-035，CI 无 Edge 时用 chromium；
+#   本机优先用 Edge headless，playwright 延迟导入）
 
 [build-system]
 requires = ["setuptools>=68", "wheel"]
@@ -32,6 +36,10 @@ dependencies = [
     "alembic>=1.13",
     "pyyaml>=6.0",
     "ulid-py>=1.1",
+    "jinja2>=3.1",
+    "qrcode>=7.4",
+    "pypng>=0.20220715",
+    "playwright>=1.40",
 ]
 
 [project.optional-dependencies]
@@ -50,6 +58,13 @@ packages = [
     "src.core.events",
     "src.core.gate",
     "src.core.content",
+    "src.core.knowledge",
+    "src.core.instantiation",
+    "src.core.production",
+    "src.core.render",
+    "src.packs",
+    "src.packs.subject-math",
+    "src.packs.subject-math.render",
     "src.registry",
 ]
 
@@ -61,6 +76,13 @@ packages = [
 "src.core.events" = "src/core/events"
 "src.core.gate" = "src/core/gate"
 "src.core.content" = "src/core/content"
+"src.core.knowledge" = "src/core/knowledge"
+"src.core.instantiation" = "src/core/instantiation"
+"src.core.production" = "src/core/production"
+"src.core.render" = "src/core/render"
+"src.packs" = "src/packs"
+"src.packs.subject-math" = "src/packs/subject-math"
+"src.packs.subject-math.render" = "src/packs/subject-math/render"
 "src.registry" = "src/registry"
 
 # pytest 配置统一在 pytest.ini（已存在，避免双源配置冲突）
