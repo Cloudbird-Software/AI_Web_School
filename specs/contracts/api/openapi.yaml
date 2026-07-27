@@ -141,6 +141,117 @@ paths:
                   type: string
                 type: object
                 title: Response Health Health Get
+  /reports/weakness/{student_alias_id}:
+    get:
+      tags:
+      - report
+      summary: 弱项报告 v1：错误类型归因 + 证据计数 + 贝叶斯置信度 + 针对性练习
+      description: '按 error_type 聚合该学生作答事件的错误推断，产出弱项报告.
+
+
+        证据达阈值的错误类型给出归因结论 + 后验置信度 + 5 题针对性小卷；
+
+        未达阈值输出「证据不足」（不给定论、不给推荐）。'
+      operationId: get_weakness_report_reports_weakness__student_alias_id__get
+      parameters:
+      - name: student_alias_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+          title: Student Alias Id
+      - name: scene
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - enum:
+            - practice
+            - diagnosis
+            - measurement
+            type: string
+          - type: 'null'
+          description: 取数场景（D5 分场景口径；缺省=跨场景汇总）
+          title: Scene
+        description: 取数场景（D5 分场景口径；缺省=跨场景汇总）
+      - name: min_evidence
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          description: 证据阈值：低于此数输出「证据不足」
+          default: 3
+          title: Min Evidence
+        description: 证据阈值：低于此数输出「证据不足」
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WeaknessReport'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /review/due/{student_alias_id}:
+    get:
+      tags:
+      - report
+      summary: 复习到期取题（固定间隔策略 v1：1/3/7/21 天）
+      description: '返回该学生已到期的在队复习条目（最逾期优先）.
+
+
+        队列由 sync_review_queue 在作答评分后同步；本端点只读。'
+      operationId: get_due_review_items_review_due__student_alias_id__get
+      parameters:
+      - name: student_alias_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+          title: Student Alias Id
+      - name: now
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+            format: date-time
+          - type: 'null'
+          description: 判定基准时刻（缺省=当前 UTC）
+          title: Now
+        description: 判定基准时刻（缺省=当前 UTC）
+      - name: limit
+        in: query
+        required: false
+        schema:
+          type: integer
+          maximum: 100
+          minimum: 1
+          default: 20
+          title: Limit
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ReviewQueueEntryPydantic'
+                title: Response Get Due Review Items Review Due  Student Alias Id  Get
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
 components:
   schemas:
     Content:
@@ -774,3 +885,136 @@ components:
       - msg
       - type
       title: ValidationError
+    ReviewQueueEntryPydantic:
+      properties:
+        entry_id:
+          type: string
+          format: uuid
+          title: Entry Id
+        student_alias_id:
+          type: string
+          format: uuid
+          title: Student Alias Id
+        item_version_id:
+          type: string
+          title: Item Version Id
+        policy_id:
+          type: string
+          title: Policy Id
+        policy_version:
+          type: string
+          title: Policy Version
+        stage:
+          type: integer
+          title: Stage
+        status:
+          type: string
+          title: Status
+        source_error_type_id:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Source Error Type Id
+        enqueued_at:
+          type: string
+          format: date-time
+          title: Enqueued At
+        due_at:
+          type: string
+          format: date-time
+          title: Due At
+      additionalProperties: false
+      type: object
+      required:
+      - entry_id
+      - student_alias_id
+      - item_version_id
+      - policy_id
+      - policy_version
+      - stage
+      - status
+      - enqueued_at
+      - due_at
+      title: ReviewQueueEntryPydantic
+      description: ReviewQueueEntry 的 Pydantic 表示（到期取题接口的响应元素）.
+    WeaknessItem:
+      properties:
+        error_type_id:
+          type: string
+          title: Error Type Id
+        status:
+          type: string
+          enum:
+          - concluded
+          - insufficient_evidence
+          title: Status
+        evidence_count:
+          type: integer
+          minimum: 0.0
+          title: Evidence Count
+        confidence:
+          type: number
+          maximum: 1.0
+          minimum: 0.0
+          title: Confidence
+        recommended_item_version_ids:
+          items:
+            type: string
+          type: array
+          title: Recommended Item Version Ids
+      additionalProperties: false
+      type: object
+      required:
+      - error_type_id
+      - status
+      - evidence_count
+      - confidence
+      title: WeaknessItem
+      description: "单错误类型的弱项条目.\n\nstatus：\n- concluded：证据达阈值，可归因（confidence 为贝叶斯后验）\n\
+        - insufficient_evidence：证据不足，不给定论（confidence 仍返回当前\n  后验供参考，但消费方不得当作结论呈现；§4.7\
+        \ 允许输出证据不足）\nrecommended_item_version_ids：针对性练习 5 题小卷（仅 concluded 时非空——\n\
+        没有定论的推荐是误导）；已剔除产生过该错误证据的题目版本。"
+    WeaknessReport:
+      properties:
+        student_alias_id:
+          type: string
+          format: uuid
+          title: Student Alias Id
+        scene:
+          anyOf:
+          - type: string
+            enum:
+            - practice
+            - diagnosis
+            - measurement
+          - type: 'null'
+          title: Scene
+        min_evidence:
+          type: integer
+          minimum: 1.0
+          title: Min Evidence
+        generated_at:
+          type: string
+          format: date-time
+          title: Generated At
+        items:
+          items:
+            $ref: '#/components/schemas/WeaknessItem'
+          type: array
+          title: Items
+      additionalProperties: false
+      type: object
+      required:
+      - student_alias_id
+      - min_evidence
+      - generated_at
+      - items
+      title: WeaknessReport
+      description: '弱项报告 v1：按错误类型聚合作答事件的归因报告.
+
+
+        scene：本报告的取数场景（None=未过滤，跨场景汇总）；D5 禁止混估——
+
+        需要分场景口径时调用方必须显式传 scene，报告如实回显取数口径。
+
+        items 按 evidence_count 降序、error_type_id 升序（确定性）。'

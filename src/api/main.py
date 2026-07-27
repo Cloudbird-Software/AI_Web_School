@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from fastapi import FastAPI
 
-from src.api.routers import gate, items
+from src.api.routers import gate, items, report
 
 
 def create_app() -> FastAPI:
@@ -35,6 +35,7 @@ def create_app() -> FastAPI:
 
     app.include_router(items.router)
     app.include_router(gate.router)
+    app.include_router(report.router)
 
     @app.get("/health", tags=["meta"], summary="健康检查")
     async def health() -> dict[str, str]:
