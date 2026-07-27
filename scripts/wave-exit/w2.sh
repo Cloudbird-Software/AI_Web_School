@@ -1,0 +1,101 @@
+#!/usr/bin/env bash
+# W2 波次出口：出口演示与门禁检查（T-W2-044，E2E-9 唯一验收入口）。
+# 任何一项失败即出口不通过（非零退出并打印失败步骤）。
+#
+# 对照 T-W2-044 验收标准与 tasks/w2/BRIEF.md §3 E2E-1~E2E-10：
+# 1. 顺序执行：迁移检查 → 全量测试（含契约）→ golden 回归 →
+#    E2E-1 业务演示（demo-w2-business.py 生成真实 PDF）→
+#    E2E-5 直写失败实证 → w0/w1 出口不退化检查。
+# 2. 任一失败非零退出并打印失败步骤（die）。
+# 3. 结尾输出摘要：通过项数/失败项数/耗时。
+set -euo pipefail
+PASS=0
+ok(){ echo "✅ $1"; PASS=$((PASS+1)); }
+die(){
+  echo "❌ $1"
+  echo ""
+  echo "摘要：通过 ${PASS} 项 / 失败 1 项（$1）/ 耗时 ${SECONDS}s"
+  exit 1
+}
+
+echo "== W2 出口验收（T-W2-044 · E2E-9）=="
+
+# ────────────────────────────────────────────────────────────────────
+# ① W2 包存在性（W2 交付物不齐即 die）
+# ────────────────────────────────────────────────────────────────────
+# S1 实例化引擎 / S8 渲染底座 / S3 知识图谱 / S4 B 线装配 / S6 数学包 /
+# S7 语文包 / S9 只读 API + 教研工作台
+for d in src/core/instantiation src/core/render src/core/knowledge \
+         src/core/production src/core/gate \
+         src/packs/subject-math src/packs/subject-chinese \
+         src/api src/workbench; do
+  [ -d "$d" ] && ok "存在 $d" || die "缺失 $d（W2 交付物不齐）"
+done
+
+# ────────────────────────────────────────────────────────────────────
+# ② 迁移可逆演练（upgrade→downgrade→upgrade）
+# ────────────────────────────────────────────────────────────────────
+make migrate-check >/dev/null 2>&1 && ok "迁移可逆演练（migrate-check）" \
+  || die "迁移演练失败（alembic upgrade→downgrade→upgrade 不闭环）"
+
+# ────────────────────────────────────────────────────────────────────
+# ③ 全量测试套件绿（含 contract/golden/golden-path/unit，E2E-10）
+# ────────────────────────────────────────────────────────────────────
+python -m pytest tests/ -q >/dev/null 2>&1 && ok "全量测试套件绿（pytest tests/）" \
+  || die "全量测试套件红（python -m pytest tests/ -q 失败）"
+
+# ────────────────────────────────────────────────────────────────────
+# ④ 学科边界：核心域/注册表无学科包 import（X6 宪法铁律）
+# ────────────────────────────────────────────────────────────────────
+# 同 pr-check.yml 扫描模式：(import|from)\s+(packs|subject_)
+if grep -rnE '(import|from)\s+(packs|subject_)' src/core/ src/registry/ 2>/dev/null; then
+  die "核心域/注册表引用了学科包（X6 违规）"
+else
+  ok "核心域/注册表无学科包 import（X6）"
+fi
+
+# ────────────────────────────────────────────────────────────────────
+# ⑤ 冻结契约清单行数未减少（X8 波内契约冻结，W0 基线 4 条路径）
+# ────────────────────────────────────────────────────────────────────
+FROZEN_COUNT=$(grep -c '^specs/' specs/contracts/FROZEN.txt || true)
+if [ "$FROZEN_COUNT" -ge 4 ]; then
+  ok "冻结契约清单 $FROZEN_COUNT 条路径（≥基线 4）"
+else
+  die "冻结契约清单路径数减少：$FROZEN_COUNT < 4（X8 违规）"
+fi
+
+# ────────────────────────────────────────────────────────────────────
+# ⑥ 黄金数据集回归（E2E-3：50 母题实例化期望输出逐字节一致）
+# ────────────────────────────────────────────────────────────────────
+python -m pytest tests/golden -q >/dev/null 2>&1 && ok "黄金数据集回归绿（tests/golden，E2E-3）" \
+  || die "黄金回归红（tests/golden 失败）"
+
+# ────────────────────────────────────────────────────────────────────
+# ⑦ W0/W1 出口不退化（E2E-10）
+# ────────────────────────────────────────────────────────────────────
+bash scripts/wave-exit/w0.sh >/dev/null 2>&1 && ok "W0 出口脚本不退化（w0.sh）" \
+  || die "W0 出口脚本退化（w0.sh 失败）"
+bash scripts/wave-exit/w1.sh >/dev/null 2>&1 && ok "W1 出口脚本不退化（w1.sh）" \
+  || die "W1 出口脚本退化（w1.sh 失败）"
+
+# ────────────────────────────────────────────────────────────────────
+# ⑧ 门物理阻断实证（E2E-5：绕过写入服务直写 serving 区在 DB 层失败）
+# ────────────────────────────────────────────────────────────────────
+python -m pytest tests/unit/test_gate_bypass.py -q >/dev/null 2>&1 \
+  && ok "门物理阻断实证绿（test_gate_bypass.py，E2E-5）" \
+  || die "门物理阻断实证红（直写 serving 区未被 DB 层拒绝）"
+
+# ────────────────────────────────────────────────────────────────────
+# ⑨ E2E-1 业务端到端演示（生成真实 PDF 试卷 + 解析册）
+# ────────────────────────────────────────────────────────────────────
+# 演示脚本输出保留在终端（现场演示）：DSL→实例化→门→签发→组卷→PDF→追溯→作答阻断
+echo "── E2E-1 业务链路现场演示（scripts/demo-w2-business.py）──"
+if python scripts/demo-w2-business.py; then
+  ok "业务端到端演示 PASS（真实 PDF 已产出到 out/，E2E-1）"
+else
+  die "业务端到端演示失败（demo-w2-business.py 非零退出）"
+fi
+
+echo ""
+echo "摘要：通过 ${PASS} 项 / 失败 0 项 / 耗时 ${SECONDS}s"
+echo "🎉 W2 出口通过：母题引擎、校验门、渲染追溯全线贯通，可派发 W3 任务卡"
