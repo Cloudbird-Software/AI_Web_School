@@ -1,0 +1,34 @@
+{
+  "item_version_id": "math-example-0001",
+  "item_id": "math-item-0001",
+  "status": "draft",
+  "objective": {
+    "kp_set": [{"dimension": "kp", "code": "math.arithmetic.addition"}],
+    "kp_set_mode": "single",
+    "cognitive_level": "apply",
+    "gradeband": "L",
+    "graph_release": "v1"
+  },
+  "interaction_ref": {
+    "interaction_id": "mcq",
+    "interaction_params": {"shuffle": false}
+  },
+  "content": {
+    "blocks": [
+      {"type": "stem", "text": "小明有 3 个苹果，小红给了他 2 个，现有多少个苹果？"},
+      {"type": "options", "choices": ["4", "5", "6", "7"]},
+      {"type": "answer", "value": "5"}
+    ]
+  },
+  "scoring_ref": {
+    "scorer_id": "mcq_exact",
+    "scorer_params": {}
+  },
+  "error_bindings": [],
+  "lineage": {
+    "tier": "A",
+    "pipeline": {"id": "manual_import", "version": "v0"},
+    "signed_by": "importer",
+    "signed_at": "2026-07-28T00:00:00Z"
+  }
+}
