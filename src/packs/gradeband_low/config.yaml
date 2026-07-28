@@ -1,0 +1,75 @@
+# 低学段包（GradeBandPack L，1–2 年级）参数包（T-W4-035）
+#
+# 来源：架构 v2 §5.3「低学段包完整化」、tasks/w4/BRIEF.md#S8
+#
+# 纪律（宪法 A5）：本文件是学段包参数，核心域不 import 本包；
+# 核心域通过调用方加载本 yaml 为 overlay dict / hints dict 注入消费。
+# 纪律（宪法 D5）：参数按 source（先验/实测）与场景分开；本文件为
+# 「先验」学段参数（preset），实测参数由数据飞轮回流后另写。
+
+overlay_id: gradeband-low
+overlay_version: "1.0.0"
+status: frozen-candidate
+gradeband: L
+grade_range: [1, 2]              # 1–2 年级
+source: priori                   # 先验学段参数（D5）
+source_sections:
+  - "架构v2 §5.3 低学段包完整化"
+  - "tasks/w4/BRIEF.md#S8"
+
+# ════════════════════════════════════════════════════════════════════
+# 渲染与交互参数（render_hints.py 消费）
+# ════════════════════════════════════════════════════════════════════
+# 大字号：低段字号 ≥20px（验收 #3），默认 24px
+font_size_large: 24
+# 全文注音开关：true=题面全文注音（覆盖全部超纲字，验收 #3）
+phonetic_switch: true
+# 注音覆盖范围：full=全文注音（含超纲字）；out_of_syllabus=仅超纲字
+phonetic_coverage: full
+# 题面朗读按钮：true=每题题面附朗读按钮
+read_aloud_button: true
+# 数字键盘：true=数值填空类交互弹出数字键盘
+numeric_keyboard: true
+# 数字键盘仅允许输入 0–9（验收 #3）；禁止字母 / 符号 / 小数点
+numeric_keyboard_digits: "0123456789"
+
+# ════════════════════════════════════════════════════════════════════
+# 组卷与会话约束（作为 gradeband_overlay 注入 AssemblyProfile 编译，T-W4-036）
+# ════════════════════════════════════════════════════════════════════
+# 题量上限：低段每卷 ≤10 题（验收 #1 / 架构 §5.3）
+max_items: 10
+# 题量下限（低段卷至少 1 题）
+min_items: 1
+# 会话时长硬约束：≤15 分钟（架构 §4.8 / §5.3，验收 #1）
+session_duration_max_min: 15
+# 闯关形态：true=低段会话为闯关形态（即时反馈+星级+下一关解锁）
+session_form_game: true
+
+# ════════════════════════════════════════════════════════════════════
+# 闯关形态参数（game_session.py 消费，T-W4-036）
+# ════════════════════════════════════════════════════════════════════
+game:
+  enabled: true                  # 闯关形态开关（= session_form_game）
+  immediate_feedback: true       # 即时反馈（作答后立即出示对错与解析）
+  star_levels: 3                 # 星级评定：1–3 星
+  # 星级阈值（按正确率）：[1星下限, 2星下限, 3星下限]
+  star_thresholds: [0.0, 0.6, 0.9]
+  unlock_next_on_pass: true      # 通过当前关后解锁下一关
+
+# ════════════════════════════════════════════════════════════════════
+# Schema 元数据（供契约测试校验，与 subject-math overlay 约定对齐）
+# ════════════════════════════════════════════════════════════════════
+schema:
+  required_top_level:
+    - overlay_id
+    - overlay_version
+    - status
+    - gradeband
+    - font_size_large
+    - phonetic_switch
+    - read_aloud_button
+    - numeric_keyboard
+    - max_items
+    - session_form_game
+  status_enum: [frozen-candidate, frozen]
+  source_enum: [priori, empirical]
