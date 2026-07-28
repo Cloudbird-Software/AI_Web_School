@@ -8,6 +8,9 @@
 # Source: pyproject.toml [project.dependencies]
 # Why locked: 宪法 X8——新依赖须说明理由并更新锁定文件；锁定可避免 CI 漂移。
 # T-W4-031 追加：cryptography（PII 列级加密 AES-256-GCM）+ 传递依赖 cffi/pycparser。
+# T-W4-006 追加：pyarrow（response_event 每日增量 Parquet 归档，无传递依赖）。
+#   注：本行手工追加（pip-compile 网络重试超时）；pyarrow 无 Python 传递依赖，
+#   手工锁定等价于 pip-compile 输出。下次 pip-compile 会保留此行。
 #
 alembic==1.18.5
 annotated-doc==0.0.4
@@ -33,6 +36,7 @@ pypinyin==0.55.0
 pydantic==2.13.4
 pydantic-core==2.46.4
 pypng==0.20220715.0
+pyarrow==25.0.0
 python-multipart==0.0.32
 pyyaml==6.0.3
 qrcode==7.4.2

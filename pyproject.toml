@@ -56,6 +56,12 @@ dependencies = [
     # AES-256-GCM 应用层加解密，密钥环境变量注入永不入 SQL/日志（X3）。
     # 不用 pgcrypto：密钥会进 SQL bind param/query log，违反 X3。
     "cryptography>=42",
+    # X8 理由：pyarrow（Apache-2.0）response_event 每日增量 Parquet 归档（T-W4-006）。
+    # 契约 §2.3「每日增量归档：导出 Parquet 至对象存储」——十年数据主权依赖开放
+    # 格式（Parquet 是 Apache 列式开放标准，不绑定厂商）。不用 fastparquet：
+    # pyarrow 是 Arrow 列式内存原生实现，与 pandas/duckdb 生态对齐且更稳定。
+    # 仅在归档路径使用，不进入核心域运行时热路径（不污染评分/组卷链路）。
+    "pyarrow>=17",
 ]
 
 [project.optional-dependencies]
