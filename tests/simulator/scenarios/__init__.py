@@ -91,6 +91,8 @@ class PracticeScenario(BaseScenario):
     student_alias_id: str = ""
     item_version_ids: list[str] = field(default_factory=list)
     paper_id: str | None = None
+    # 学段（item_version_ids 模式必传；paper_id 模式可缺省取 paper.gradeband）
+    gradeband: str | None = None
     # 每题作答（item_version_id → answer dict）；子类/调用方覆写
     answers: dict[str, dict[str, Any]] = field(default_factory=dict)
 
@@ -109,6 +111,7 @@ class PracticeScenario(BaseScenario):
             paper_id=self.paper_id,
             item_version_ids=self.item_version_ids or None,
             scene="practice",
+            gradeband=self.gradeband,
         )
         self.state["session_id"] = session["session_id"]
         self.state["total"] = session["total"]

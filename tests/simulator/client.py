@@ -85,12 +85,20 @@ class SimulatorClient:
     student_token: str = DEFAULT_STUDENT_TOKEN
     timeout: float = 30.0
     call_log: list[CallRecord] = field(default_factory=list)
+    # 构造时捕获运行 loop（异步测试场景；详见 _execute 事件循环策略说明）
+    _bound_loop: Any = field(default=None, repr=False, compare=False)
 
     def __post_init__(self) -> None:
         if self.base_url is None and self.asgi_app is None:
             raise ValueError("base_url 与 asgi_app 至少提供其一")
         if self.base_url is not None and self.asgi_app is not None:
             raise ValueError("base_url 与 asgi_app 互斥（HTTP / ASGI 二选一）")
+        # 在 async 上下文中构造时捕获当前运行 loop（HTTP 模式生产用法与同步单元
+        # 测试不在 loop 中构造，_bound_loop 保持 None，_execute 走 asyncio.run）
+        try:
+            object.__setattr__(self, "_bound_loop", asyncio.get_running_loop())
+        except RuntimeError:
+            object.__setattr__(self, "_bound_loop", None)
 
     # ── 内部：执行单次请求 ────────────────────────────────────────
 
@@ -114,6 +122,18 @@ class SimulatorClient:
 
         Returns:
             (status_code, response_body) 元组。响应体非 JSON 时为原始文本。
+
+        事件循环策略（为什么这样写）：
+        - 同步单元测试（T-W4-043）：无运行 loop 且 ``_bound_loop`` 为 None，
+          走 ``asyncio.run()`` 创建临时 loop.
+        - 异步 e2e 测试（T-W4-044+）：客户端在 async fixture 中构造，
+          ``__post_init__`` 捕获测试 loop 到 ``_bound_loop``。测试通过
+          ``await asyncio.to_thread(scenario.run)`` 在 worker thread 调用本方法
+          （worker thread 无运行 loop），本方法用 ``run_coroutine_threadsafe``
+          把协程调度回 ``_bound_loop``（测试 loop）执行，worker thread 阻塞等
+          结果——测试 loop 得以继续处理 ASGI 请求与 async_session 事务。
+          直接从 async 函数同步调用本方法会死锁（loop 被阻塞无法推进协程），
+          这是同步封装的固有约束。
         """
         record = CallRecord(
             method=method, path=path, request_body=body, request_params=params
@@ -145,7 +165,23 @@ class SimulatorClient:
                 return resp.status_code, resp_body
 
         try:
-            status_code, resp_body = asyncio.run(_run())
+            try:
+                running_loop = asyncio.get_running_loop()
+            except RuntimeError:
+                running_loop = None
+
+            # 优先级：当前线程运行 loop > 构造时绑定的 loop > 无 loop（asyncio.run）
+            target_loop = running_loop if running_loop is not None else self._bound_loop
+
+            if target_loop is None:
+                # 无任何可用 loop：安全创建临时 loop（同步单元测试场景）
+                status_code, resp_body = asyncio.run(_run())
+            else:
+                # 有运行 loop（_bound_loop 或当前线程 loop）：调用方须来自
+                # 非 loop 线程（asyncio.to_thread），把协程调度回目标 loop 执行，
+                # 本 thread 阻塞等结果。
+                future = asyncio.run_coroutine_threadsafe(_run(), target_loop)
+                status_code, resp_body = future.result()
         except Exception as e:
             record.error = str(e)
             raise
