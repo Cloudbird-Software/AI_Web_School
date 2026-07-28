@@ -17,6 +17,16 @@ def find_card(tid):
     hits = glob.glob(os.path.join(ROOT, "tasks", "**", f"{tid}.md"), recursive=True)
     return hits[0] if hits else None
 
+# 验证卡 id 格式：T-W<digit>+-T<digit>+（board 备注 P10：W1 实际文件名 T-W01-T0x，
+# \d+ 兼容 W01 / W2 / W4；任务卡 id 形如 T-W2-001 无 -T 段，与此正则互斥）
+_VERIFICATION_ID_RE = re.compile(r"T-W\d+-T\d+")
+# 验证卡头标记：首行 `# 验证卡`，区别于任务卡 `# 任务卡`
+_VERIFICATION_HEADER_RE = re.compile(r"^\s*#\s*验证卡\s*$", re.M)
+# 统一引用 id 模式：同时匹配任务卡（T-W2-001）与验证卡（T-W2-T01 / T-W01-T01），
+# 用于 prerequisites / validates 字段解析（depends_on 仍沿用旧模式以维持既有行为）
+_REF_ID_RE = re.compile(r"T-W\d+-T?\d+")
+
+
 def parse_card(path):
     txt = read(os.path.relpath(path, ROOT))
     def field(k, default=""):
@@ -25,7 +35,10 @@ def parse_card(path):
     return {"raw": txt, "id": field("id"), "title": field("title"),
             "owner_module": field("owner_module"), "model_floor": field("model_floor", "T1"),
             "token_budget": field("token_budget", "400k"),
-            "depends_on": re.findall(r"T-\w+-\d+", field("depends_on"))}
+            "depends_on": re.findall(r"T-\w+-\d+", field("depends_on")),
+            "is_verification": bool(_VERIFICATION_HEADER_RE.search(txt)),
+            "prerequisites": _REF_ID_RE.findall(field("prerequisites")),
+            "validates": _REF_ID_RE.findall(field("validates"))}
 
 def routing():
     # 为什么把 import 放进 try：原版 import 在 try 外，缺 yaml 时直接 ModuleNotFoundError，
@@ -69,6 +82,19 @@ def cmd_board(_):
         if not c["owner_module"]: errors.append(f"{c['id']}: 缺 owner_module")
         for d in c["depends_on"]:
             if d not in ids: errors.append(f"{c['id']}: 依赖 {d} 不存在")
+        # 验证卡校验（board.md 备注 ②，W2 遗留）：头标记与 id 格式一致 +
+        # prerequisites / validates 引用存在（验证卡无 depends_on，引用完整性靠这两字段）
+        is_ver_id = bool(_VERIFICATION_ID_RE.fullmatch(c["id"]))
+        if c["is_verification"] != is_ver_id:
+            errors.append(
+                f"{c['id']}: 验证卡头标记({c['is_verification']})与 id 格式({is_ver_id})不一致"
+            )
+        for ref in c["prerequisites"]:
+            if ref not in ids:
+                errors.append(f"{c['id']}: prerequisites 引用 {ref} 不存在")
+        for ref in c["validates"]:
+            if ref not in ids:
+                errors.append(f"{c['id']}: validates 引用 {ref} 不存在")
     board_path = os.path.join(ROOT, "tasks", "board.md")
     if not os.path.exists(board_path):
         errors.append("tasks/board.md: 不存在")

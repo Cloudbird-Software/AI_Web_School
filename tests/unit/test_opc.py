@@ -243,3 +243,152 @@ def test_dashboard_empty_telemetry(tmp_path, monkeypatch, capsys):
     opc.cmd_dashboard(None)
     out = capsys.readouterr().out
     assert "暂无遥测数据" in out
+
+
+# ────────────────────────────────────────────────────────────────────
+# board 备注 ②（W2 遗留）：验证卡 T-W*-T0X 格式与 prerequisites 字段校验
+# ────────────────────────────────────────────────────────────────────
+def _minimal_verification_card(tid, owner_module="tests/acceptance/x",
+                               validates="[]", prerequisites="[]"):
+    """最小合规验证卡（`# 验证卡` 头 + validates/prerequisites 字段）。"""
+    return f"""# 验证卡
+```yaml
+id: {tid}
+wave: W2
+owner_module: {owner_module}
+title: 验证卡 {tid}
+validates: {validates}
+prerequisites: {prerequisites}
+parallel_group: W2a
+model_floor: T1
+token_budget: 400k
+validation_script:
+```
+
+## 验证策略
+测试验证卡
+"""
+
+
+def _empty_board():
+    """空进行中/就绪段的合规任务板（仅用于 board 校验，无调度内容）。"""
+    return textwrap.dedent("""\
+        # 任务板（唯一调度事实源）
+
+        ## 进行中
+        | 任务卡 | owner_module | 模型 | 开始日期 |
+        |---|---|---|---|
+
+        ## 就绪（按优先级）
+        | 任务卡 | 标题 | model_floor | 依赖 |
+        |---|---|---|---|
+        """)
+
+
+def test_board_accepts_valid_verification_card(tmp_path, monkeypatch, capsys):
+    """验证卡头 + 验证卡 id + 合法 prerequisites/validates 引用 → board 通过。"""
+    opc = _load_opc(tmp_path, monkeypatch)
+    _write(str(tmp_path / "tasks" / "w2" / "T-W2-001.md"),
+           _minimal_card("T-W2-001", "tools/"))
+    _write(str(tmp_path / "tasks" / "w2" / "T-W2-T01.md"),
+           _minimal_verification_card(
+               "T-W2-T01",
+               validates="[T-W2-001]",
+               prerequisites="[T-W2-001]"))
+    _write(str(tmp_path / "tasks" / "board.md"), _empty_board())
+    with pytest.raises(SystemExit) as exc:
+        opc.cmd_board(None)
+    assert exc.value.code == 0
+    assert "✅" in capsys.readouterr().out
+
+
+def test_board_accepts_w01_style_verification_id(tmp_path, monkeypatch, capsys):
+    """board 备注 P10：W1 验证卡文件名 T-W01-T0x（W01 而非 W1）须被格式正则接受。"""
+    opc = _load_opc(tmp_path, monkeypatch)
+    _write(str(tmp_path / "tasks" / "w1" / "T-W01-T01.md"),
+           _minimal_verification_card("T-W01-T01"))
+    _write(str(tmp_path / "tasks" / "board.md"), _empty_board())
+    with pytest.raises(SystemExit) as exc:
+        opc.cmd_board(None)
+    assert exc.value.code == 0
+    out = capsys.readouterr().out
+    assert "不一致" not in out
+
+
+def test_board_rejects_verification_header_with_task_id(tmp_path, monkeypatch, capsys):
+    """`# 验证卡` 头但 id 为任务卡格式（T-W2-099）→ 格式不一致，退出 1。"""
+    opc = _load_opc(tmp_path, monkeypatch)
+    _write(str(tmp_path / "tasks" / "w2" / "T-W2-099.md"),
+           _minimal_verification_card("T-W2-099"))
+    _write(str(tmp_path / "tasks" / "board.md"), _empty_board())
+    with pytest.raises(SystemExit) as exc:
+        opc.cmd_board(None)
+    assert exc.value.code == 1
+    out = capsys.readouterr().out
+    assert "T-W2-099" in out
+    assert "验证卡头标记(True)" in out
+    assert "id 格式(False)" in out
+
+
+def test_board_rejects_verification_id_with_task_header(tmp_path, monkeypatch, capsys):
+    """id 为验证卡格式（T-W2-T01）但头为 `# 任务卡` → 格式不一致，退出 1。"""
+    opc = _load_opc(tmp_path, monkeypatch)
+    # _minimal_card 产出 `# 任务卡` 头；传验证卡格式 id 制造不一致
+    _write(str(tmp_path / "tasks" / "w2" / "T-W2-T01.md"),
+           _minimal_card("T-W2-T01", "tools/"))
+    _write(str(tmp_path / "tasks" / "board.md"), _empty_board())
+    with pytest.raises(SystemExit) as exc:
+        opc.cmd_board(None)
+    assert exc.value.code == 1
+    out = capsys.readouterr().out
+    assert "T-W2-T01" in out
+    assert "验证卡头标记(False)" in out
+    assert "id 格式(True)" in out
+
+
+def test_board_rejects_dangling_prerequisites(tmp_path, monkeypatch, capsys):
+    """验证卡 prerequisites 引用不存在的卡 → 退出 1 并指出引用。"""
+    opc = _load_opc(tmp_path, monkeypatch)
+    _write(str(tmp_path / "tasks" / "w2" / "T-W2-T01.md"),
+           _minimal_verification_card(
+               "T-W2-T01", prerequisites="[T-W2-999]"))
+    _write(str(tmp_path / "tasks" / "board.md"), _empty_board())
+    with pytest.raises(SystemExit) as exc:
+        opc.cmd_board(None)
+    assert exc.value.code == 1
+    out = capsys.readouterr().out
+    assert "prerequisites" in out
+    assert "T-W2-999" in out
+
+
+def test_board_rejects_dangling_validates(tmp_path, monkeypatch, capsys):
+    """验证卡 validates 引用不存在的卡 → 退出 1 并指出引用。"""
+    opc = _load_opc(tmp_path, monkeypatch)
+    _write(str(tmp_path / "tasks" / "w2" / "T-W2-T01.md"),
+           _minimal_verification_card(
+               "T-W2-T01", validates="[T-W2-999]"))
+    _write(str(tmp_path / "tasks" / "board.md"), _empty_board())
+    with pytest.raises(SystemExit) as exc:
+        opc.cmd_board(None)
+    assert exc.value.code == 1
+    out = capsys.readouterr().out
+    assert "validates" in out
+    assert "T-W2-999" in out
+
+
+def test_board_prerequisites_can_reference_other_verification_cards(
+    tmp_path, monkeypatch, capsys
+):
+    """prerequisites 可引用其他验证卡（如 T-W4-T05 依赖 T-W4-T01..T04）。"""
+    opc = _load_opc(tmp_path, monkeypatch)
+    _write(str(tmp_path / "tasks" / "w4" / "T-W4-T01.md"),
+           _minimal_verification_card("T-W4-T01"))
+    _write(str(tmp_path / "tasks" / "w4" / "T-W4-T05.md"),
+           _minimal_verification_card(
+               "T-W4-T05", prerequisites="[T-W4-T01]"))
+    _write(str(tmp_path / "tasks" / "board.md"), _empty_board())
+    with pytest.raises(SystemExit) as exc:
+        opc.cmd_board(None)
+    assert exc.value.code == 0
+    out = capsys.readouterr().out
+    assert "✅" in out
