@@ -1,0 +1,56 @@
+# T-W4-011 TTS 音色与语速学段配置（架构 v2 §4.6/§4.8）
+#
+# 学段语速配置（验收 #2）：
+#   L(1-2) 慢速 120 wpm / M(3-4) 中速 140 wpm / H(5-6) 常速 160 wpm
+#
+# 音色配置：每个音色绑定引擎与 voice_id，可按学段/题型选择
+# 学段参数通过本配置注入，核心域不 import 学段包（A5）
+#
+# 经 AI 总线统一调用：TTS 调用应记入 AI 台账（架构 §4.8），本配置是
+# 总线 TTS 档的参数源；台账集成由上层调用方负责（tts.router 可选注入 ledger）
+
+contract_version: "1.0.0"
+
+# ── 学段语速档 ─────────────────────────────────────────────────────
+grade_bands:
+  L:
+    grade_range: "1-2"
+    wpm: 120
+    default_voice: "female_gentle"
+    description: "低段慢速：1-2 年级，120 wpm，温柔女声"
+
+  M:
+    grade_range: "3-4"
+    wpm: 140
+    default_voice: "female_standard"
+    description: "中段中速：3-4 年级，140 wpm，标准女声"
+
+  H:
+    grade_range: "5-6"
+    wpm: 160
+    default_voice: "male_standard"
+    description: "高段常速：5-6 年级，160 wpm，标准男声"
+
+# ── 音色定义 ───────────────────────────────────────────────────────
+# engine: 生产可对齐 T-W4-009 适配器注册名（如 deepseek/litellm/azure-tts）
+#   首年用 mock 引擎（不消耗真实 API），生产替换为真实 TTS 适配器
+voices:
+  female_gentle:
+    engine: "mock"
+    voice_id: "voice-female-gentle"
+    description: "女声温柔（低段默认，适合朗读儿童故事）"
+
+  female_standard:
+    engine: "mock"
+    voice_id: "voice-female-standard"
+    description: "女声标准（中段默认，适合阅读理解语篇）"
+
+  male_standard:
+    engine: "mock"
+    voice_id: "voice-male-standard"
+    description: "男声标准（高段默认，适合说明文）"
+
+  female_news:
+    engine: "mock"
+    voice_id: "voice-female-news"
+    description: "女声新闻腔（适合听力新闻题）"
