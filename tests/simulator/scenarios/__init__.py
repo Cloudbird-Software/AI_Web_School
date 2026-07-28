@@ -93,6 +93,8 @@ class PracticeScenario(BaseScenario):
     paper_id: str | None = None
     # 学段（item_version_ids 模式必传；paper_id 模式可缺省取 paper.gradeband）
     gradeband: str | None = None
+    # 场景（practice/diagnosis）；子类覆写为 "diagnosis" 即诊断会话
+    scene: str = "practice"
     # 每题作答（item_version_id → answer dict）；子类/调用方覆写
     answers: dict[str, dict[str, Any]] = field(default_factory=dict)
 
@@ -105,12 +107,12 @@ class PracticeScenario(BaseScenario):
     )
 
     def start_session(self) -> dict[str, Any]:
-        """步骤 1：POST /sessions 开始练习."""
+        """步骤 1：POST /sessions 开始练习/诊断会话."""
         session = self.client.start_session(
             student_alias_id=self.student_alias_id,
             paper_id=self.paper_id,
             item_version_ids=self.item_version_ids or None,
-            scene="practice",
+            scene=self.scene,
             gradeband=self.gradeband,
         )
         self.state["session_id"] = session["session_id"]
