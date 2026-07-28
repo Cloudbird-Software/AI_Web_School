@@ -300,7 +300,7 @@ levels:
     try:
         client = _RecordingClient()
         result = ai_call(
-            "L1", "p", clients={"deepseek": client}, skip_pii_filter=True
+            "L1", "p", clients={"deepseek": client}, bypass_pii_filter=True
         )
         assert client.calls[0]["model"] == "hot-reloaded-model"
         assert client.calls[0]["temperature"] == 0.5

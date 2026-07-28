@@ -114,7 +114,7 @@ def ai_call(
     context: Optional[dict[str, Any]] = None,
     *,
     clients: Optional[dict[str, LLMClient]] = None,
-    skip_pii_filter: bool = False,
+    bypass_pii_filter: bool = False,
 ) -> AIResult:
     """AI 总线统一入口（任务卡 T-W4-007 验收 #1/#2）.
 
@@ -124,7 +124,7 @@ def ai_call(
         context: 可选上下文（artifact_ref 等，透传给 ledger，不影响路由）。
         clients: 注入的供应商客户端映射（测试用 mock；生产为空走 register_client
             注册的；都没有则用 StubClient 兜底）。
-        skip_pii_filter: 测试用跳过 PII 剥离。生产禁止传 True（D7 要求总线前剥离）；
+        bypass_pii_filter: 测试用绕过 PII 剥离。生产禁止传 True（D7 要求总线前剥离）；
             仅用于 007 独立验收时绕过尚未实现的 pii_filter。
 
     Returns:
@@ -137,7 +137,7 @@ def ai_call(
     Notes:
         - L0：policy.use_ai=false，直接返回空内容 AIResult，不调用任何 client。
         - L1/L2/L3：按 policy.provider 路由到 client.complete()。
-        - PII 剥离（D7）：未 skip 时对 prompt 做剥离；剥离结果记入 result.raw.pii。
+        - PII 剥离（D7）：未 bypass 时对 prompt 做剥离；剥离结果记入 result.raw.pii。
         - fallback：配置了 fallback 段且主 client 抛异常时，走 fallback provider，
           返回结果标记 fallback=True，raw.primary_error 记录主异常。
     """
@@ -161,7 +161,7 @@ def ai_call(
 
     # PII 剥离（D7）：在调用 client 前完成
     pii_warnings: list[str] = []
-    if skip_pii_filter:
+    if bypass_pii_filter:
         sanitized_prompt = prompt
     else:
         sanitized_prompt, pii_warnings = _sanitize_prompt(prompt)

@@ -136,7 +136,7 @@ def test_different_voice_different_content_id() -> None:
 
 # ── 验收 #3：缓存命中（不重复调用引擎） ───────────────────────────
 
-def test_cache_hit_skips_engine_call() -> None:
+def test_cache_hit_avoids_engine_call() -> None:
     """相同 content_id 命中缓存，引擎不被重复调用."""
     call_count = {"n": 0}
 

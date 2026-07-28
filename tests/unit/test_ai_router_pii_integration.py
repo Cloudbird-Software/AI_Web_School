@@ -1,7 +1,7 @@
 """T-W4-007 ↔ T-W4-008 集成测试：ai_call 自动剥离 PII（D7 闭环验证）.
 
 验证 router.ai_call 在调用 client 前经 ledger.pii_filter 剥离 PII：
-- 不传 skip_pii_filter 时，prompt 被剥离
+- 不传 bypass_pii_filter 时，prompt 被剥离
 - client 收到的 prompt 无 PII
 - result.raw.pii 记录剥离信息
 
@@ -30,7 +30,7 @@ class _CapturingClient:
 
 
 def test_ai_call_strips_pii_before_client() -> None:
-    """ai_call 不 skip_pii_filter 时，client 收到的 prompt 已剥离 PII（D7）."""
+    """ai_call 不 bypass_pii_filter 时，client 收到的 prompt 已剥离 PII（D7）."""
     client = _CapturingClient()
     result = ai_call(
         "L1",
@@ -48,12 +48,12 @@ def test_ai_call_strips_pii_before_client() -> None:
     assert any("stripped" in w for w in result.raw["pii"])
 
 
-def test_ai_call_skip_pii_filter_passes_raw_prompt() -> None:
-    """skip_pii_filter=True 时 prompt 原样传递（测试场景）."""
+def test_ai_call_bypass_pii_filter_passes_raw_prompt() -> None:
+    """bypass_pii_filter=True 时 prompt 原样传递（测试场景）."""
     client = _CapturingClient()
     raw_prompt = "学生张三的电话13912345678"
-    ai_call("L1", raw_prompt, clients={"deepseek": client}, skip_pii_filter=True)
-    assert client.received_prompt == raw_prompt, "skip 时应原样传递"
+    ai_call("L1", raw_prompt, clients={"deepseek": client}, bypass_pii_filter=True)
+    assert client.received_prompt == raw_prompt, "bypass 时应原样传递"
 
 
 def test_ai_call_pii_filter_records_stripped_kinds() -> None:

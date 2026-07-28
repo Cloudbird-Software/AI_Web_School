@@ -76,13 +76,13 @@ def test_l0_returns_empty_without_calling_client() -> None:
 def test_l1_l2_l3_hit_different_models() -> None:
     """L1/L2/L3 应分别命中 policy.yaml 中配置的不同模型."""
     client = _RecordingClient()
-    ai_call("L1", "p1", clients={"deepseek": client}, skip_pii_filter=True)
-    ai_call("L2", "p2", clients={"deepseek": client}, skip_pii_filter=True)
+    ai_call("L1", "p1", clients={"deepseek": client}, bypass_pii_filter=True)
+    ai_call("L2", "p2", clients={"deepseek": client}, bypass_pii_filter=True)
     ai_call(
         "L3",
         "p3",
         clients={"deepseek": client, "litellm": client},
-        skip_pii_filter=True,
+        bypass_pii_filter=True,
     )
     models = [c["model"] for c in client.calls]
     assert len(models) == 3, f"应调用 3 次，实际 {len(models)}"
@@ -96,7 +96,7 @@ def test_l1_l2_l3_hit_different_models() -> None:
 def test_temperature_and_max_tokens_passed_through() -> None:
     """policy 中的 temperature/max_tokens 应透传到客户端."""
     client = _RecordingClient()
-    ai_call("L2", "p", clients={"deepseek": client}, skip_pii_filter=True)
+    ai_call("L2", "p", clients={"deepseek": client}, bypass_pii_filter=True)
     policy = get_policy()
     cfg = policy["levels"]["L2"]
     assert client.calls[0]["temperature"] == cfg["temperature"]
@@ -109,7 +109,7 @@ def test_structured_result_fields() -> None:
     """AIResult 含 content/model/token_in/token_out/duration_ms/fallback."""
     client = _RecordingClient()
     result = ai_call(
-        "L1", "hello", clients={"deepseek": client}, skip_pii_filter=True
+        "L1", "hello", clients={"deepseek": client}, bypass_pii_filter=True
     )
     assert result.content == "ok:deepseek-chat"
     assert result.model == "deepseek-chat"
@@ -133,7 +133,7 @@ def test_l3_fallback_on_primary_failure() -> None:
         "L3",
         "p",
         clients={"litellm": primary, "deepseek": fallback},
-        skip_pii_filter=True,
+        bypass_pii_filter=True,
     )
     assert result.fallback is True
     policy = get_policy()
@@ -147,7 +147,7 @@ def test_no_fallback_configured_raises() -> None:
     primary = _RecordingClient(fail=True)
     with pytest.raises(RuntimeError):
         ai_call(
-            "L1", "p", clients={"deepseek": primary}, skip_pii_filter=True
+            "L1", "p", clients={"deepseek": primary}, bypass_pii_filter=True
         )
 
 
@@ -156,14 +156,14 @@ def test_no_fallback_configured_raises() -> None:
 def test_unknown_level_raises() -> None:
     """未知 task_level 应报 ValueError（policy 无此级别）."""
     with pytest.raises(ValueError):
-        ai_call("L9", "p", skip_pii_filter=True)  # type: ignore[arg-type]
+        ai_call("L9", "p", bypass_pii_filter=True)  # type: ignore[arg-type]
 
 
 # ── 验收 #2：默认桩客户端兜底（未注入任何 client） ──────────────────
 
 def test_default_stub_client_when_no_injection() -> None:
     """未注入 client 时用 StubClient 兜底，router 仍可工作（007 独立验收场景）."""
-    result = ai_call("L1", "p", skip_pii_filter=True)
+    result = ai_call("L1", "p", bypass_pii_filter=True)
     assert result.content.startswith("[stub:")
     assert result.model  # 非空
 
@@ -178,7 +178,7 @@ def test_context_passed_to_raw() -> None:
         "p",
         context={"artifact_ref": "item_revision:abc123"},
         clients={"deepseek": client},
-        skip_pii_filter=True,
+        bypass_pii_filter=True,
     )
     assert result.raw["context"]["artifact_ref"] == "item_revision:abc123"
 
