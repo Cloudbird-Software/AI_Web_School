@@ -107,6 +107,8 @@ async def publish_item_version(
     version_data: dict,
     gate_certificate_id: Optional[str] = None,
     db: AsyncSession = None,
+    *,
+    auto_commit: bool = True,
 ) -> dict:
     """入库唯一路径：创建 item（如新建）+ 写入 item_version + 门强制校验.
 
@@ -115,6 +117,9 @@ async def publish_item_version(
         version_data: 含 pack_id / tier / status / 六大块 / 可选 locale。
         gate_certificate_id: 门证书 id；status='published' 时必填。
         db: AsyncSession（必填）。
+        auto_commit: 是否在写入后自动 commit；默认 True。
+            False 时仅 flush（供 c_line_pipeline 等需要事务原子性的调用方在
+            末尾统一 commit；铁律 2 不受影响——门强制在 flush 时由 DB CHECK 校验）。
 
     Returns:
         {"item_id": ..., "item_version_id": ...}
@@ -186,7 +191,10 @@ async def publish_item_version(
 
     version = ItemVersion(**version_kwargs)
     db.add(version)
-    await db.commit()
+    if auto_commit:
+        await db.commit()
+    else:
+        await db.flush()
 
     return {"item_id": item_id, "item_version_id": item_version_id}
 
@@ -324,3 +332,126 @@ async def publish_corpus_asset(
     await db.commit()
 
     return {"asset_id": asset_id, "version_id": version_id}
+
+
+# ────────────────────────────────────────────────────────────────────
+# publish_passage（C 线语篇入库，T-W4-016 支撑）
+# ────────────────────────────────────────────────────────────────────
+# 与 publish_item_version 同构：门强制（published 必须持 gate_certificate_id）
+# 由 DB CHECK ck_passage_published_requires_gate 兜底（迁移 0018）。
+# passage 无两段式（语篇身份即版本，每次改写=新行新 passage_id，D1 只增不改）。
+
+
+async def publish_passage(
+    passage_data: dict,
+    gate_certificate_id: Optional[str] = None,
+    db: AsyncSession = None,
+    *,
+    auto_commit: bool = True,
+) -> dict:
+    """C 线语篇入库唯一路径（T-W4-016 支撑）.
+
+    门强制规则（与 publish_item_version 一致）：
+    - status='published' 必须提供合法 gate_certificate_id，否则抛 GateEnforcementError。
+    - status='draft' 或 'quarantined' 不要求门证书。
+
+    Args:
+        passage_data: 含 passage_id / content_hash / body / genre / kp_refs /
+            difficulty_metrics / license_id / grade_band / subject / status /
+            可选 published_at。
+        gate_certificate_id: 门证书 id；status='published' 时必填。
+        db: AsyncSession（必填）。
+        auto_commit: 是否自动 commit；默认 True。False 供 c_line_pipeline 事务控制。
+
+    Returns:
+        {"passage_id": ...}
+
+    Raises:
+        GateEnforcementError: status='published' 但 gate_certificate_id 为 None。
+        ValueError: db 未提供或缺必填字段。
+    """
+    if db is None:
+        raise ValueError("db (AsyncSession) 必填")
+
+    from src.core.models.passage import Passage
+
+    status = passage_data.get("status", "draft")
+    if status == "published" and not gate_certificate_id:
+        raise GateEnforcementError(
+            "门强制失败：passage status='published' 必须提供合法 gate_certificate_id"
+            "（契约 §4 规则 1 / 迁移 0018 ck_passage_published_requires_gate）"
+        )
+
+    now = datetime.now(timezone.utc)
+    passage_kwargs: dict[str, Any] = {
+        "passage_id": passage_data["passage_id"],
+        "content_hash": passage_data["content_hash"],
+        "body": passage_data["body"],
+        "genre": passage_data["genre"],
+        "kp_refs": passage_data["kp_refs"],
+        "difficulty_metrics": passage_data["difficulty_metrics"],
+        "license_id": passage_data.get("license_id"),
+        "grade_band": passage_data["grade_band"],
+        "subject": passage_data["subject"],
+        "status": status,
+    }
+    if status == "published":
+        passage_kwargs["gate_certificate_id"] = gate_certificate_id
+        passage_kwargs["published_at"] = passage_data.get("published_at", now)
+
+    passage = Passage(**passage_kwargs)
+    db.add(passage)
+    if auto_commit:
+        await db.commit()
+    else:
+        await db.flush()
+
+    return {"passage_id": passage_data["passage_id"]}
+
+
+# ────────────────────────────────────────────────────────────────────
+# publish_item_group（题组入库，T-W4-015/016 支撑）
+# ────────────────────────────────────────────────────────────────────
+# item_group 无门强制（题组本身不持门证书；题组内 item_versions 各自过门）。
+# testlet 标记由本表承载（契约偏差：ItemVersion 无 testlet_id/group_index 列）。
+
+
+async def publish_item_group(
+    group_data: dict,
+    db: AsyncSession = None,
+    *,
+    auto_commit: bool = True,
+) -> dict:
+    """题组入库（T-W4-015/016 支撑）.
+
+    Args:
+        group_data: 含 item_group_id / item_version_ids / ordered / testlet /
+            可选 material_version_id。
+        db: AsyncSession（必填）。
+        auto_commit: 是否自动 commit；默认 True。False 供 c_line_pipeline 事务控制。
+
+    Returns:
+        {"item_group_id": ...}
+
+    Raises:
+        ValueError: db 未提供或缺必填字段。
+    """
+    if db is None:
+        raise ValueError("db (AsyncSession) 必填")
+
+    from src.core.models.item_group import ItemGroup
+
+    group = ItemGroup(
+        item_group_id=group_data["item_group_id"],
+        material_version_id=group_data.get("material_version_id"),
+        item_version_ids=group_data["item_version_ids"],
+        ordered=group_data.get("ordered", False),
+        testlet=group_data.get("testlet", False),
+    )
+    db.add(group)
+    if auto_commit:
+        await db.commit()
+    else:
+        await db.flush()
+
+    return {"item_group_id": group_data["item_group_id"]}
