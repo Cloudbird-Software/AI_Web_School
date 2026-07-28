@@ -31,8 +31,9 @@ from src.core.gate.validator import (
 # ────────────────────────────────────────────────────────────────────
 # 产物类型域（与 policy-schema.yaml / item-model.md §2 对齐）
 # ────────────────────────────────────────────────────────────────────
+# T-W4-014 增 passage（语篇）：C 线语篇为跨学科通用产物类型，三道语篇专用门。
 VALID_ARTIFACT_TYPES: frozenset[str] = frozenset(
-    {"item", "material", "corpus", "group", "blueprint", "audio"}
+    {"item", "material", "corpus", "group", "blueprint", "audio", "passage"}
 )
 
 
@@ -131,7 +132,11 @@ class GatePolicy(BaseModel):
         为什么单独方法而非 model_validator：需要访问全局注册表（运行时状态），
         放 model_validator 会在模型构造时跑，不利于纯 schema 校验测试。
         load() 中显式调用，便于测试单独覆盖。
+
+        T-W4-014：校验前先 _ensure_generic_validator_stubs() 兜底重注册平台
+        通用 + 语篇验证器，防止测试中 reset_registry() 后策略加载失败。
         """
+        _ensure_generic_validator_stubs()
         missing: list[tuple[str, str, str]] = []
         platform_validators = set(list_validators("platform"))
         for c in self.chains:
@@ -218,7 +223,12 @@ DEFAULT_POLICY_PATH = (
 
 
 def load_default_policy() -> GatePolicy:
-    """加载 W2 默认策略（specs/contracts/gate/policy.default.yaml）."""
+    """加载 W2 默认策略（specs/contracts/gate/policy.default.yaml）.
+
+    T-W4-014：加载前确保通用 + 语篇验证器已注册（测试中 reset_registry 后
+    可能清空注册表，此处兜底重注册，保证默认策略 passage 链可加载）。
+    """
+    _ensure_generic_validator_stubs()
     return GatePolicy.load(DEFAULT_POLICY_PATH)
 
 
@@ -261,11 +271,41 @@ class _StubDuplicateValidator(Validator):
 
 
 def _ensure_generic_validator_stubs() -> None:
-    """声明通用验证器桩（若未注册）."""
+    """声明通用验证器桩（若未注册）.
+
+    T-W4-014：同时确保语篇验证器已注册。reset_registry() 后模块缓存命中
+    不重执行（register_validator 不触发），故显式 import 类 + 调用
+    register_validator 重注册，而非依赖 import 副作用。
+    """
     if "license" not in list_validators("platform"):
         register_validator("platform", _StubLicenseValidator)
     if "duplicate_placeholder" not in list_validators("platform"):
         register_validator("platform", _StubDuplicateValidator)
+    # T-W4-014：确保语篇验证器已注册（reset_registry 后显式重注册）
+    try:
+        from src.core.gate.validators.passage_fact_check import (
+            PassageFactCheckValidator,
+        )
+        if "passage_fact_check" not in list_validators("platform"):
+            register_validator("platform", PassageFactCheckValidator)
+    except Exception:  # noqa: BLE001
+        pass
+    try:
+        from src.core.gate.validators.passage_age_appropriate import (
+            PassageAgeAppropriateValidator,
+        )
+        if "passage_age_appropriate" not in list_validators("platform"):
+            register_validator("platform", PassageAgeAppropriateValidator)
+    except Exception:  # noqa: BLE001
+        pass
+    try:
+        from src.core.gate.validators.passage_difficulty_gate import (
+            PassageDifficultyGateValidator,
+        )
+        if "passage_difficulty_gate" not in list_validators("platform"):
+            register_validator("platform", PassageDifficultyGateValidator)
+    except Exception:  # noqa: BLE001
+        pass
 
 
 # 模块加载时声明桩，保证默认策略可加载.
