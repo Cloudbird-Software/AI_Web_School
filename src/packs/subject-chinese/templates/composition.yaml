@@ -1,0 +1,58 @@
+# A 线母题模板：作文（T-W4-018）
+#
+# 开放式作答模板：slot=主题/字数区间/时长；presentation=题干+字数要求+时长；
+# answer_program=None（开放式无固定正解，评分走 ai_rubric 量规）。
+# 交互类型：writing（注册表 specs/contracts/registries/interaction.yaml）；
+# 评分器：ai_rubric（与 writing 兼容，见 scorer.yaml）。
+#
+# 学段参数化（验收③）：调用方按学段注入 word_count_min/max：
+#   低段 50–100 / 中段 150–250 / 高段 300–400（与 T-W4-017 Blueprint 默认值一致）。
+#
+# 宪法 D4：交互与评分器只复用注册表，禁止私造；
+# 宪法 X6：语文逻辑只在 src/packs/subject-chinese/ 下。
+template_version_id: sha256:tpl-chinese-composition-v1
+template_id: tpl-chinese-composition
+dsl_version: '1'
+spec:
+  objective:
+    kp_set:
+    - dimension: kp
+      code: chinese.writing.composition
+    kp_set_mode: single
+    cognitive_level: create
+    gradeband: H
+    graph_release: '2026.1'
+  slots:
+    # 作文主题（由蓝图 topic_pool 注入，如 "春天" / "我的好朋友"）
+    topic:
+      type: string
+      difficulty_relevant: true
+    # 字数下限（学段参数化：L=50 / M=150 / H=300）
+    word_count_min:
+      type: int
+      difficulty_relevant: false
+    # 字数上限（学段参数化：L=100 / M=250 / H=400）
+    word_count_max:
+      type: int
+      difficulty_relevant: false
+    # 建议作答时长（分钟，由蓝图 grade_band_specs[*].time_limit_minutes 注入）
+    time_limit_minutes:
+      type: int
+      difficulty_relevant: false
+  variation_axes:
+    axes: []
+  presentation:
+    blocks:
+    - kind: text
+      template: '请以《{topic}》为题，写一篇作文。'
+    - kind: text
+      template: '字数要求：{word_count_min}–{word_count_max} 字。'
+    - kind: text
+      template: '建议时长：{time_limit_minutes} 分钟。'
+  answer_program:
+    # 开放式作答：无固定正解，返回 None；评分走 ai_rubric 量规（D 线 T-W4-019）
+    expression: None
+    returns: string
+  distractor_rules:
+    # 开放式作答无干扰项；error_bindings 由 ai_rubric 量规的 error_type_rules 生成
+    rules: []
