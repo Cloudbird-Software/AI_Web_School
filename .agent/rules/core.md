@@ -1,4 +1,4 @@
-# 工程规则（全 agent 必读 · 本文件由 tools/sync_rules.sh 同步到 .trae/rules/、CLAUDE.md、AGENTS.md）
+# 工程规则（全 agent 必读 · 本文件由 tools/sync_rules.sh 同步到 AGENTS.md 与 .trae/rules/）
 > 本文件是 specs/constitution.md 的执行摘要。全文以宪法为准。保持 <2000 tokens——它会注入每个 prompt。
 
 ## 系统是什么
@@ -27,9 +27,14 @@
 - 新依赖必须说明理由并更新锁定文件。
 
 ## 上下文与成本
-- 上下文按需读取：只读任务卡列出的路径与必须理解的文件，禁止整库灌入。
+- 上下文按需读取：只读任务卡列出的路径与必须理解的文件，禁止整库灌入；spec 只读锚点章节，不读整文件；本文件（core.md）已由工具注入时，提示词不再要求重读。
 - 输出务实：代码与事实说话，不写奉承性总结；失败如实说。
 - token 预算硬上限：接近预算时优先收尾并写清遗留，而非压缩质量。
+
+## 并行与工作环境
+- worktree 随用随清：任务合并后立即 `git worktree remove` 并删除本地/远端分支，禁止残留。
+- 禁止修改 git config（remote/user/credential 等）；禁止 force push main。
+- 临时日志与脚本（*.log、tmp_*、run_tests*）禁止入库；pytest 用 addopts 内 --basetemp=.pytest_tmp。
 
 ## 绝对禁令（复述，违反=任务失败+记录）
 伪造成功 / 改测试通过验收 / 密钥进仓库或日志 / 删改历史数据 / 核心引学科包 / 绕过校验门。

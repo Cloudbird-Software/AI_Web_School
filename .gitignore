@@ -31,3 +31,4 @@ var/
 .ai_runner/
 ai_runner.ps1
 .trae/documents/
+.pytest_tmp/
