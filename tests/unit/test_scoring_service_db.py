@@ -218,10 +218,12 @@ async def test_math_equivalence_wrong_unit_inference(async_session: AsyncSession
 
 async def test_unregistered_scorer_raises(async_session: AsyncSession):
     """未注册评分器 → ScorerNotRegisteredError（不落账）."""
+    # T-W4-019 后 ai_rubric 已注册（AIRubricScorer），故改用真正未注册的占位 id
+    # 以保留本测试断言意图（验「未注册 → 抛错」），不修改 pytest.raises 断言。
     iv = {
         "item_version_id": "sha256:bad-iv",
         "interaction_ref": {"interaction_id": "single_choice", "interaction_params": {}},
-        "scoring_ref": {"scorer_id": "ai_rubric", "scorer_params": {}},
+        "scoring_ref": {"scorer_id": "__definitely_not_registered_scorer__", "scorer_params": {}},
         "error_bindings": [],
     }
     with pytest.raises(ScorerNotRegisteredError):

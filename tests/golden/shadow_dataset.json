@@ -1,0 +1,375 @@
+{
+  "dataset_id": "shadow-baseline-v1",
+  "description": "T-W4-020 影子模式基准数据集：20 篇作文/看图写话模拟作答 + 人工量规结论。覆盖低/中/高三学段与 composition/picture_writing 两类写作，用于验证 AI 量规评分器（AIRubricScorer）与人工结论的逐维一致率（验收③：逐维偏差≤1 分视为一致，整体一致率≥70%）。本数据集为合成基准，不含任何真实学生 PII。",
+  "rubric": {
+    "rubric_id": "sha256:shadow-baseline-rubric-v1",
+    "name": "作文/看图写话基准量规-v1",
+    "grade_band": "M",
+    "version": "1.0.0",
+    "total_max_score": 20,
+    "dimensions": [
+      {
+        "id": "content",
+        "name": "内容",
+        "anchors": [
+          "主题明确，内容充实，符合题意，能表达真情实感",
+          "主题基本明确，内容较充实，基本符合题意",
+          "主题模糊或偏离题意，内容空洞"
+        ],
+        "score_bands": [
+          {"level": 1, "label": "优秀", "score": 5},
+          {"level": 2, "label": "合格", "score": 3},
+          {"level": 3, "label": "待改进", "score": 1}
+        ],
+        "error_type_rules": []
+      },
+      {
+        "id": "structure",
+        "name": "结构",
+        "anchors": [
+          "段落清晰，条理分明，过渡自然，首尾呼应",
+          "段落较清晰，结构基本完整，过渡略显生硬",
+          "段落混乱，结构不完整，缺乏过渡"
+        ],
+        "score_bands": [
+          {"level": 1, "label": "优秀", "score": 5},
+          {"level": 2, "label": "合格", "score": 3},
+          {"level": 3, "label": "待改进", "score": 1}
+        ],
+        "error_type_rules": []
+      },
+      {
+        "id": "language",
+        "name": "语言",
+        "anchors": [
+          "语言流畅，用词准确生动，句式多样，无病句",
+          "语言较通顺，用词基本准确，偶有病句",
+          "语言不畅，用词不当，病句较多"
+        ],
+        "score_bands": [
+          {"level": 1, "label": "优秀", "score": 5},
+          {"level": 2, "label": "合格", "score": 3},
+          {"level": 3, "label": "待改进", "score": 1}
+        ],
+        "error_type_rules": []
+      },
+      {
+        "id": "handwriting",
+        "name": "书写",
+        "anchors": [
+          "字迹工整，标点正确，格式规范，无错别字",
+          "字迹较工整，标点基本正确，少量错别字",
+          "字迹潦草，标点错误多，错别字多"
+        ],
+        "score_bands": [
+          {"level": 1, "label": "优秀", "score": 5},
+          {"level": 2, "label": "合格", "score": 3},
+          {"level": 3, "label": "待改进", "score": 1}
+        ],
+        "error_type_rules": []
+      }
+    ]
+  },
+  "cases": [
+    {
+      "case_id": "shadow-001",
+      "grade_band": "L",
+      "writing_type": "composition",
+      "topic": "春天",
+      "response_text": "春天来了，草绿了，花开了。小鸟在树上唱歌，我和小朋友去公园玩。春天真好看，我喜欢春天。",
+      "human_score": {
+        "dimensions": [
+          {"id": "content", "score": 5},
+          {"id": "structure", "score": 4},
+          {"id": "language", "score": 4},
+          {"id": "handwriting", "score": 3}
+        ]
+      }
+    },
+    {
+      "case_id": "shadow-002",
+      "grade_band": "L",
+      "writing_type": "composition",
+      "topic": "我的妈妈",
+      "response_text": "我的妈妈很好。她给我做饭，送我上学。我爱我的妈妈。",
+      "human_score": {
+        "dimensions": [
+          {"id": "content", "score": 3},
+          {"id": "structure", "score": 3},
+          {"id": "language", "score": 3},
+          {"id": "handwriting", "score": 3}
+        ]
+      }
+    },
+    {
+      "case_id": "shadow-003",
+      "grade_band": "L",
+      "writing_type": "picture_writing",
+      "topic": "公园",
+      "response_text": "图上有公园。公园里有树，有花，有小朋友在跑。天空有云。公园很漂亮。",
+      "human_score": {
+        "dimensions": [
+          {"id": "content", "score": 4},
+          {"id": "structure", "score": 3},
+          {"id": "language", "score": 3},
+          {"id": "handwriting", "score": 4}
+        ]
+      }
+    },
+    {
+      "case_id": "shadow-004",
+      "grade_band": "L",
+      "writing_type": "composition",
+      "topic": "我的好朋友",
+      "response_text": "我的好朋友叫小明。我们一起玩，一起写字。他很好。",
+      "human_score": {
+        "dimensions": [
+          {"id": "content", "score": 3},
+          {"id": "structure", "score": 2},
+          {"id": "language", "score": 2},
+          {"id": "handwriting", "score": 3}
+        ]
+      }
+    },
+    {
+      "case_id": "shadow-005",
+      "grade_band": "L",
+      "writing_type": "picture_writing",
+      "topic": "操场",
+      "response_text": "图上是操场。小朋友在打球，在跑步。操场很大，大家很开心。",
+      "human_score": {
+        "dimensions": [
+          {"id": "content", "score": 4},
+          {"id": "structure", "score": 4},
+          {"id": "language", "score": 4},
+          {"id": "handwriting", "score": 3}
+        ]
+      }
+    },
+    {
+      "case_id": "shadow-006",
+      "grade_band": "L",
+      "writing_type": "composition",
+      "topic": "小猫",
+      "response_text": "我家有只小猫。它白白的，很可爱。我喜欢它。",
+      "human_score": {
+        "dimensions": [
+          {"id": "content", "score": 2},
+          {"id": "structure", "score": 2},
+          {"id": "language", "score": 3},
+          {"id": "handwriting", "score": 2}
+        ]
+      }
+    },
+    {
+      "case_id": "shadow-007",
+      "grade_band": "L",
+      "writing_type": "picture_writing",
+      "topic": "早晨",
+      "response_text": "早晨，太阳出来了。天亮了，鸟叫了。我起床去上学。早晨真好。",
+      "human_score": {
+        "dimensions": [
+          {"id": "content", "score": 4},
+          {"id": "structure", "score": 3},
+          {"id": "language", "score": 4},
+          {"id": "handwriting", "score": 4}
+        ]
+      }
+    },
+    {
+      "case_id": "shadow-008",
+      "grade_band": "M",
+      "writing_type": "composition",
+      "topic": "秋天",
+      "response_text": "秋天到了，树叶变黄了，一片片落下来。果园里苹果红了，梨黄了，农民伯伯在忙着采摘。秋天是丰收的季节，我喜欢秋天的颜色，也喜欢秋天的果实。秋天真美啊！",
+      "human_score": {
+        "dimensions": [
+          {"id": "content", "score": 5},
+          {"id": "structure", "score": 4},
+          {"id": "language", "score": 4},
+          {"id": "handwriting", "score": 4}
+        ]
+      }
+    },
+    {
+      "case_id": "shadow-009",
+      "grade_band": "M",
+      "writing_type": "composition",
+      "topic": "一次难忘的经历",
+      "response_text": "上次暑假，爸爸带我去爬山。山很高，我爬得很累，想放弃。爸爸鼓励我坚持下去。终于爬到山顶，看到很美的风景。这次经历让我明白，做事不能半途而废。",
+      "human_score": {
+        "dimensions": [
+          {"id": "content", "score": 5},
+          {"id": "structure", "score": 5},
+          {"id": "language", "score": 4},
+          {"id": "handwriting", "score": 3}
+        ]
+      }
+    },
+    {
+      "case_id": "shadow-010",
+      "grade_band": "M",
+      "writing_type": "picture_writing",
+      "topic": "雨天",
+      "response_text": "图上是一个下雨天。小朋友打着伞走在路上，地上有水坑。雨滴滴答答落在伞上。虽然下雨了，但小朋友还是很开心，因为可以踩水坑。雨天也有雨天的乐趣。",
+      "human_score": {
+        "dimensions": [
+          {"id": "content", "score": 4},
+          {"id": "structure", "score": 4},
+          {"id": "language", "score": 4},
+          {"id": "handwriting", "score": 4}
+        ]
+      }
+    },
+    {
+      "case_id": "shadow-011",
+      "grade_band": "M",
+      "writing_type": "composition",
+      "topic": "我最喜欢的书",
+      "response_text": "我最喜欢的书是《西游记》。孙悟空很厉害，会七十二变。他保护师傅去取经，打败很多妖怪。我觉得他很勇敢，我也想做个勇敢的人。",
+      "human_score": {
+        "dimensions": [
+          {"id": "content", "score": 4},
+          {"id": "structure", "score": 3},
+          {"id": "language", "score": 3},
+          {"id": "handwriting", "score": 3}
+        ]
+      }
+    },
+    {
+      "case_id": "shadow-012",
+      "grade_band": "M",
+      "writing_type": "picture_writing",
+      "topic": "海边",
+      "response_text": "图上画着海边。蓝蓝的大海，黄色的沙滩。小朋友在堆沙堡，有人在游泳。海鸥在天上飞。海边真好玩，我也想去。",
+      "human_score": {
+        "dimensions": [
+          {"id": "content", "score": 4},
+          {"id": "structure", "score": 3},
+          {"id": "language", "score": 4},
+          {"id": "handwriting", "score": 3}
+        ]
+      }
+    },
+    {
+      "case_id": "shadow-013",
+      "grade_band": "M",
+      "writing_type": "composition",
+      "topic": "如果我会飞",
+      "response_text": "如果我会飞，我要飞到天空上看云朵。云朵像棉花糖，像小羊。我要飞到大山上看风景。如果我会飞，我就不怕迟到了。可是人不会飞，我只能做梦。",
+      "human_score": {
+        "dimensions": [
+          {"id": "content", "score": 4},
+          {"id": "structure", "score": 3},
+          {"id": "language", "score": 3},
+          {"id": "handwriting", "score": 4}
+        ]
+      }
+    },
+    {
+      "case_id": "shadow-014",
+      "grade_band": "M",
+      "writing_type": "picture_writing",
+      "topic": "节日",
+      "response_text": "图上是节日的晚上。天上有很多烟花，五颜六色很好看。小朋友在看烟花，很开心。节日真好，一家人在一起。",
+      "human_score": {
+        "dimensions": [
+          {"id": "content", "score": 3},
+          {"id": "structure", "score": 3},
+          {"id": "language", "score": 3},
+          {"id": "handwriting", "score": 3}
+        ]
+      }
+    },
+    {
+      "case_id": "shadow-015",
+      "grade_band": "H",
+      "writing_type": "composition",
+      "topic": "成长",
+      "response_text": "成长是一条长长的路。小时候，我总想快快长大，觉得长大就能自由。可是真正长大后才发现，自由伴随着责任。每次遇到困难，我都会想起妈妈说的话：跌倒了，爬起来继续走。成长不只是身高的增长，更是内心的成熟。现在面对挫折，我不再轻易哭泣，而是学会想办法解决。成长路上有欢笑也有泪水，但每一步都值得。未来的路还很长，我会带着勇气继续前行，做一个更好的人。",
+      "human_score": {
+        "dimensions": [
+          {"id": "content", "score": 5},
+          {"id": "structure", "score": 5},
+          {"id": "language", "score": 5},
+          {"id": "handwriting", "score": 4}
+        ]
+      }
+    },
+    {
+      "case_id": "shadow-016",
+      "grade_band": "H",
+      "writing_type": "composition",
+      "topic": "环保",
+      "response_text": "地球是我们共同的家园，保护环境人人有责。如今空气污染严重，河水不再清澈，天空不再湛蓝。如果再不行动，我们的家园会越来越糟。我们可以从小事做起：少用塑料袋，节约用水，多植树。一个人的力量虽小，但只要大家都行动起来，就能汇聚成保护地球的大力量。让我们携手守护这颗蓝色星球，给未来留下一片蓝天碧水。",
+      "human_score": {
+        "dimensions": [
+          {"id": "content", "score": 5},
+          {"id": "structure", "score": 4},
+          {"id": "language", "score": 4},
+          {"id": "handwriting", "score": 4}
+        ]
+      }
+    },
+    {
+      "case_id": "shadow-017",
+      "grade_band": "H",
+      "writing_type": "picture_writing",
+      "topic": "城市",
+      "response_text": "图画展现了一座繁华的城市。高楼大厦耸入云端，街道上车水马龙。霓虹灯闪烁，行人匆匆。城市虽然热闹，但人们似乎都很忙碌，少有停下脚步欣赏身边风景的。这让我思考：城市发展了，生活节奏却快得让人喘不过气。也许我们该在繁华中寻找一份宁静，在忙碌中给自己留一点时间，去感受生活的美好。",
+      "human_score": {
+        "dimensions": [
+          {"id": "content", "score": 5},
+          {"id": "structure", "score": 5},
+          {"id": "language", "score": 5},
+          {"id": "handwriting", "score": 4}
+        ]
+      }
+    },
+    {
+      "case_id": "shadow-018",
+      "grade_band": "H",
+      "writing_type": "composition",
+      "topic": "友谊",
+      "response_text": "友谊是人生最珍贵的礼物。真正的朋友会在你快乐时陪你笑，在你难过时给你肩膀。我和小明是好朋友，我们一起学习，一起玩耍。有一次我考试没考好，心情很低落，他主动来安慰我，帮我分析错题。那一刻我明白，友谊不是锦上添花，而是雪中送炭。珍惜身边的朋友，用心经营每一段友情，人生路上才会不孤单。",
+      "human_score": {
+        "dimensions": [
+          {"id": "content", "score": 5},
+          {"id": "structure", "score": 4},
+          {"id": "language", "score": 4},
+          {"id": "handwriting", "score": 3}
+        ]
+      }
+    },
+    {
+      "case_id": "shadow-019",
+      "grade_band": "H",
+      "writing_type": "picture_writing",
+      "topic": "未来",
+      "response_text": "画中描绘的是未来的城市。空中飞行着各式各样的飞行器，建筑高耸入云。机器人帮助人类工作，清洁能源让天空湛蓝。科技让生活更便捷。但我也看到，人们依旧渴望真挚的情感。未来无论多么先进，人与人之间的温暖不应被取代。科技与人文并重，未来才会真正美好。",
+      "human_score": {
+        "dimensions": [
+          {"id": "content", "score": 5},
+          {"id": "structure", "score": 4},
+          {"id": "language", "score": 5},
+          {"id": "handwriting", "score": 4}
+        ]
+      }
+    },
+    {
+      "case_id": "shadow-020",
+      "grade_band": "H",
+      "writing_type": "composition",
+      "topic": "坚持",
+      "response_text": "坚持是通向成功的钥匙。学骑自行车时我摔倒很多次，膝盖磕破了，想放弃。爸爸说：再试一次。我又跨上车，慢慢找到平衡。终于会骑的那一刻，我高兴极了。后来学什么难的，我都告诉自己再试一次。坚持不是不害怕失败，而是害怕了还继续。只要不放弃，终会看到成果。坚持让我变得更强。",
+      "human_score": {
+        "dimensions": [
+          {"id": "content", "score": 5},
+          {"id": "structure", "score": 5},
+          {"id": "language", "score": 4},
+          {"id": "handwriting", "score": 4}
+        ]
+      }
+    }
+  ]
+}

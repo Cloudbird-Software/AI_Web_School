@@ -1,0 +1,67 @@
+# A 线母题模板：看图写话（T-W4-018）
+#
+# 开放式作答模板：slot=图片引用/提示语/字数区间/时长；
+# presentation=图片占位+提示语+字数要求；answer_program=None（开放式无固定正解，
+# 评分走 ai_rubric 量规）。
+# 交互类型：writing（注册表 specs/contracts/registries/interaction.yaml；
+# 看图写话与作文共用 writing 交互，仅 presentation 含图片块）；
+# 评分器：ai_rubric（与 writing 兼容，见 scorer.yaml）。
+#
+# 学段参数化（验收③）：调用方按学段注入 word_count_min/max：
+#   低段 50–100 / 中段 150–250 / 高段 300–400（与 T-W4-017 Blueprint 默认值一致）。
+# 看图写话多用于低段，但模板支持全学段参数化以复用于看图作文。
+#
+# 宪法 D4：交互与评分器只复用注册表，禁止私造；
+# 宪法 X6：语文逻辑只在 src/packs/subject-chinese/ 下。
+template_version_id: sha256:tpl-chinese-picture-writing-v1
+template_id: tpl-chinese-picture-writing
+dsl_version: '1'
+spec:
+  objective:
+    kp_set:
+    - dimension: kp
+      code: chinese.writing.picture-writing
+    kp_set_mode: single
+    cognitive_level: create
+    gradeband: L
+    graph_release: '2026.1'
+  slots:
+    # 图片引用（对象存储中的图片 digest，渲染时解析为图片块）
+    picture_ref:
+      type: string
+      difficulty_relevant: true
+    # 提示语（如 "图上画的是谁？他们在做什么？"，由蓝图或命题人注入）
+    prompt:
+      type: string
+      difficulty_relevant: false
+    # 字数下限（学段参数化：L=50 / M=150 / H=300）
+    word_count_min:
+      type: int
+      difficulty_relevant: false
+    # 字数上限（学段参数化：L=100 / M=250 / H=400）
+    word_count_max:
+      type: int
+      difficulty_relevant: false
+    # 建议作答时长（分钟）
+    time_limit_minutes:
+      type: int
+      difficulty_relevant: false
+  variation_axes:
+    axes: []
+  presentation:
+    blocks:
+    - kind: image
+      template: '{picture_ref}'
+    - kind: text
+      template: '{prompt}'
+    - kind: text
+      template: '字数要求：{word_count_min}–{word_count_max} 字。'
+    - kind: text
+      template: '建议时长：{time_limit_minutes} 分钟。'
+  answer_program:
+    # 开放式作答：无固定正解，返回 None；评分走 ai_rubric 量规（D 线 T-W4-019）
+    expression: None
+    returns: string
+  distractor_rules:
+    # 开放式作答无干扰项；error_bindings 由 ai_rubric 量规的 error_type_rules 生成
+    rules: []
