@@ -1,0 +1,56 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ItemVersionImport",
+  "type": "object",
+  "required": ["item_version_id","item_id","status","objective","interaction_ref","content","scoring_ref","error_bindings","lineage"],
+  "properties": {
+    "item_version_id": {"type":"string"},
+    "item_id": {"type":"string"},
+    "status": {"type":"string","enum":["draft","quarantined","published","retired"]},
+    "objective": {
+      "type":"object",
+      "required":["kp_set","kp_set_mode","cognitive_level","gradeband","graph_release"],
+      "properties":{
+        "kp_set":{"type":"array","items":{"type":"object","required":["dimension","code"], "properties":{"dimension":{"type":"string"},"code":{"type":"string"}}}},
+        "kp_set_mode":{"type":"string","enum":["single","all_required","compensatory"]},
+        "cognitive_level":{"type":"string"},
+        "gradeband":{"type":"string","enum":["L","M","H"]},
+        "graph_release":{"type":"string"}
+      }
+    },
+    "interaction_ref": {
+      "type":"object",
+      "required":["interaction_id","interaction_params"],
+      "properties":{
+        "interaction_id":{"type":"string"},
+        "interaction_params":{"type":"object"}
+      }
+    },
+    "content": {
+      "type":"object",
+      "required":["blocks"],
+      "properties":{
+        "blocks":{"type":"array","items":{"type":"object"}}
+      }
+    },
+    "scoring_ref": {
+      "type":"object",
+      "required":["scorer_id","scorer_params"],
+      "properties":{
+        "scorer_id":{"type":"string"},
+        "scorer_params":{"type":"object"}
+      }
+    },
+    "error_bindings":{"type":"array","items":{"type":"object"}},
+    "lineage": {
+      "type":"object",
+      "required":["tier","pipeline","signed_by","signed_at"],
+      "properties":{
+        "tier":{"type":"string","enum":["A","B","C","D"]},
+        "pipeline":{"type":"object","required":["id","version"],"properties":{"id":{"type":"string"},"version":{"type":"string"}}},
+        "signed_by":{"type":"string"},
+        "signed_at":{"type":"string"}
+      }
+    }
+  }
+}
