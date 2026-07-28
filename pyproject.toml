@@ -52,6 +52,10 @@ dependencies = [
     "playwright>=1.40",
     "httpx>=0.27",  # T-W2-039 API 单测 TestClient
     "python-multipart>=0.0.9",  # T-W2-041 工作台登录页 Form 解析（FastAPI Form 依赖）
+    # X8 理由：cryptography（Apache-2.0/BSD-3）PII 保险库列级加密（T-W4-031，D7）。
+    # AES-256-GCM 应用层加解密，密钥环境变量注入永不入 SQL/日志（X3）。
+    # 不用 pgcrypto：密钥会进 SQL bind param/query log，违反 X3。
+    "cryptography>=42",
 ]
 
 [project.optional-dependencies]
