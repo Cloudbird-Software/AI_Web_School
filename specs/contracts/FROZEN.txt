@@ -1,4 +1,5 @@
 # 冻结契约清单（每行一个路径；contract-watch 强制只增不改）。波次启动时由人类维护。
+specs/contracts/api/openapi-v1.yaml
 specs/contracts/db/item-model.md
 specs/contracts/db/paper-model.md
 specs/contracts/events/response_event.md
