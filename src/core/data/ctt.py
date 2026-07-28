@@ -24,6 +24,7 @@
 """
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Optional, Sequence
@@ -38,6 +39,13 @@ from src.core.models.item_param import ItemParam
 CTT_METHOD_VERSION = "ctt-v1"
 # 实测来源标识（item_param.source 域：measured_*）
 CTT_SOURCE = "measured_ctt"
+
+# T-W4-047：CTT 区分度最小样本门槛（默认 30）。
+# n<30 时区分度无统计意义（点二列相关小样本方差大），返回 None 并记警示，
+# 不伪造 0（与既有「信息不足不伪造」原则一致，仅收严门槛）。
+CTT_MIN_SAMPLE_DEFAULT = 30
+
+logger = logging.getLogger(__name__)
 
 # 场景三值域（与 response_event_scene_enum / D5 对齐）
 VALID_PURPOSE_SCOPES: frozenset[str] = frozenset(
@@ -143,6 +151,59 @@ def compute_ctt(records: Sequence[ResponseRecord]) -> list[ItemCttStats]:
 
 
 # ────────────────────────────────────────────────────────────────────
+# T-W4-047：单题区分度（min_sample 门槛 + 小样本警示）
+# ────────────────────────────────────────────────────────────────────
+
+
+def compute_discrimination(
+    responses: Sequence[ResponseRecord],
+    key: str,
+    *,
+    min_sample: int = CTT_MIN_SAMPLE_DEFAULT,
+) -> Optional[float]:
+    """单题区分度计算（修正点二列 Pearson），带 min_sample 门槛与小样本警示.
+
+    BRIEF S11 / 任务卡 T-W4-047：n < min_sample（默认 30）时返回 None 并记
+    warning 警示——小样本点二列方差大、统计无意义，不伪造 0（与既有
+    「信息不足不伪造」原则一致，仅收严门槛）。n ≥ min_sample 时计算行为
+    与既有 ``compute_ctt`` 的区分度完全一致（同修正点二列、同 _pearson）。
+
+    为什么是独立函数而非改 compute_ctt：任务卡明确「不修改历史计算逻辑，
+    仅增强边界判断；与既有 CTT 实现向后兼容」。compute_ctt 的批处理签名
+    与既有 golden 测试不变；本函数按需对单题取区分度并应用更严门槛。
+
+    Args:
+        responses: 单场景作答记录（调用方保证已按 purpose_scope 过滤，D5）。
+        key: 要计算区分度的 item_version_id。
+        min_sample: 最小样本门槛，默认 30；n < min_sample 返回 None。
+
+    Returns:
+        区分度（修正点二列 Pearson r）；n < min_sample 或零方差/不可计算时
+        为 None。n < min_sample 时额外记 warning 警示（标记小样本）。
+    """
+    # 学生总分（批内全部记录，与 compute_ctt 一致——修正点二列的「总分」
+    # 是该学生在本批全部题的得分之和，剔除本题得分避免自相关高估）
+    student_total: dict[str, float] = {}
+    for r in responses:
+        student_total[r.student_alias_id] = (
+            student_total.get(r.student_alias_id, 0.0) + r.correct
+        )
+
+    item_records = [r for r in responses if r.item_version_id == key]
+    n = len(item_records)
+    if n < min_sample:
+        logger.warning(
+            "ctt.discrimination.min_sample: item=%s n=%d < min_sample=%d "
+            "→ 区分度返回 None（样本不足，点二列统计无意义，不伪造）",
+            key, n, min_sample,
+        )
+        return None
+    xs = [r.correct for r in item_records]
+    ys = [student_total[r.student_alias_id] - r.correct for r in item_records]
+    return _pearson(xs, ys)
+
+
+# ────────────────────────────────────────────────────────────────────
 # DB 取数（单场景精确过滤，D5 禁混估）
 # ────────────────────────────────────────────────────────────────────
 
@@ -235,9 +296,11 @@ async def run_ctt_calibration(
 __all__ = [
     "CTT_METHOD_VERSION",
     "CTT_SOURCE",
+    "CTT_MIN_SAMPLE_DEFAULT",
     "VALID_PURPOSE_SCOPES",
     "ResponseRecord",
     "ItemCttStats",
     "compute_ctt",
+    "compute_discrimination",
     "run_ctt_calibration",
 ]
