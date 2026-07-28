@@ -62,6 +62,13 @@ dependencies = [
     # pyarrow 是 Arrow 列式内存原生实现，与 pandas/duckdb 生态对齐且更稳定。
     # 仅在归档路径使用，不进入核心域运行时热路径（不污染评分/组卷链路）。
     "pyarrow>=17",
+    # X8 理由：ortools（Apache-2.0）CP-SAT 离线组卷求解器（T-W4-028，架构 v2 §4.4）。
+    # 测量卷组卷 = 双向细目表 + 候选题池 + 曝光互斥/题组/testlet 约束 → 编译为
+    # CP-SAT 模型求可行解或返回不可行原因（冲突约束列表）。在线练习/诊断仍用
+    # solver/heuristic.py 的候选预算装填启发式（毫秒级），CP-SAT 仅用于离线测量卷（秒级可接受）。
+    # 不用 pulp/PuLP：CP-SAT 支持整数变量与可行解搜索（pulp 偏 LP/MIP）；
+    # 不自研回溯：CP-SAT 是工业级约束传播+LS 求解器，自研易错且性能不可控。
+    "ortools>=9.7",
 ]
 
 [project.optional-dependencies]
@@ -84,6 +91,7 @@ packages = [
     "src.core.instantiation",
     "src.core.production",
     "src.core.render",
+    "src.core.assembly.solver",
     "src.packs",
     "src.packs.subject-math",
     "src.packs.subject-math.render",
@@ -107,6 +115,7 @@ packages = [
 "src.core.instantiation" = "src/core/instantiation"
 "src.core.production" = "src/core/production"
 "src.core.render" = "src/core/render"
+"src.core.assembly.solver" = "src/core/assembly/solver"
 "src.packs" = "src/packs"
 "src.packs.subject-math" = "src/packs/subject-math"
 "src.packs.subject-math.render" = "src/packs/subject-math/render"
