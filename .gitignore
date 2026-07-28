@@ -25,3 +25,9 @@ tmp_*
 run_tests*
 run_full_test.py
 run_restore_drill.sh
+
+# T-W4-050 运行时产物与 agent 工具链（不入库）
+var/
+.ai_runner/
+ai_runner.ps1
+.trae/documents/

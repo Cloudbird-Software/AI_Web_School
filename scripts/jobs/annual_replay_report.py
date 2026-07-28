@@ -480,11 +480,15 @@ def _parse_args() -> argparse.Namespace:
     p = argparse.ArgumentParser(
         description="年度全量重放首演报告生成器：replay_all + 版本映射 + 参数并存实证"
     )
+    # --scope 非 dry-run 模式必填（_amain 内校验）；dry-run 模式允许省略，
+    # 以便 w4.sh 出口脚本与 CI 用 --dry-run 做接口自检而不连 DB。
     p.add_argument(
         "--scope",
-        required=True,
+        required=False,
         choices=["practice", "diagnosis", "measurement"],
-        help="重放场景（D5 必填单值——按场景独立重放，禁止跨场景混估）",
+        default=None,
+        help="重放场景（D5 必填单值——按场景独立重放，禁止跨场景混估；"
+             "dry-run 模式可省略）",
     )
     p.add_argument(
         "--run-label",
@@ -506,11 +510,33 @@ def _parse_args() -> argparse.Namespace:
         action="store_true",
         help="输出 JSON 格式报告（默认 Markdown）",
     )
+    p.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="接口自检模式：不连 DB、不跑 replay_all，仅验证参数解析与模块导入"
+             "（w4.sh 出口脚本 / CI 轻量探活用）",
+    )
     return p.parse_args()
 
 
 async def _amain() -> int:
     args = _parse_args()
+
+    # dry-run：接口自检，不连 DB（w4.sh 出口与 CI 探活）
+    # 为什么需要 dry-run：replay_all 需要运行中的 DB 容器 + 已登记的活跃估计器，
+    # 出口脚本与 CI 用 dry-run 验证脚本可加载、参数可解析即可——
+    # 真实重放由 test_replay.py（单元）与 annual_replay_report.py 全量运行覆盖。
+    if args.dry_run:
+        print(
+            "✅ annual_replay_report.py dry-run：参数解析与模块导入通过"
+            + (f"（--scope={args.scope}）" if args.scope else "（--scope 省略）")
+        )
+        return 0
+
+    if args.scope is None:
+        raise SystemExit(
+            "非 dry-run 模式必须提供 --scope（practice/diagnosis/measurement，D5 单值）"
+        )
 
     # 注册 platform 评分器（与 annual_replay.py 同处理）
     import src.core.scoring.platform_scorers  # noqa: F401

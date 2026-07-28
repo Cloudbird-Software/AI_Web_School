@@ -97,6 +97,19 @@ def _extract_paths(diff_text: str) -> tuple[list[str], list[str]]:
     return added, removed
 
 
+def _file_exists_in_ref(ref: str) -> bool:
+    """检查 FROZEN_CONTRACT 在指定 ref 是否存在（git cat-file）.
+
+    用于区分「初始冻结」（base 无此文件）与「修改既有冻结契约」（base 已有）：
+    初始冻结是创建冻结契约本身，不属「未经批准修改既有冻结契约」的拦截范围。
+    """
+    try:
+        _run_git(["cat-file", "-e", f"{ref}:{FROZEN_CONTRACT}"])
+        return True
+    except RuntimeError:
+        return False
+
+
 def collect_diff(base: str = "origin/main", head: str = "HEAD") -> DiffSummary:
     """收集 base..head 范围内对 openapi-v1.yaml 的 diff.
 
@@ -106,7 +119,16 @@ def collect_diff(base: str = "origin/main", head: str = "HEAD") -> DiffSummary:
 
     Returns:
         DiffSummary：增删行数 + 新增/删除路径列表 + 原始 diff 文本。
+
+    Notes:
+        若 ``FROZEN_CONTRACT`` 在 base 不存在（初始冻结场景，如 W4 波次首次
+        引入 openapi-v1.yaml），返回空 DiffSummary——初始冻结是创建冻结契约
+        本身，本守卫只拦截「对既有冻结契约的未经批准修改」，不拦截首次创建。
     """
+    # 初始冻结：base 无此文件 → 不属「修改既有冻结契约」，放行
+    if not _file_exists_in_ref(base):
+        return DiffSummary(0, 0, [], [], "")
+
     # git diff <base> <head> -- <path>
     try:
         diff_text = _run_git(

@@ -173,6 +173,14 @@ def build_scoring_trace(scorer_id: str, result: ScoreResult) -> dict[str, Any]:
     S8 CTT 标定的正确性信号取数位置正是
     scoring_trace->'dimension_scores'->>'correct'（见 src/core/data/ctt.py）——
     缺了它，在线作答事件对参数标定不可见，数据飞轮断链。
+
+    process.correct（T-W4-048 补写）：评分层对错汇总的显式 bool。
+    复习排程 derive_correctness 优先读 process.correct（见
+    src/core/review/scheduler.py）——缺失时复习队列只能靠 error_inferences
+    间接推断，答对事件无法显式表达，错题回测推进逻辑异常。口径与
+    ScoringOutcome.correct 一致：dimension_scores['correct'] >= 1.0 为对；
+    部分分 <1.0 一律记错。覆盖 evidence 同名键（统一口径，避免评分器
+    自报与汇总不一致）。
     """
     confidence: dict[str, Any] = {
         "scoring": float(result.confidence.get("scoring", 1.0)),
@@ -180,11 +188,12 @@ def build_scoring_trace(scorer_id: str, result: ScoreResult) -> dict[str, Any]:
     }
     if "recognition" in result.confidence:
         confidence["recognition"] = float(result.confidence["recognition"])
+    correct = float(result.dimension_scores.get("correct", 0.0)) >= 1.0
     return {
         "scorer_id": scorer_id,
         "scorer_version": result.scorer_version,
         "dimension_scores": dict(result.dimension_scores),
-        "process": result.evidence,
+        "process": {**result.evidence, "correct": correct},
         "confidence": confidence,
     }
 

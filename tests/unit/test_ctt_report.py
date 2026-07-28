@@ -461,12 +461,18 @@ class TestBuildMeasurementReport:
                 )
 
         # 登记活跃 measurement 估计器
+        # activated_at 必须早于报告时刻 T0：get_active(timestamp=T0) 按 D6
+        # 历史回溯语义仅返回 activated_at<=T0 的行；不传 activated_at 会默认
+        # datetime.now()（晚于 T0）导致回溯落空——与同文件
+        # test_estimator_ref_uses_timestamp_backtracking 的 t1/t2 模式一致。
         ptr = ActiveModelPointer(async_session)
+        activated_at = datetime(2026, 7, 28, 9, 0, tzinfo=timezone.utc)
         await ptr.set_active(
             "measurement", "ctt-v1",
             code_digest="sha256:ctt-report-code",
             input_snapshot_id="snap-mr-001",
             graph_release_id="gr-mr-001",
+            activated_at=activated_at,
         )
 
         report = await build_measurement_report(

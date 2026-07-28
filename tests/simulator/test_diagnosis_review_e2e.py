@@ -36,8 +36,13 @@ from tests.simulator.client import SimulatorClient
 from tests.simulator.scenarios.diagnosis_scenario import DiagnosisScenario
 from tests.simulator.scenarios.review_scenario import ReviewScenario
 
-# 诊断场景固定时刻（错题入队后 due_at = T0 + 1 天，到期判定用 T0 + 1 天 + 1 小时）
-_DIAG_T0 = datetime(2026, 7, 28, 8, 0, 0, tzinfo=timezone.utc)
+# 诊断场景基准时刻：作答事件 created_at = datetime.now(UTC)（/responses API
+# 不接受 now 注入），故 T0 取模块导入时刻近似实际作答时刻——
+# due_at = created_at + 1 天，到期判定用 T0 + 1 天 + 1 小时确保 due_at <= due_now。
+# 不能用固定时刻：实际作答时刻随墙钟走，固定 due_now 会在一天内部分时段
+# 出现 due_at > due_now 而空返回（flaky）；动态 T0 让 due_now 始终滞后作答
+# 足够时长，复习排程的 1 天间隔语义稳定可验。
+_DIAG_T0 = datetime.now(timezone.utc)
 _DIAG_DUE_NOW = (_DIAG_T0 + timedelta(days=1, hours=1)).isoformat().replace("+00:00", "Z")
 
 

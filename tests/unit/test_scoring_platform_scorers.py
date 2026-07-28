@@ -412,7 +412,8 @@ def test_build_scoring_trace_structure():
     trace = build_scoring_trace("exact_match", result)
     assert trace["scorer_id"] == "exact_match"
     assert trace["scorer_version"] == "1.0.0+platform"
-    assert trace["process"] == {"note": "判定明细"}
+    # T-W4-048：process.correct 显式 bool（复习排程 derive_correctness 优先读）
+    assert trace["process"] == {"note": "判定明细", "correct": True}
     # 置信度四层分离：本层只承载评分层
     assert trace["confidence"]["scoring"] == 1.0
     assert "note" in trace["confidence"]
