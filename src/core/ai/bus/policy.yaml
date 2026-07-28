@@ -1,0 +1,46 @@
+# T-W4-007 AI 总线路由策略（架构 v2 §4.8）
+#
+# 任务分级：L0 不用 AI / L1 弱模型 / L2 强模型 / L3 复核
+# 供应商可配置：provider 字段对齐 T-W4-009 适配器注册名（deepseek/litellm）
+# 关键任务双供应商预案：L3 配置 fallback 段，主失败自动切换
+#
+# 修改本文件不需重启进程：router 通过 reload_policy() 失效缓存实现热加载
+# （T-W4-009 验收 #3 配置热加载）
+#
+# 宪法 X3：密钥不在本文件出现，供应商 key 从环境变量读取（.env / CI secrets）
+
+contract_version: "1.0.0"
+
+levels:
+  L0:
+    use_ai: false
+    description: "不用 AI：直接返回空内容，禁止调用任何供应商"
+
+  L1:
+    use_ai: true
+    provider: "deepseek"
+    model: "deepseek-chat"
+    temperature: 0.3
+    max_tokens: 1024
+    description: "弱模型：初筛/起草/低成本任务"
+
+  L2:
+    use_ai: true
+    provider: "deepseek"
+    model: "deepseek-reasoner"
+    temperature: 0.2
+    max_tokens: 4096
+    description: "强模型：生产语篇起草与裁判"
+
+  L3:
+    use_ai: true
+    provider: "litellm"
+    model: "gpt-4o"
+    temperature: 0.0
+    max_tokens: 8192
+    fallback:
+      provider: "deepseek"
+      model: "deepseek-reasoner"
+      temperature: 0.0
+      max_tokens: 8192
+    description: "复核：主用交叉供应商强模型，主失败走 deepseek fallback"
