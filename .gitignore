@@ -16,8 +16,12 @@ worktrees/
 # W2 运行时产物（PDF 输出等）
 out/
 
+# T-W4-040 备份演练产物（含 DB 数据，禁止入库）
+backups/
+
 # 临时测试日志与脚本
 *.log
 tmp_*
 run_tests*
 run_full_test.py
+run_restore_drill.sh
