@@ -70,6 +70,29 @@ chains:
       - validator_id: duplicate_placeholder
         blocking: false
 
+  # ── T-W4-014 语篇链（passage）：跨学科通用，三道语篇专用门 ──
+  # 顺序：schema（结构）→ license（许可）→ passage_fact_check（事实安全）
+  #   → passage_age_appropriate（适龄）→ passage_difficulty_gate（难度一致性）
+  #   → duplicate_placeholder（查重提示）
+  # 阻断项：schema/license/fact_check/age_appropriate/difficulty_gate 为阻断；
+  #   duplicate_placeholder 为 review 类（重复提示，不阻断）。
+  # fact_check 通常返回 review（常识正确性需人工复核），不阻断；命中敏感词才 fail。
+  - pack_id: platform
+    artifact_type: passage
+    validators:
+      - validator_id: schema
+        blocking: true
+      - validator_id: license
+        blocking: true
+      - validator_id: passage_fact_check
+        blocking: true
+      - validator_id: passage_age_appropriate
+        blocking: true
+      - validator_id: passage_difficulty_gate
+        blocking: true
+      - validator_id: duplicate_placeholder
+        blocking: false
+
   # ── 数学包链（subject-math）：skeleton，学科验证器待数学包注册后追加 ──
   - pack_id: subject-math
     artifact_type: item

@@ -68,12 +68,12 @@ def test_policy_schema_file_exists():
 
 
 def test_policy_schema_defines_artifact_types():
-    """验收 #1：schema 定义 artifact_type 域（含 6 种产物类型）."""
+    """验收 #1：schema 定义 artifact_type 域（含 7 种产物类型，T-W4-014 增 passage）."""
     data = yaml.safe_load(SCHEMA_PATH.read_text(encoding="utf-8"))
     assert data["registry"] == "gate_policy"
     types = set(data["artifact_types"])
     assert types == VALID_ARTIFACT_TYPES
-    assert types == {"item", "material", "corpus", "group", "blueprint", "audio"}
+    assert types == {"item", "material", "corpus", "group", "blueprint", "audio", "passage"}
 
 
 def test_policy_schema_lists_required_fields():
@@ -122,7 +122,7 @@ def test_default_policy_generic_chain_order():
 
 
 def test_default_policy_covers_artifact_types():
-    """验收 #1/3：通用链覆盖全部 6 种产物类型."""
+    """验收 #1/3：通用链覆盖全部 7 种产物类型（T-W4-014 增 passage）."""
     policy = load_default_policy()
     covered = {c.artifact_type for c in policy.chains if c.pack_id == "platform"}
     assert covered == VALID_ARTIFACT_TYPES

@@ -10,7 +10,8 @@ source_sections:
   - "架构v2 §4.3 校验域：门策略矩阵 × 插件 × 数据库级强制"
 
 # 产物类型域（artifact_type）：与统一内容模型对齐
-# item（题实例）/ material（素材）/ corpus（语料）/ group（题组）/ blueprint（命题蓝图）/ audio（音频素材）
+# item（题实例）/ material（素材）/ corpus（语料）/ group（题组）/ blueprint（命题蓝图）/ audio（音频素材）/ passage（语篇）
+# T-W4-014 增 passage：C 线语篇为跨学科通用产物类型
 artifact_types:
   - item
   - material
@@ -18,6 +19,7 @@ artifact_types:
   - group
   - blueprint
   - audio
+  - passage
 
 # 策略文件必备字段（任何策略文件不得缺项）
 required_fields:
