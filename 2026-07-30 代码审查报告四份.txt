@@ -1,0 +1,1826 @@
+现在，有四个AI对同一个代码库提出了审查意见：母题平台代码审阅报告
+〇、审阅方法与可信度声明
+审阅范围覆盖 7 大子系统：core 域模型 / gate 校验门 / scoring+session+assembly / AI 集成层 / instantiation 引擎 / subject·gradeband packs / API+workbench / 迁移+测试+CI。每条问题均附 文件:行号 与复现路径，高危项已用 grep / 行号亲自复验。环境实测：pytest --collect-only 收集到 2551 个测试；纯 Python 单测（无 DB 依赖）运行 136 通过（9 个 isolation 测试因沙箱无 Postgres 报 ERROR，非代码问题）。测试套件本身是绿的，但这恰恰是部分问题最危险的地方——测试通过 ≠ 行为正确，下面多处会指出"测试通过了但断言被弱化或场景被 fixture 掩盖"。
+
+一、对你产品愿景的架构评估
+你的目标链路是：知识穷尽 → 无限出题 → 按人类最佳实践组卷 → 作答回流看知识点漏洞 → 定向练习测量 的数据飞轮。从代码看，架构骨架非常扎实，比绝大多数国内教育项目工程化程度高一档：
+
+你的设想	架构对应物	落地评估
+知识有限可穷尽	kp_node / kp_edge / kp_closure 知识图谱闭包表	设计到位，closure 物化加速查询
+无限批量出题	instantiation/engine 确定性实例化 + 内容寻址 id（D3）	关键缺陷：学科函数库 19 个函数从未注入求值器，所有母题被迫只用 BinOp，"无限"退化为"加减乘除的有限扰动"
+按最佳实践组卷	assembly 双向细目表 + CP-SAT 求解 + 启发式 + 曝光互斥	求解器纪律好（不可行必抛冲突报告），但 session 流完全不写曝光账本，"防重复"在线上失效
+看知识点漏洞	report/aggregator + review/scheduler + error_type 归因	单学生维度做对了（D8 不排名合规），但 A4 追溯码在 API 出口断裂，客户端无法做 placement 关联
+定向练习测量	D5 参数分场景（practice/diagnosis/measurement）	D5 在组卷侧未落地：assembly 仍读 lineage 先验而非 item_param，三场景共用同一先验值
+飞轮的"动力源"问题：D6「估计器可替换 / 历史报告引用当时版本」对 AI 评分链路未闭环——scoring_trace 不记录 LLM model_version，十年后无法回放"当时是哪个模型给的 80 分"。这是飞轮长期可信度的隐患。
+
+最严重的系统性问题不是某个 bug，而是"宪法说有、代码说没有"的虚假强制层：D1/D2 在文档里反复声称"由 DB 触发器物理强制"，但内容版本账（item_version/material_version/corpus_version）和 gate_certificate 的 FK 完全没有 DB 强制。这意味着绕过校验门直写 published 行的"宪法红线"在数据库层是裸的，仅靠应用层纪律。
+
+二、P0 阻断级问题（建议优先派工程师修，每条可独立复现）
+P0-1 · 内容版本账三表完全无 append-only 触发器，D1 物理强制是假的
+文件:行号：alembic/versions/0002_item_model.py item_version 表（无 TRIGGER）；alembic/versions/0005_append_only_unify.py:72 corpus_version 表（无 TRIGGER）；src/core/models/_base.py:24-27 docstring 谎称"DB 触发器兜底拒绝"
+复现命令（已验证）：grep -rn 'TRIGGER\|raise_append_only_error' alembic/versions/ | grep -iE 'item_version|material_version|corpus_version|item_template_version' → 零匹配。触发器只挂在：response_event / gate 三表 / paper_exposure / student_exposure / item_param / parental_consent / score_run / item_lifecycle_transition / spec_table / passage / blueprint / rubric_template / shadow_score。
+后果：UPDATE item_version SET status='published' WHERE ... 直接成功，无任何 DB 拦截。而同样语句对 response_event 会抛 append-only table rejects UPDATE/DELETE。三本账之首（内容版本账）是裸的。
+建议：补一个迁移给 item_version / material_version / corpus_version / item_template_version 挂 BEFORE UPDATE OR DELETE 触发器，复用 raise_append_only_error()。
+P0-2 · gate_certificate_id 的外键从未补建，D2"门不过不入库"退化为"非空即可"
+文件:行号：alembic/versions/0002_item_model.py:190-191（注释自承"FK 待 T-W1-006 替换占位表后补"，至今未补）；alembic/versions/0005_append_only_unify.py:72（corpus_version）；alembic/versions/0020_passage.py:62（passage）
+复现命令（已验证）：grep -rn 'create_foreign_key.*gate_certificate\|gate_certificate_id.*FK' alembic/versions/ → 零匹配。所有 CHECK 约束只验 gate_certificate_id IS NOT NULL，不验合法性。
+绕过路径：INSERT INTO item_version (..., status='published', published_at=now(), gate_certificate_id='cert_totally_fake', ...) → CHECK 放行（非空即可）→ 行出现在 v_serving_item_version 视图 → 学生消费到未过门产物。
+建议：补迁移给四张内容表加 FK → gate_certificate.cert_id（DEFERRABLE INITIALLY DEFERRED 兼容发布事务顺序），并补"特权连接伪造 cert_id 直写 published → 应被 FK 拒绝"的自动化测试（D2 宪法明确要求"此行为必须有自动化测试"）。
+P0-3 · cert:none 占位行未在任何迁移落地，生产环境首次校验失败必崩
+文件:行号：src/core/gate/orchestrator/orchestrator.py:369-375 写死 cert_id = "cert:none"；注释自承"迁移 0006 后续会落地该占位行（W3 计划）。当前 W2 测试在 setup 中预插该行"
+复现命令（已验证）：grep -rn "cert:none" alembic/ → 零匹配；grep -rn "cert:none" tests/ scripts/ → 仅测试 fixture 与 demo 脚本预插。
+后果：生产部署后任意一次 run_gate 返回 fail/review，编排器执行 INSERT gate_run ... VALUES (..., 'cert:none', ...) → gate_run.certificate_id 是 NOT NULL FK 指向 gate_certificate → FK 违反 → 整个事务回滚 → 失败现场丢失，调用方收到 FK 异常而非 GateOutcome。测试全绿仅因每个测试 fixture 都预插了占位行，系统性掩盖了生产 bug。
+建议：新增迁移插入 ('cert:none', 'no-cert', 'publish', 'no-policy', 'system') 占位行。
+P0-4 · parental_consent.check_consent 在线请求链路完全未调用，未成年人家长授权前置无强制
+文件:行号：src/core/compliance/parental_consent.py:262（函数定义）
+复现命令（已验证）：grep -rn 'check_consent' src/api/ src/core/session/ → 零匹配。check_consent 仅在 parental_consent.py 自身的 ensure_consent 内部被调。
+后果：任意学生（含未成年人）可无授权 POST /sessions 开会话、POST /sessions/{id}/responses 作答，落 response_event（append-only 不可回滚）。parental_consent 模块实现了完整 grant/revoke/check/list 功能，但作为孤岛工具函数存在，无业务调用方。
+建议：start_session 入口调 check_consent(db, student_alias_id, scope=scene)，未授权抛 403；submit_answer 二次校验 consent 仍有效；加集成测试 test_session_requires_consent。
+P0-5 · 整个 src/api 零认证 + workbench 静态 token 经公开 API 泄露
+文件:行号：src/api/deps.py（仅 get_async_session）；src/api/routers/ 全 13 处 Depends() 都是 get_async_session（已 grep 验证，零 Security / HTTPBearer / require_auth）；src/workbench/auth.py:28 _DEFAULT_TOKEN = "dev-token-change-me"；src/workbench/pages/issue.py:217,251 把 workbench token 写入 gate_certificate.issued_by / publication.published_by；src/api/routers/gate.py:73 GateCertificateRead.issued_by 字段经公开端点回传
+复现路径：
+GET /gate_certificates/{cert_id}（无认证）→ 读 issued_by 字段 → 拿到 workbench token；
+用该 token 登录 workbench → 出题 / 签发证书；
+同时 GET /reports/weakness/{任意 student_alias_id}（无主体校验）→ 拉取任意学生弱项报告；
+POST /sessions/{泄露的 session_id}/responses → 代他人作答，污染三本账（不可回滚）。
+建议：(a) 公开 API 端点屏蔽 issued_by / published_by，或改存 operator_id 而非原始 token；(b) 所有非 /health 端点强制 Depends(require_auth)，学生侧用 alias_id 绑定的短期 token；(c) report.py / review.py 校验调用方与 path 中 student_alias_id 绑定；(d) WORKBENCH_TOKEN 未设时生产环境启动即 fail-closed。
+P0-6 · A4 追溯码在 API 出口断裂，客户端无法做 placement 关联
+文件:行号：src/core/session/models.py:153-168 NextItem 模型无 placement_token；src/core/session/models.py:171-188 Feedback 模型无 placement_token / source_ref；specs/contracts/api/openapi-v1.yaml:185-218 /next 端点 200 响应写 additionalProperties: true（等于放弃约束）；src/core/session/service.py:225 实例池会话 placement_tokens = [None] * len(...)；src/core/session/service.py:606-615 实例池会话与回测轮 source_ref=None
+后果：A4「凡触达用户的题必须携带可回流身份的编码」在数据层对静态卷有效（service.py 从 item_sequence.placement_token 构造 source_ref 写入 response_event），但 API 不回传给客户端，客户端无法做本地追溯关联；实例池会话与回测轮 source_ref 直接为 None，A4 入水口不闭合。
+建议：NextItem 增 placement_token: Optional[str]；Feedback 增 source_ref 回显；实例池会话写入 assembly_run_id；冻结契约把 /next 200 具化为 $ref NextItem。
+P0-7 · make migrate-check 只验证最新一个迁移的 downgrade，21 个中间迁移从未被验证
+文件:行号：Makefile:28 migrate-check: ; alembic upgrade head && alembic downgrade -1 && alembic upgrade head
+后果：alembic downgrade -1 仅回滚 head（当前 0022）。0001–0021 共 21 个迁移的 downgrade 路径从未被任何 CI / wave-exit / nightly 触发。任何一个中间迁移的 downgrade bug（如 0005 的函数还原顺序、0006 的循环 FK 解除、0010 的触发器删除）都不会被发现。
+建议：改为 alembic upgrade head && alembic downgrade base && alembic upgrade head，或在 nightly 跑全量 downgrade、pr-check 跑 downgrade -1。同时 pr-check.yml:48-49 只跑 alembic upgrade head 不跑 make migrate-check，PR 阶段不拦截迁移不可逆。
+P0-8 · P4「30 抽样黄金路径端到端」实际只有 1 个 single_choice 测试
+文件:行号：tests/golden-path/ 只有 test_smoke.py（assert True 占位）和 test_w1_min_link.py（1 个 single_choice 场景）
+复现命令（已验证）：grep -rn 'def test_\|async def test_' tests/golden-path/ → 仅 2 行。
+后果：P4 宪法要求"30 抽样题型端到端链路任何合入不得破坏；红过 24 小时即全项目最高优先级"。.agent/telemetry/README.md:37 声称"黄金路径最近全量结果 30/30"，但端到端覆盖只有 1/30。tests/golden/items/ 51 个用例只验证"DSL→实例化→期望输出逐字节一致"，不涉及发布 / 作答 / 评分 / 事件账 / append-only 拒绝的端到端链路。
+建议：在 tests/golden-path/ 增加 numeric_blank / matching / multiple_choice / order / table_blank 等至少 10 种交互类型的端到端测试；或修正 README 表述。
+P0-9 · TTS 链路完全不剥离 PII，学生姓名 / 电话直送云供应商
+文件:行号：src/core/ai/tts/router.py:131-180 docstring 声明"剥离由上层调用方负责"；src/core/audio/producer.py:149-196 直接 tts_synthesize(text, ...) 无 pii_filter 调用
+后果：与 LLM 档（router.py 入口强制调 pii_filter.strip）形成鲜明对比，TTS 档是 D7 的完全旁路。生产替换为 Azure TTS / 火山引擎后，学生姓名 / 电话明文发往云供应商。
+建议：tts_synthesize 入口强制调 pii_filter.strip，与 ai_call 对齐。
+P0-10 · ai_rubric_scorer 与 shadow_mode 的 AI 调用完全不记台账，审计盲区
+文件:行号：grep -rn 'record_call' src/ → 仅 src/core/content/passage_generator.py:151 调用（已验证）。ai_rubric_scorer.score docstring 谎称"台账由 ledger 在 ai_call 内部记录（T-W4-008）"，但 src/core/ai/bus/router.py:111-208 的 ai_call 实现从不调用 ledger.record_call。
+后果：所有 AI 评分调用（作文打分）与影子评分调用不进审计账，X3 / D7 审计无法追溯这些调用的 prompt_hash / token / cost。item_lifecycle_cost.aggregate_cost 的 "score" / "rescore" 阶段成本永远为 0。
+建议：在 ai_call 末尾默认调 get_default_ledger().record_call(...)，让 router 成为唯一台账入口。
+三、高危问题（P1，应在下一波次修）
+P1-1 · _eval_env 用原始 params 而非 normalized_params，fraction 槽崩溃
+文件:行号：src/core/instantiation/engine/engine.py:409-412
+复现：instantiate(tv, {"a":"0.75"}, ...) 其中 a 为 fraction 槽 → int("") 抛 ValueError。normalize_params 会把 "0.75"→"3/4"、"2"→"2/1"，但第 412 行传的是原始 params。黄金样例无 fraction 槽，故未被发现。
+建议：第 412 行改为 eval_env = _eval_env(normalized_params, spec.slots)。
+P1-2 · content/writer.py:88 用 uuid.uuid4().hex 冒充 sha256: 摘要，破坏 D3 确定性
+文件:行号：src/core/content/writer.py:88 return "sha256:" + uuid.uuid4().hex（已 grep 验证）
+后果：A/B 级缺参数时 fallback 为伪 sha256，同一组输入每次产生不同 item_version_id，破坏 D3"同一输入必产生同一输出"与去重能力。docstring 自标 TODO，是 pyproject 所指"修复包"的未清残留。
+建议：缺参数时直接抛 ValueError（fail loud），禁止产出伪 sha256 id 落库。
+P1-3 · 学科函数库 SAFE_MATH_FUNCTIONS 19 个函数从未注入求值器，是死代码
+文件:行号：src/packs/subject-math/variable-types/functions.py:473（定义 19 个函数）vs src/core/instantiation/expr/evaluator.py:26-34 SAFE_FUNCTIONS 仅 7 个内置 vs src/core/instantiation/engine/engine.py:196-221 _eval_env 只注入槽值
+后果：母题里写 add(a,b)、gcd(a,b)、convert_unit(m,"m","cm")、simplify_fraction(num,den) 都会抛"调用非白名单函数"。所有 30 个黄金样例的 answer_program 都只用 BinOp（a + b、a // b），不敢用学科函数。架构 v2 §4.1「学科复杂运算进学科函数库，DSL 语法保持稳定」的扩展点是空话。这是最影响"无限出题"产品能力的问题。
+建议：_eval_env 接受 function_bindings: dict[str, Callable] 参数（调用方按 pack_digest 解析学科包后注入），evaluate 改为"先查 env 函数，再查 SAFE_FUNCTIONS"。
+P1-4 · ActiveModelPointer.set_active 存在 READ COMMITTED 下的 lost-update 竞态
+文件:行号：src/core/data/active_model_pointer.py:99-119
+复现：两个并发 set_active('practice', ...) 调用，第二个会把第一个刚 set 的活跃版本退役掉——T1 的调用方以为 B 是活跃版本，实际活跃的是 C。偏唯一索引 uq_estimator_run_one_active_per_scope 保证"至多一个活跃"但防不住 lost update。
+建议：用 SELECT ... FOR UPDATE 先锁住当前活跃行再 UPDATE，或用 pg_advisory_xact_lock(hash(purpose_scope)) 串行化。
+P1-5 · submit_answer 双 commit + 无行锁 + 无幂等键，并发 / 重试会破坏序列推进
+文件:行号：src/core/scoring/service.py:257 eid = event_id or uuid4()；src/core/session/service.py:615-667 submit_answer 不传 event_id，调 record_event 内部 commit 后再 commit 一次；src/core/events/writer.py:100-128 record_event 内部 await session.commit()；src/core/session/service.py:129-135 _load_session 普通 SELECT 无 FOR UPDATE
+后果：(1) 重复提交产生重复 response_event 行，无 DB 层拦截（PK 是 (event_id, created_at)，新 uuid 永不冲突）；(2) 双 commit 之间失败 → response_event 已落账但 current_index 未推进 → 客户端重试又写一条且 expected_id 校验仍通过 → 序列推进两次跳题；(3) 两个并发 submit_answer 同时读到 current_index=0，都通过校验，结果 current_index=2 跳过第 2 题。
+建议：submit_answer 传 event_id = uuid5(session_id, item_version_id) 幂等键；record_event 不内部 commit，事务边界归 submit_answer；_load_session 改 SELECT ... FOR UPDATE 或加 version 乐观锁列。
+P1-6 · session 流完全不写曝光账本，防重复在线上失效
+文件:行号：src/core/session/service.py 全文（grep record_student_exposures / record_paper_exposures 零命中）；src/core/assembly/exposure.py:104-168
+后果：同一学生开两个实例池会话，两会话可出示完全相同的题。student_exposed_item_version_ids 查询返回空或仅含历史 assembly 写入，曝光互斥失效。
+建议：start_session 或 get_next_item 出示时调 record_student_exposures，与发题同事务。
+P1-7 · DSL Linter 完全不校验表达式语法 / 槽引用 / 模板引用
+文件:行号：src/core/instantiation/dsl/linter.py:218-256 四个 checker 均不涉及表达式；tests/unit/test_dsl_linter.py:57 有效样例表达式 "if a >= b then 'A' else 'B'"（这不是合法 Python！三元应是 a if cond else b）；test_valid_spec_lints_clean 断言 result.valid is True（已实测通过）
+后果：母题作者的语法 / 函数错误要等到 instantiate() 才暴露，而 instantiate 只抛第一个错误，反馈链路长。pairs(left_items, right_items)、reverse(...) 引用不在白名单的函数也通过 lint。
+建议：linter 对每个 expression 调 expr.validate() 静态校验语法与节点安全；增加 _check_expression_slot_refs（表达式引用的槽名是否在 slots 声明）与 _check_template_slot_refs（{key} 引用是否在 slots）。
+P1-8 · test_pii_filter.py:170 弱断言让"剥离后不含原始 PII"测试形同虚设
+文件:行号：tests/unit/test_pii_filter.py:170
+代码：assert pii_sample not in sanitized or "[PHONE]" in sanitized or "[ID_CARD]" in sanitized or ... or "学生" in sanitized
+后果：OR 形式断言——只要文本中出现任一占位符（甚至只要"学生"二字），即使原始 PII 字面量仍残留在 sanitized 中，断言也通过。test_stripped_text_contains_no_original_pii 名不副实。实测该测试通过。
+建议：拆分为强断言 assert pii_sample not in sanitized（独立）+ assert stripped。
+P1-9 · check_openapi_diff 只守 6 个冻结契约中的 1 个
+文件:行号：scripts/ci/check_openapi_diff.py:38 FROZEN_CONTRACT = "specs/contracts/api/openapi-v1.yaml" 硬编码单文件；specs/contracts/FROZEN.txt:2-7 列 6 个冻结契约
+后果：db/item-model.md、db/paper-model.md、events/response_event.md、registries/interaction.yaml、registries/scorer.yaml 五个冻结契约可被静默修改，P5「只增不改」无 CI 守卫。
+建议：把 check_openapi_diff 泛化为遍历 FROZEN.txt 全部条目的 diff 守卫。
+P1-10 · paper.py:67 核心域硬编码学科包枚举，违反 A5
+文件:行号：src/core/models/paper.py:67 CheckConstraint("subject_pack_id IN ('subject-math', 'subject-chinese', 'subject-english')", name="ck_paper_subject_pack_domain")
+后果：新增学科包（如 subject-science）必须修改核心域 CHECK 约束，违反 A5「学科中立 by construction」。这是当前唯一一处核心域代码中对学科集合的硬编码闭枚举。
+建议：改为开放校验（如 subject_pack_id ~ 'subject-'）或由注册表注入。
+P1-11 · LiteLLM 网关用 HTTP 明文传输 master key
+文件:行号：src/core/ai/adapter/litellm_client.py:27 BASE_URL = "http://localhost:4000"
+后果：LITELLM_MASTER_KEY 通过 Authorization: Bearer {key} 头发送。若 LiteLLM 网关与 agent 部署在不同主机（生产常见：网关独立 Pod），master key 走 HTTP 明文链路，可被中间人嗅探。DeepSeekClient.BASE_URL 用了 HTTPS，唯独 LiteLLM 没强制。
+建议：BASE_URL 默认改 https:// ；__init__ 校验 base_url.startswith("https://") （localhost 例外）。
+P1-12 · X6 CI 静态扫描正则漏掉 src.packs 前缀导入
+文件:行号：.github/workflows/pr-check.yml:32 ! grep -rnE '(import|from)\s+(packs|subject_)' src/core/
+后果：正则只匹配 import packs... / from packs...，不匹配 from src.packs.gradeband_low import ... 或 import src.packs.subject_math，而本仓库实际导入风格正是 src. 前缀。若核心域出现 from src.packs.xxx import 形式的违规，CI 不会拦截。
+建议：改为 grep -rnE '(import|from)\s+(packs|subject_|src\.packs|src\..*subject[-_])' src/core/。
+P1-13 · pii_filter 剥离失败时 fail-open 降级，违反 D7 强制语义
+文件:行号：src/core/ai/bus/router.py:106-108 except Exception as exc: return prompt, [f"pii_filter_error:..."]（已读源码验证）
+后果：D7 原文是"LLM/TTS 调用前必须剥离 PII"，剥离失败时应 fail-closed（阻断调用），当前实现把含 PII 的原 prompt 直接送给 LLM——"PII 滤芯坏了照样放行"。
+建议：剥离异常时 fail-closed 抛错让上层决策。同时 pii_filter 姓名剥离依赖上下文关键字（"学生/同学/家长/我叫/姓名："前缀），无前缀直呼姓名场景漏检；_PHONE_RE / _ID_CARD_RE 无 \b 边界，会从更长数字串（ULID / 时间戳）中匹配子串。
+P1-14 · D5 在组卷侧未落地，assembly 仍读 lineage 先验而非 item_param
+文件:行号：src/core/assembly/candidates.py:88-103；src/core/assembly/solver/constraints.py:109
+后果：CTT 侧 D5 合规（ctt.py:219 WHERE scene = :scope 精确过滤），但 assembly 的 CandidateItem.p_correct_prior 从 lineage.params 读取单一先验值，不按场景分估。practice / diagnosis / measurement 三场景共用同一先验，D5「禁止跨场景混估」在组卷侧未落地。docstring 自承"v1 约定……S8 数据域落地后改由 item_param 供给"。
+建议：assembly 加载候选时按 ActiveModelPointer.get_params(item_id, purpose_scope) 取实测参数。
+P1-15 · D6 对 AI 评分链路未闭环，scoring_trace 不记录 LLM model_version
+文件:行号：src/core/scoring/service.py:166-198；src/core/scoring/ai_rubric_scorer.py:244-256
+后果：scoring_trace 记录的是 scorer_version（评分器实现的 version ClassVar），而非 model_version（具体 LLM 档位）。历史 response_event 无法仅凭自身字段还原"当时用了哪个 LLM 模型"——需跨查 ledger by timestamp。D6「历史报告永远引用当时版本」对 AI 评分链路未闭环。
+建议：AIRubricScorer 把 ai_result.model / task_level / ActiveModelPointer 的 model_version 写入 scoring_trace.evidence。
+P1-16 · passage.content_hash 仅有非唯一索引，D3 去重未强制
+文件:行号：src/core/models/passage.py:175 Index("ix_passage_content_hash", "content_hash")（非 unique）；docstring 称"同正文必同 hash（D3 精神）"
+后果：两篇正文相同的 passage 可有不同 passage_id 共存，D3 去重只是"精神"不是约束。
+建议：改 unique=True。
+四、中危问题（P2，建议批量处理）
+模型 / DB 层
+M-1 event_id 在多条路径用 uuid4() 生成（src/core/scoring/service.py:257、src/core/instantiation/difficulty/trigger.py:255），与契约"应用层 ULID"不一致——uuid4 无序，破坏"按 event_id 字典序≈时间序"。consent_id / entry_id / session_id 同病。
+M-2 raise_append_only_error() 被 0017 / 0022 重新 CREATE OR REPLACE，0005 的"统一函数"目标被部分回退，未来易漂移。
+M-3 score_run.uq_score_run_identity 含可空 run_label，NULL 互不相等，允许同事件多次无标签重判（有意设计，但语义非显而易见，应文档化）。
+Gate 层
+M-4 orchestrator 失败时短路未调用的验证器只在内存 GateRunRecord 标记 short_circuited=True，不入库——审计时无法从 DB 还原"链上有多少验证器被短路"。
+M-5 run_gate 无并发控制，同一 artifact_ref 可被并发签发多证书（gate_certificate 对 (artifact_ref, cert_type) 无唯一约束）。
+M-6 _ensure_generic_validator_stubs 用 except Exception: pass 吞掉真实 import 错误（loader.py:285-308）。
+AI 层
+M-7 OpenAICompatibleClient.complete / FallbackClient.complete / DeepSeekClient.complete 都是 public 方法，可被任意模块直接调用绕过 router 的 PII 剥离与台账（test_ai_adapter.py:113-130 直接调 client.complete("你好", ...) 验证了此点）。
+M-8 bypass_pii_filter 缺生产运行时防御（router.py:117），shadow_mode.benchmark_against_dataset 默认 bypass_pii_filter=True（shadow_mode.py:504）。
+M-9 fallback.py 把主异常 str(exc) 原样记入 raw_meta.primary_error，最终落台账 JSONL——若主异常 str 含 key 或 PII，PII / key 进台账。schemas.py:38 docstring「raw_meta 禁止含 PII」仅是注释，无校验。
+M-10 fallback 不区分异常类型即切备（fallback.py:64 except Exception），401（key 失效）切备用同一 key 池会再失败；4xx（如 prompt 过长）切备无意义；429 应退避重试而非切备。
+M-11 tts/router.py:123-128 全局缓存 _cache: dict 无 LRU 上限、无 TTL，长运行进程积累海量音频字节可能爆内存。
+M-12 tts/voice_profiles.yaml 4 个音色 engine 全部为 "mock"，无任何真实 TTS 适配器实现。生产部署时若忘记替换，所有 TTS 输出为占位字节 audio:voice-id:wpm:text，听力题音频无法播放但无告警。
+M-13 MockTTSEngine.synthesize 把 text 原样嵌入返回字节 f"audio:{voice_id}:{wpm}:{text}"（tts/router.py:119），PII 扩散到 audio_id / content_hash / 缓存键 / URL。
+M-14 compliance/pii_encryption.py:213,255 每次调用重新 load_master_key()，若环境变量在进程运行时被修改（K8s ConfigMap 滚动更新），不同请求用不同 key，旧密文无法解密（InvalidTag）。缺密钥轮换路径。
+instantiation 层
+M-15 signed_at 默认注入 datetime.now(timezone.utc)（engine.py:436-437），破坏全谱系可复现——item_version_id 不受影响，但 ItemVersionResult dict 非逐字节可复现。黄金测试显式传 signed_at 绕过此问题，掩盖了默认路径的非确定性。
+M-16 template_version_id 不校验 sha256: 前缀（engine.py:398-399），传 "foo" 会被原样哈希进 item_version_id，破坏内容寻址语义。
+M-17 slot min/max 约束完全不校验（engine.py:95-188 normalize_params 只转类型不查 min/max），传 params={"a": 99999} 会通过规范化、求值、入库。
+M-18 normalize_params 的 bool/string 转换有 Python 陷阱：bool("false") → True、bool([]) → False、str([1,2]) → "[1, 2]"、int(5.9) → 5 静默截断。
+M-19 变式是参数扰动不是"等价变换"（variation/engine.py:41-84 _default_sampler），自定义采样器可产出同 id 变式（test_variation.py:242-247 的 fixed_sampler 永远返回相同值，n=2 的两个变式 item_version_id 完全相同——撞 id），"不变性证据"是硬编码 True 而非实测（engine.py:311-314）。
+M-20 corpus_sample 规则返回 value=None 占位可入库（distractor/generator.py:169-189），若 B 线未回填就入库，选项里会出现 None——fail-open 路径。
+M-21 mc_prime_pick 等分类题的 answer_program 语义空洞（tests/golden/items/math/mc_prime_pick.yaml:29-31）：是"选出质数"，但 answer_program.expression = "a + b"（5+7=12，与"选质数"无关），仅为满足 schema 必填而存在。
+assembly / scoring 层
+M-22 CP-SAT 把 status == UNKNOWN（超时未找到解）走 _analyze_infeasibility 误报为不可行（cpsat_solver.py:316）。
+M-23 启发式 stage A 的 take(unit) 无 item_count.max 检查（heuristic.py:291-322），group 整体入选可能让总数超过 item_count.max。
+M-24 duration_guard 是软强制，resume_session 可任意时刻调用重置 last_resume_at，学生 / 客户端可反复 resume 清零计时器无限作答（session/service.py:322-341）；DurationGuard 独立策略器与 service.py 自实现的 _check_time_protection 双套代码维护同一语义，存在漂移风险。
+M-25 shadow_mode.compute_consistency 按位置顺序对齐 AI dimensions 与人工 dimensions（shadow_mode.py:161-173），而非按 dimension id 匹配，数据集顺序被改动会静默错位。
+API / workbench 层
+M-26 check_no_ranking.py 漏 sorted() / list.sort() / df.sort_values() / 模板层 |sort / 能力度量列名（avg_score / theta / mastery / ability）（check_no_ranking.py:194-227,284）。
+M-27 test_api_frozen.py 只比 schema 键名集合，不比字段类型 / required（test_api_frozen.py:206-234）——把 ItemVersionPydantic.status 从 enum[...] 改成 str 不会触发失败。
+M-28 SubmitResponseRequest.response 是 dict[str, Any] 无 response_schema 校验（session.py:88-99），畸形 response 直接透传给评分器。
+M-29 duration_ms 允许 0（session.py:97-99 ge=0），与"禁止填 0 冒充"描述冲突。
+M-30 /review/due/{id} 的 now 参数可被客户端操纵（report.py:62-80），传未来时间提前取到未到期复习题。
+M-31 session.py:135 500 fallback 回传 str(e) 给客户端，可能含 DB / SQL / 约束名 / 文件路径；session.py:131-134 把内部部署细节（评分器注册机制）回传客户端。
+M-32 workbench cookie secure=False 硬编码（main.py:101）、无 CSRF token、cookie 值 = token 不轮换（无 max_age / expires）。
+测试 / CI 层
+M-33 test_ddl_contract_alignment.py 只覆盖 3 个核心表（item / item_version / material_version），20+ 表无对齐验证（test_ddl_contract_alignment.py:22-56）。
+M-34 async_session teardown 用 except Exception 吞掉所有 rollback 错误（conftest.py:161-166），可能掩盖真实的连接泄漏。
+M-35 committed_session fixture 无自动清理，依赖调用方自律（conftest.py:169-182）。
+M-36 pr-check 不跑 simulator / performance / migrate-check（pr-check.yml:50-52）。
+M-37 批改延迟阈值 avg<10s / p95<15s 极宽松（test_grading_latency.py:46-47），客观题评分实际 1–10ms，p95 退化 100 倍仍不失败。
+M-38 simulator 测试是 ASGI 进程内测试非真实 HTTP e2e，且只覆盖 single_choice（test_practice_e2e.py:54）。
+M-39 wave-exit 脚本重复跑 migrate-check 和全量测试，w4.sh 递归调用 w0/w1/w2/w3 跑 4+3+2+1=10 次（w2.sh:38-45）。
+M-40 pyproject.toml 的 [tool.setuptools] packages 列表不完整，缺 src.core.ai / src.core.scoring / src.core.session / src.core.audio / src.core.compliance / src.core.report / src.core.review / src.core.data / src.core.monitoring / src.packs.subject-chinese / src.packs.subject-english / src.packs.gradeband_low 等十余个包（已 grep 验证）——pip install . 后这些包不会被打包。
+五、低危 / 文档漂移 / 代码异味（P3，机会主义处理）
+L-1 _base.py 无 NamingMixin / TimestampMixin，每个模型各自重复 created_at 字段定义十余处。
+L-2 item_param.py:6 文档引用了不存在的迁移文件名（写 0010_item_param.py，实际是 0013_item_param.py）。
+L-3 item_kp 表无 ORM 模型，coverage_gap.py:172 用裸 SQL 访问。
+L-4 core/content/corpus_loader.py:40-47 默认路径指向 src/packs/subject-math/corpora/functions.yaml，把 subject-math 的路径烘焙进核心域代码。
+L-5 core/render/gradeband_adapter.py:46 与 packs/gradeband_low/render_hints.py:26 重复定义 _NUMERIC_KEYBOARD_INTERACTIONS，无单一事实源。
+L-6 platform_scorers.py:29 import 私有名 _SCORER_REGISTRY 用于跨桶扫描子评分器。
+L-7 评分器注册依赖 import 副作用，测试文件需手动 import src.core.scoring.platform_scorers，生产入口若漏 import 会抛 KeyError 而非降级。
+L-8 tests/unit/test_pii_vault.py:43 硬编码 PII 主密钥 _TEST_KEY_B64 = "4+H57udVMoZpDOg0U4lmmJu7JqxEhbrgBPfXNZXieXU="——虽是测试用，但 X3 字面规定"禁止任何密钥进入仓库"。
+L-9 evaluator.py:87-88 ast.Constant 允许 complex / Ellipsis / bytes，未限制类型；ast.Pow 无资源限制，evaluate("2 ** 999999999") 会尝试计算超大整数。
+L-10 policy 多进程部署下 reload_policy() 只清当前进程缓存，gunicorn 多 worker 下其他 worker 仍用旧 policy。
+L-11 parental_consent.scope 维度（含 purpose）与 session.scene 字面量未对齐（scene 无 "measurement"）。
+L-12 tests/golden-path/test_smoke.py 是空占位（assert True），注释说"W1 起由真实测试替换"但 W4 已结束仍未替换。
+L-13 wave-exit w0.sh:34 用 >/dev/null 2>&1 吞掉 demo 脚本诊断信息，失败时无任何日志可查。
+L-14 contract.yml 只在 specs/contracts/** 或 src/** 变更时触发，只改 tests/contract/ 不触发。
+L-15 [FROZEN-APPROVE] 标记只看 HEAD commit 且不验证真实审批，任何有 push 权限者可在 commit message 写标记即放行。
+L-16 compliance/pii_vault_schema.sql:69 pii_vault_reader 角色被授予 access_log INSERT 权限，可伪造 access_log 记录混淆审计。
+L-17 真实 .agent/telemetry/ 目录下无事件文件，只有 schema 和 README——说明实际任务执行时无人调用 telemetry.record()。
+六、值得肯定的设计（避免一味挑错）
+AST 安全沙箱：expr/evaluator.py 无 eval / exec，手写递归 _validate_node，Attribute / Subscript / Lambda / Call.func 非 Name / Starred / keywords 全拒，70+ 攻击向量测试覆盖（__import__ / open / os.system / (1).bit_length() / __class__.__bases__ 链）。沙箱设计稳健。
+数学双实现验算独立性：subject-math/validators/dual_check.py 用 SymPy AST 转换，与实例化引擎的安全求值器 AST 白名单完全独立，避免同源 bug。零代码共享。
+数学等价评分器覆盖：subject-math/scorers/math_equivalence.py 覆盖 fraction_reduce / unit_convert / decimal_tolerance。
+append-only 物理强制（response_event / gate 三表）：BEFORE UPDATE OR DELETE FOR EACH STATEMENT 触发器 + raise_append_only_error()，且有 6 个测试覆盖 UPDATE/DELETE 拒绝。FOR EACH STATEMENT 比 FOR EACH ROW 更严格（UPDATE ... WHERE FALSE 仍触发）。
+测试隔离用「外层事务 + SAVEPOINT」：SQLAlchemy 官方推荐模式，test_isolation.py 显式验证隔离生效（含 commit 不持久化、CHECK 在 SAVEPOINT 内立即生效）。
+黄金数据集：51 个用例（31 math + 20 cross）由 pydantic extra="forbid" 严格校验 schema 一致性。
+CP-SAT 降级纪律：INFEASIBLE 必抛冲突报告，无"组不出来就放随机题"兜底，符合 §4.4 铁律。
+X5 在线禁 AI 出题满足：ai_call 全生产调用方仅 3 处（passage_generator / ai_rubric_scorer / shadow_mode），session.py 路由未 import 这两个模块，在线 submit_answer 路径不直接调 ai_call 出题。
+AES-256-GCM 实现正确：os.urandom(12) 每次随机 nonce，100 次加密 nonce 全部唯一，密文篡改抛 InvalidTag，错误 key 抛 InvalidTag。符合 NIST SP 800-38D。
+CI 反测试削弱规则：pr-check 拦截新增 pytest.mark.skip / pytest.skip() / unittest.skip，禁止删除断言（^-.*assert），禁止密钥进 diff。
+七、给工程师的修复优先级与建议路线图
+第 0 周（阻断级，建议立即派工）
+补 item_version / material_version / corpus_version / item_template_version 的 append-only 触发器（P0-1）
+补 gate_certificate_id 四表 FK + 伪造 cert_id 拒绝测试（P0-2）
+补 cert:none 占位行迁移（P0-3）
+API 层加认证 + 屏蔽 issued_by 字段（P0-5）
+start_session 调 check_consent + 集成测试（P0-4）
+migrate-check 改 downgrade base + pr-check 加跑（P0-7）
+tts_synthesize 入口加 pii_filter（P0-9）
+ai_call 末尾调 record_call（P0-10）
+第 1-2 周（高危，影响产品能力与数据正确性）
+修 _eval_env 用 normalized_params（P1-1）+ fraction 槽端到端测试
+学科函数库注入求值器（P1-3）——这是"无限出题"能力的关键解锁
+submit_answer 幂等键 + 单事务 commit + 行锁（P1-5）
+session 流写曝光账本（P1-6）
+A4 追溯码回传 API（P0-6）+ 实例池会话 source_ref
+test_pii_filter.py:170 强断言（P1-8）
+paper.py:67 去学科枚举（P1-10）+ CI grep 模式修正（P1-12）
+check_openapi_diff 遍历 FROZEN.txt（P1-9）
+pii_filter fail-closed（P1-13）+ 姓名无上下文回退 + 数字边界 \b
+LiteLLM HTTPS 强制（P1-11）
+golden-path 补 10 种交互类型端到端（P0-8）
+第 3-4 周（中危，批量收尾）
+D5 assembly 读 item_param（P1-14）+ D6 scoring_trace 记 model_version（P1-15）
+DSL linter 校验表达式语法 / 槽引用 / 模板引用（P1-7）
+content/writer.py:88 fail loud（P1-2）
+ActiveModelPointer.set_active 加锁（P1-4）
+passage.content_hash 改 unique（P1-16）
+中危项 M-7 至 M-32 按模块分批处理
+长期（低危 + 文档收尾）
+P3 项机会主义处理；pyproject.toml packages 补齐（M-40）；遥测实事件落盘验证（L-17）。
+八、总体评价
+这是一份工程化程度明显高于一般国内教育项目的代码库：宪法 + 任务卡 + OPC 工作流 + 三本账 + 校验门 + 内容寻址 + 学科包隔离的设计骨架是严肃的，注释里大量"为什么这样写"的决策记录远超行业平均。2551 个测试的覆盖面也很可观。
+
+但当前最大的系统性风险不是"某个 bug"，而是"宪法说有、代码说没有"的虚假强制层：D1/D2 在文档里反复声称"由 DB 触发器物理强制"，实际内容版本账三表与 gate_certificate FK 是裸的；cert:none 占位行依赖测试 fixture 预插而生产未落地；record_call 在评分链路完全不调用却声称"台账由 ai_call 内部记录"；check_consent 实现完整却无业务调用方；migrate-check 名义验证可逆实际只验证最新一个；P4 声称"30 抽样端到端"实际只有 1 个。这些都是"测试通过但承诺未兑现"的典型——而你的宪法 P3"机器信号唯一事实"恰恰想防范这种"自评汇报不算数"，这次轮到测试套件本身不够深。建议优先补齐这层"承诺兑现度"的缺口，再处理产品能力（学科函数库注入、D5/D6 闭环）与并发幂等等数据正确性问题。
+
+工程师派单时建议按 P0→P1→P2 顺序，每条都附了文件:行号与复现命令，可直接挂任务卡。
+全面代码审阅报告
+一、总体评价
+架构设计水平很高。宪法驱动开发（SDD）、三本账只增不改、校验门文化、学科中立 by construction 这些理念在代码中得到了较好的贯彻。模块边界清晰，核心域确实做到了零学科特判。以下按严重程度递减列出具体问题。
+
+二、安全问题（Critical）
+2.1 全部 API 端点无认证/授权
+可复现：直接 curl http://localhost:8000/sessions 即可创建会话，无需任何 token。
+
+main.py 没有挂载任何认证中间件
+session.py POST /sessions 直接接受客户端传入的 student_alias_id，任何学生可以冒充任何其他学生创建会话、提交作答、查看弱项报告
+report.py GET /reports/weakness/{student_alias_id} 同理，任何人可以查看任何学生的弱项
+items.py 所有只读端点也无认证
+影响：这是部署到生产环境前必须解决的 P0 问题。违反宪法 D7（PII 隔离）的精神——虽然主库只有 alias_id，但 alias_id 本身就是可被枚举的标识。
+
+2.2 无速率限制
+所有端点无 rate limiting。攻击者可以：
+
+暴力枚举 item_version_id（虽然是 sha256，但可以探测）
+对 POST /sessions/{id}/responses 高频提交，制造大量 response_event
+耗尽数据库连接池
+2.3 无 CORS 配置
+main.py create_app() 没有添加 CORSMiddleware。如果前端在不同域名，浏览器会阻止请求；如果随便什么域名都能调 API，等于无防护。
+
+三、数据完整性/并发问题（High）
+3.1 会话服务的竞态条件
+session/service.py submit_answer 是经典的 read-modify-write 模式，但没有乐观锁或行级锁：
+
+
+Python
+
+# L571: 读
+session = await _load_session(db, session_id)
+# L629-648: 改
+session.answered_count += 1
+session.current_index += 1
+session.wrong_marks = marks
+# L667: 写
+await db.commit()
+如果同一 session 的两个请求并发（网络重试、学生双击提交），current_index 可能被错误地递增两次，wrong_marks 可能被覆盖（last-write-wins）。
+
+同样，get_next_item 中 L465 session.wrong_marks = marks 也有同样问题。
+
+修复建议：使用 SELECT ... FOR UPDATE 或乐观锁（version column）。
+
+3.2 practice_session 不在三本账保护范围内
+session/models.py L49-117 的 practice_session 表允许 UPDATE。虽然注释说明它是"运行态"表，但 item_sequence、wrong_marks 等关键字段被原地修改。如果这些字段被错误修改，没有审计轨迹可以回溯。
+
+建议：至少对 item_sequence 和 wrong_marks 的变更做 append-only 日志（或改用 JSONB 版本化）。
+
+3.3 record_event 的 commit 时机问题
+events/writer.py L128 await session.commit() 在 record_event 内部直接 commit。但调用方 scoring/service.py 的 score_and_record 也在 submit_answer 的上下文中被调用，而 submit_answer 在 L667 也有 await db.commit()。
+
+这意味着一个 submit_answer 调用会产生两次 commit：一次在 record_event 内部（response_event 落账），一次在 submit_answer 末尾（session 状态更新）。如果第二次 commit 失败，response_event 已经写入但 session 状态未更新，导致数据不一致。
+
+修复建议：record_event 不应自行 commit，应由最外层调用方统一 commit。
+
+四、API 设计问题（Medium-High）
+4.1 read_next_item 返回类型不安全
+session.py L204 返回 dict[str, Any]，L211 返回 {"done": True, "session_id": str(session_id)}，L212 返回 item.model_dump(mode="json")。两种完全不同的响应结构共用一个 dict[str, Any] 返回类型，客户端无法从 OpenAPI schema 推断响应结构。
+
+建议：定义联合响应模型或使用 response_model 的 responses 参数区分 200（done）vs 200（next item）。
+
+4.2 无 API 版本前缀
+URL 路径是 /items/...、/sessions/...，没有 /v1/ 前缀。未来做不兼容变更时无法并行部署 v2。
+
+4.3 无分页
+GET /review/due/{student_alias_id} 有 limit 参数但无 cursor/offset 分页
+如果学生有 1000 条到期复习条目，只能拿到前 100 条，无法翻页
+4.4 异常映射过于宽泛
+session.py L128 isinstance(e, (UnpublishedItemError, ValueError)) 把所有 ValueError 都映射为 422。但 ValueError 是 Python 标准异常，很多内部 bug 也会抛 ValueError（如类型转换失败），这些应该返回 500 而非 422。
+
+五、代码质量问题（Medium）
+5.1 重复代码
+重复项	位置	说明
+_get() 辅助函数	session/service.py L118、scoring/service.py L65	完全相同的实现，应提取到 src/core/utils.py
+_load_dotenv_if_needed()	deps.py L25、conftest.py L49	几乎相同
+_build_async_dsn()	deps.py L45、conftest.py L73	完全相同
+_CHOICE_INTERACTIONS 常量	session/service.py L74、scoring/service.py L40	相同定义
+5.2 Verdict 类型定义过弱
+validator.py L37 Verdict = str。虽然 L38 有 VALID_VERDICTS 常量，但类型标注用 str 意味着编译器无法捕获拼写错误（如 "pas" 或 "PASS"）。应改为 Verdict = Literal["pass", "fail", "review"]。
+
+5.3 session/service.py 过长（701 行）
+单文件承载了开始会话、取题、提交作答、错题回测、时长保护、选项合成、解析提取、反馈装配等 8+ 个职责。建议拆分为：
+
+session/lifecycle.py（start/resume/abandon）
+session/answering.py（next_item/submit_answer）
+session/feedback.py（explanation/error_feedback 提取）
+session/time_protection.py（时长保护逻辑）
+5.4 _extract_options 脆弱
+session/service.py L377-418 通过多层 _get 嵌套访问 ORM/Pydantic/dict 三态对象。如果 content.blocks 结构稍有变化（如 options 字段名改为 choices），静默返回 None，不报错。这种"静默降级"在出题场景下很危险——学生可能看到没有选项的选择题。
+
+5.5 content_addressing.py 的 error_bindings 类型标注
+content_addressing.py L103 error_bindings: dict，但实际数据是 list[dict]。L123-125 的注释解释了原因（与 writer.py 对齐），但这是类型标注与运行时类型不一致的典型反模式。应该修正 compute_canonical_item_version_id 的签名为 list[dict] | dict，或统一调用方。
+
+5.6 启发式组卷的 O(n^2) 复杂度
+heuristic.py L277-285 kp_count 函数在每次调用时线性扫描 selected 列表。它在 L292 的循环中被调用，而外层循环遍历 units。总复杂度 O(quota * units * selected)，当候选池大时（如 10000 题），可能达到秒级。
+
+同样，L338 的 while total_items() < c.item_count.min 循环中，每次迭代遍历所有 units 检查是否已选（L342 if unit in selected），selected 是 list，in 操作是 O(n)。
+
+建议：selected 改用 set（需要 _Unit 实现 __hash__），或维护 kp_code -> count 的增量计数器。
+
+六、测试相关问题（Medium）
+6.1 测试隔离机制的隐患
+conftest.py L150-166 使用事务回滚隔离测试。L163-166 捕获 rollback 异常并打印到 stdout。这意味着如果测试导致连接损坏，错误被静默吞掉。如果某个测试的 bug 导致连接关闭，后续测试可能在脏状态下运行。
+
+6.2 缺少并发测试
+没有发现任何测试验证 submit_answer 的并发安全性（3.1 提到的竞态条件）。
+
+6.3 缺少 API 集成测试
+路由层（src/api/routers/）的测试覆盖不明确。单元测试直接调用 service 层函数，但 FastAPI 的异常映射、响应序列化、依赖注入等未被测试覆盖。
+
+七、其他值得关注的问题
+7.1 pyproject.toml 包定义不完整
+pyproject.toml L81-127 手动列举了所有 packages 和 package-dir，但遗漏了很多实际存在的包（如 src.core.assembly、src.core.scoring、src.core.session、src.core.compliance、src.core.data 等）。这意味着 pip install -e . 后这些包可能无法被正确安装。
+
+建议：使用 find 自动发现：
+
+
+toml
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["src*"]
+7.2 .env 解析不处理引号内等号
+deps.py L34-39 的 .env 解析器用 line.partition("=") 分割，如果值包含 =（如 POSTGRES_PASSWORD=abc=def），会被错误截断。应使用成熟的 python-dotenv 库。
+
+7.3 random.Random(seed).shuffle 的确定性假设
+session/service.py L414-418 用 hashlib.sha256 生成种子字符串后传给 random.Random(seed)。但 random.Random 接受字符串种子时内部会做哈希处理，不同 Python 版本的实现可能不同（CPython 的 random 模块在 3.x 版本间有变更）。如果需要跨进程/跨版本确定性，应直接使用整数种子：random.Random(int(seed[:8], 16))。
+
+7.4 ItemVersion.content 使用 extra="allow"
+item_version.py L105 Content 模型 model_config = ConfigDict(extra="allow")。这意味着 content 块可以包含任意额外字段而不报错。虽然注释解释了原因（不同交互类型结构不同），但这违反了 Pydantic 模型在其他地方严格使用的 extra="forbid" 纪律。建议至少为每种交互类型定义专门的 content 子模型。
+
+7.5 ELO 模块缺少遗忘衰减
+elo.py 注释提到"带遗忘衰减加权正确率起步"，但实际实现中没有任何遗忘衰减逻辑。elo_update 是纯 Elo 更新，没有时间衰减因子。如果这是 v1 的有意简化，应在模块 docstring 中明确标注"v1 不含遗忘衰减，后续版本补充"。
+
+7.6 score_and_record 的 scene 类型安全
+scoring/service.py L620 有 # type: ignore[arg-type] 注释，说明 session.scene 的类型（str）与 Scene（Literal["practice", "diagnosis", "measurement"]）不匹配。这个 type: ignore 掩盖了真实的类型安全问题——如果 session.scene 被设为非法值（如 "test"），运行时不会报错。
+
+八、架构层面的建议
+8.1 引入 API 认证层
+建议实现：
+
+JWT token 认证（学生端）+ API Key 认证（教研端）
+中间件级别的身份校验
+RBAC（学生只能操作自己的 session）
+8.2 引入事件总线
+当前 submit_answer 内同步调用 score_and_record。随着业务增长（弱项分析、复习队列同步、ELO 更新等），建议引入领域事件总线，将"作答已提交"作为事件发布，各模块异步订阅。
+
+8.3 考虑引入缓存层
+GET /items/{item_id} 等只读端点可以加 Redis 缓存（项目已依赖 Redis）。对于高频访问的已发布题目，缓存可以显著降低数据库压力。
+
+九、问题优先级排序
+优先级	问题	影响
+P0	无 API 认证（2.1）	任何人可冒充任何学生
+P0	并发竞态（3.1）	数据损坏
+P0	record_event 内部 commit（3.3）	数据不一致
+P1	无速率限制（2.2）	DoS 风险
+P1	无 CORS 配置（2.3）	安全防线缺失
+P1	pyproject.toml 包定义不完整（7.1）	部署可能缺包
+P2	API 返回类型不安全（4.1）	客户端解析困难
+P2	启发式组卷 O(n^2)（5.6）	大池子性能问题
+P2	session/service.py 过长（5.3）	维护性差
+P3	重复代码（5.1）	维护成本
+P3	Verdict 类型过弱（5.2）	类型安全
+P3	缺少并发/集成测试（6.2, 6.3）	质量保障不足
+以上就是完整的审阅结果。架构的顶层设计是扎实的——宪法约束、三本账、校验门、学科中立这些理念在代码中都有落地。主要问题集中在安全层缺失（认证/授权/限流全部没有）和并发安全（会话服务的竞态条件）上，这两块是上线前必须补的。代码质量整体不错，类型标注比较完整，模块边界清晰，但有一些重复代码和过长文件需要整理。这是我的一个公开仓库。不知道你可否审阅代码？我原来的考虑，是认为中小学的知识是整体有限的。那么，我一定可以用大模型去穷尽。我想打造一个可以无限批量出题，并且按人类最佳实践去组织出卷，又能够通过卷子的对错，看到学生背后的知识点问题，最后再能够针对知识点情况进行定向练习测量的底层引擎。我希望你进行全面的代码审阅，尤其是对现有的架构和代码质量提出意见。我尤其重视你能够提出可客观复现的问题，这样也好安排工程师去修。我期待你不要吝啬输出，可以拼命输出，怎么长怎么来，一定要把问题都讲透
+展示更多
+01:08
+
+Now I have a comprehensive understanding of the codebase. Let me write the final review.
+
+MUTI 平台代码深度审阅报告（第三轮：校验门/审计/合规/隐私 + ORM/迁移 + AI 总线）
+本轮覆盖：src/core/gate/、src/core/compliance/、src/core/models/、src/core/ai/bus/、相关 alembic 迁移及测试。 输出按 可观测性 排序：先列可立刻在测试里复现的具体 bug，再列架构性 / 一致性 / 工程纪律问题。 所有路径用 file:/// 形式可点击。
+
+一、门校验引擎（src/core/gate/）—— 5 个可复现 Bug
+🔴 BUG-G1（严重，结构级）：DuplicatePlaceholderValidator 查重 SQL 用错列名，生产中 100% 失效
+位置：generic.py:331-336 与 generic.py:394-396
+
+
+Python
+
+_PUBLISHED_HASH_QUERY: dict[str, str] = {
+    "item":      "SELECT 1 FROM item_version      WHERE item_version_id = :h AND status = 'published' LIMIT 1",
+    "material":  "SELECT 1 FROM material_version  WHERE material_version_id = :h AND status = 'published' LIMIT 1",
+    "corpus":    "SELECT 1 FROM corpus_version    WHERE version_id        = :h AND status = 'published' LIMIT 1",
+}
+...
+digest = _canonical_hash(payload)
+hit = (await db.execute(text(query_sql), {"h": digest})).first()
+问题：:h 传入的是内容规范化哈希（形如 sha256:abc123...），但 SQL 在 item_version_id（ULID）列里查这个值。生产中 item_version_id 是 ULID，永远不会等于一个 sha256 摘要 → 重复检测永远返回 pass。
+
+为什么测试能绿：测试用 _insert_published_item 人为把 item_version_id 写成 digest 来让测试通过——这是测试与实现互相配合掩盖 bug 的典型反模式。
+
+复现脚本（脱离测试 fixture，直接用真实 schema 即可重现）：
+
+
+Python
+
+# 1. 写入一个真实 item_version（item_version_id = ULID）
+INSERT INTO item_version (item_version_id, item_id, status, objective, interaction_ref,
+                          content, scoring_ref, error_bindings, lineage, rendered_snapshot)
+VALUES ('01J8X9Z7Q1M2N3P4R5S6T7V8W9', 'item-001', 'published', '{}', '{}', '{}', '{}',
+        '[]', '{}', '{}');
+
+# 2. 拿一个内容哈希
+digest = "sha256:abc123..."  # 实际规范化哈希
+
+# 3. 运行 DuplicatePlaceholderValidator（artifact_type='item'）
+# 期望：若已有同样内容 → review
+# 实际：SELECT 1 FROM item_version WHERE item_version_id = 'sha256:abc123...' → 0 行 → 永远 pass
+建议修复：
+
+选项 A：新增 canonical_hash 列（与 item_version_id 共生），查重改查 WHERE canonical_hash = :h AND status='published'。
+选项 B：保持现状但加 WHERE content_digest = :h（前提是 schema 加 digest 列）。
+改完后 必须修改测试 _insert_published_item，不要用「写假的 id=hash」绕过。
+🔴 BUG-G2（严重）：PassageFactCheckValidator 默认 verdict=review，导致语篇永远过不了门
+位置：passage_fact_check.py:136-149
+
+
+Python
+
+# 规则全过：常识正确性需人工复核（规则覆盖有限，转 review）
+return self._timed_result(
+    verdict="review",
+    evidence={
+        "reason": "规则匹配全过，常识正确性需人工复核",
+        ...
+        "needs_human_review": True,
+    },
+    confidence=Decimal("0.500"),
+    ...
+)
+问题：
+
+只要不命中政治敏感词/暴力词，任何语篇 verdict 都是 review。
+编排器 _compute_final_verdict 把 review 视为非 pass → 不签发 GateCertificate。
+这意味着所有正常语篇都无法入库 published 状态，除非人工逐篇 review。
+与 _validate_passage 链配合时（见 serving_views.sql），v_serving_* 视图完全为空，生产环境 serving 层没东西可查。
+复现：
+
+
+Python
+
+from src.core.gate.validators.passage_fact_check import PassageFactCheckValidator
+from src.core.gate.validator import GateContext
+
+payload = {"body": "春天来了，花儿开了。", "grade_band": "L", "genre": "narrative"}
+ctx = GateContext(artifact_type="passage", pack_id="platform", artifact_payload=payload)
+result = asyncio.run(PassageFactCheckValidator().validate("p1", ctx))
+assert result.verdict == "review"  # 永远 review，除非加政治词
+建议：要么把 verdict 改为 pass（让事实核查只对显式 fail 起作用），要么把 blocking 改为 False（review 仅留痕不阻断），要么加第二条规则（如基础常识词典）。当前状态是设计意图与实际效果的致命背离。
+
+🟠 BUG-G3（严重）：编排器依赖隐藏占位行 cert:none，schema 与迁移中无任何预插逻辑
+位置：orchestrator.py:375 与注释 orchestrator.py:367-373
+
+
+Python
+
+target_cert_id = cert_id if cert_id is not None else "cert:none"
+问题：
+
+当 final_verdict 是 fail 或 review 时，gate_run.certificate_id 用魔法字符串 "cert:none" 指向 gate_certificate(cert_id='cert:none', ...)。
+但 0~0022 共 22 个 alembic 迁移中没有任何一处预插这行。
+orchestrator 注释声称「W2 占位方案」「迁移 0006 后续会落地」，但 0006 实际是 serving 视图，根本没有预插。
+测试里能在 setup 阶段手插（见 _truncate_gate_tables），但生产库一旦直接调 run_gate 触发 fail 路径，就会 FK 报错。
+复现（干净的 docker-compose 环境）：
+
+
+Bash
+
+# 1. alembic upgrade head（到 0022）
+# 2. python -c "from src.core.gate.orchestrator import run_gate; ..." 触发 fail
+# 报错：insert or update on table "gate_run" violates foreign key constraint "fk_gr_certificate"
+#       Key (certificate_id)=(cert:none) is not present in table "gate_certificate"
+建议：
+
+在迁移 0004 里加 INSERT 占位行；或
+把 schema 改为 gate_run.certificate_id 可空，fail/review 时填 NULL；或
+拆出独立的 gate_run_failed 表（无 FK 约束）。
+🟠 BUG-G4（中等）：run_gate 失败时不抛错，但 _compute_final_verdict 的非阻断 fail 仍计入 review 统计，逻辑混乱
+位置：orchestrator.py:301-316
+
+
+Python
+
+def _compute_final_verdict(results):
+    has_review = False
+    for result, blocking in results:
+        if result.verdict == "fail" and blocking:
+            return "fail"
+        if result.verdict == "review":
+            has_review = True
+    return "review" if has_review else "pass"
+问题：
+
+当 非阻断 fail 与 非阻断 review 同时存在时，函数只记录 has_review=True 而忽略非阻断 fail。返回 "review"。
+但当 阻断 pass 与 非阻断 fail 同时存在时，函数正确地跳过 fail → 返回 "pass"。
+这是一致的，但 没有 test 覆盖「非阻断 fail」+「阻断 pass」的组合——在 test_gate_orchestrator.py 中只测了「全是阻断项」与「单 fail/单 review」。
+复现：
+
+
+Python
+
+results = [
+    (ValidatorResult(verdict="pass",  ..., blocking=True, ...), True),
+    (ValidatorResult(verdict="fail",  ..., blocking=False, ...), False),
+]
+# 期望：最终 verdict="pass"（仅非阻断 fail 留痕，不阻断）
+# 实际：final_verdict="pass"（OK 巧合，但 has_review 不触发）
+这块逻辑虽然代码正确，但测试覆盖不足，重构时容易破坏。
+
+🟠 BUG-G5（中等）：_resolve_validator 静默吞 KeyError，回退到 platform 会掩盖配置错误
+位置：orchestrator.py:279-298
+
+
+Python
+
+def _resolve_validator(validator_id: str, pack_id: str) -> Validator:
+    try:
+        return get_validator(pack_id, validator_id)
+    except KeyError:
+        return get_validator("platform", validator_id)
+问题：
+
+策略文件写了 subject-math: math_validator，但 subject-math 包没注册，fallback 到 platform 也找不到，第二次 KeyError 真的抛出。
+但如果 platform 有同名验证器，则 subject-math 包漏注册的 bug 被掩盖——可能让策略审查通过、生产跑错验证器。
+_resolve_cost_tier 更糟：except KeyError: return "cheap"——未注册的验证器默认按 cheap 排序，可能让「本该 expensive 的 LLM 验证器」排到 cheap 位置。
+建议：
+
+区分「fallback 找到」和「fallback 也没找到」：
+
+Python
+
+try:
+    return get_validator(pack_id, validator_id)
+except KeyError:
+    try:
+        return get_validator("platform", validator_id)
+    except KeyError:
+        raise ConfigurationError(f"validator {validator_id} not in {pack_id} or platform")
+在加载策略时（policy.loader）就校验所有 validator 在某 pack 已注册（目前 _validate_validator_ids_exist 只校验 pack ∪ platform 的并集，不报错）。
+二、合规 / 隐私（src/core/compliance/）—— 4 个可复现问题
+🔴 BUG-C1（严重）：pii_vault 角色授权写权限缺失，应用写身份会失败
+位置：pii_vault_schema.sql:69-70 与迁移 0014_pii_vault.py:100-107
+
+
+SQL
+
+-- 角色仅有 SELECT student_identity + INSERT access_log
+GRANT SELECT ON pii_vault.student_identity TO pii_vault_reader;
+GRANT INSERT ON pii_vault.access_log TO pii_vault_reader;
+问题：
+
+pii_vault_reader 只有 SELECT 权限，但 write_identity 需要 INSERT。
+迁移完全没建 pii_vault_writer 角色，也没给 pii_vault_reader 加 INSERT。
+应用层在 write_identity 用的是普通 DB 用户（默认是 muti），该用户是 student_identity 表的所有者（migration 创建）所以 INSERT 能成功——但权限模型与代码意图不符。
+如果未来切到最小权限的 pii_vault_reader 跑应用，写入会直接失败。
+复现：
+
+
+SQL
+
+SET ROLE pii_vault_reader;
+INSERT INTO pii_vault.student_identity (student_alias_id, name_ciphertext, name_nonce, ...)
+VALUES (gen_random_uuid(), '\x00', '\x00', ...);
+-- ERROR: permission denied for table student_identity
+建议：
+
+新建 pii_vault_writer 角色，仅授权 INSERT/UPDATE on student_identity + INSERT on access_log；
+应用代码用 SET LOCAL ROLE pii_vault_writer 切角色。
+🟠 BUG-C2（中等）：redact_name 对 CJK 姓名无词边界，会误匹配子串
+位置：redaction.py:40-55
+
+
+Python
+
+def _build_pattern(name: str) -> str:
+    chars = list(name)
+    has_cjk = any(_is_cjk(c) for c in chars)
+    pattern = r"\s*".join(re.escape(c) for c in chars)
+    if not has_cjk:
+        pattern = r"\b" + pattern + r"\b"
+    return pattern
+问题：
+
+CJK 字符之间没有 \b 词边界概念，会被 \s*（零或多个空白）连接。
+这导致「张三」会匹配「张三三三」「张三丰」（如果有此姓）。但「张三丰」是常见三字姓名，会被错误脱敏为「[姓名]」+ 余字。
+注释说「对 CJK 姓名不加词边界」，但这是 bug 而非 feature：常见复姓 / 三字姓会被误判。
+复现：
+
+
+Python
+
+from src.core.compliance.redaction import redact_name
+
+# 期望：「张三丰写了出师表」保留张三丰
+print(redact_name("张三丰写了出师表", "张三"))
+# 实际：「[姓名]丰写了出师表」  ← 误匹配张三的前两字
+
+# 反向：先脱敏「张三丰」再脱敏「张三」会留下「[姓名]」
+text1 = redact_name("张三丰写了出师表", "张三丰")
+print(text1)  # "[姓名]写了出师表"
+text2 = redact_name(text1, "张三")
+print(text2)  # 仍 "[姓名]写了出师表"（无「张三」可匹配）
+# 但如果反过来：
+text3 = redact_name("张三丰写了出师表", "张三")
+print(text3)  # "[姓名]丰写了出师表"  ← 错误
+测试 test_name_not_double_replaced 测的恰好是已脱敏文本不被二次替换的场景，没有覆盖「短姓名匹配到长姓名前缀」的反向场景。
+
+建议：
+
+CJK 姓名匹配时要求前后非 CJK 字符（lookahead/lookbehind）：
+
+Python
+
+pattern = r"(?<![一-龥])" + pattern + r"(?![一-龥])"
+这样「张三」不会匹配「张三丰」「张三三」。
+添加测试用例覆盖短姓名被长姓名前缀误匹配的情况。
+🟠 BUG-C3（中等）：read_identity 写 access_log 但事务耦合导致 audit log 与读取原子性不一致
+位置：pii_encryption.py:271-291
+
+
+Python
+
+async def read_identity(...):
+    ...
+    name = decrypt_field(...)
+    ...
+    # 审计日志：每次读取留痕
+    await db.execute(
+        _ACCESS_LOG_INSERT_SQL,
+        {"aid": uuid.uuid4(), "sid": ..., "acc": accessor, "ts": ts, "pur": purpose},
+    )
+    return StudentIdentity(...)
+问题：
+
+read_identity 写 audit log 不立即 commit，依赖调用方 commit。
+但调用方如果在 read_identity 之后 业务逻辑失败 rollback，access_log 也会被回滚——审计就丢了。
+反过来，如果调用方用 committed_session 提交了，但业务侧用了另一个事务读，审计归属哪个事务不明。
+D7 的"每次读必留痕"承诺在事务回滚时被静默违反。
+
+复现：
+
+
+Python
+
+sid = uuid.uuid4()
+await write_identity(..., key=_TEST_KEY)
+await async_session.commit()
+
+# 业务事务：读 + 后续失败
+try:
+    identity = await read_identity(..., purpose="lookup", key=_TEST_KEY)
+    # 业务失败 → 回滚
+    raise RuntimeError("business error")
+except RuntimeError:
+    await async_session.rollback()
+
+# 此时 access_log 也被回滚 → 审计缺失
+log_count = await async_session.execute(
+    text("SELECT count(*) FROM pii_vault.access_log WHERE student_alias_id = :sid"),
+    {"sid": sid}
+)
+assert log_count.scalar() == 0  # 但本次访问真实发生了！
+建议：
+
+在 read_identity 内部独立事务提交 audit log：
+
+Python
+
+await db.commit()  # 仅提交 access_log
+# 或用独立 AsyncEngine（_audit_engine）提交
+或者使用 PG 的 LISTEN/NOTIFY / outbox pattern 把审计事件异步落库。
+🟡 BUG-C4（轻微）：_is_cjk 误把日韩汉字都判为 CJK，可能影响姓名识别
+位置：redaction.py:23-37
+
+
+Python
+
+def _is_cjk(char: str) -> bool:
+    try:
+        name = unicodedata.name(char)
+    except ValueError:
+        return False
+    return any(block in name for block in ("CJK", "HIRAGANA", "KATAKANA", "HANGUL"))
+问题：
+
+把 HIRAGANA/KATAKANA 算作 CJK（决定不加词边界）。
+但日文姓名常常中英文混排，如「Yamada 太郎」，中间的拉丁+汉字混合需要不同处理。
+当前实现混在一起，可能让日文姓名误匹配。这不是中文姓名的常见场景，但合规层应该明确"针对什么语种"。
+建议：明确支持范围——文档写「仅针对中文姓名」，把判断简化为仅 CJK 统一汉字（U+4E00–U+9FFF），不混入假名/谚文。
+
+三、家长授权（src/core/compliance/parental_consent.py）—— 3 个可复现问题
+🔴 BUG-PC1（严重）：_next_version 用 SELECT MAX + INSERT，并发下版本号冲突
+位置：parental_consent.py:140-147
+
+
+Python
+
+async def _next_version(db, student_alias_id, purpose):
+    current = (await db.execute(
+        _LATEST_VERSION_SQL, {"sid": student_alias_id, "purpose": purpose}
+    )).scalar() or 0
+    return current + 1
+问题：
+
+读 MAX(version) → 加 1 → INSERT。三步非原子。
+两个并发 record_consent 同时跑：都读到 MAX=1，都 INSERT version=2。
+ck_parental_consent_version_positive（>=1）通过，但第二条写入的真实版本号应该是 3。
+后续 check_consent 按 version DESC LIMIT 1 取任意一条 version=2，两条都失效。
+复现（需要两个 session 并发）：
+
+
+Python
+
+async def task(sid, i):
+    await record_consent(async_session_2, sid, "practice", valid_until=now+day)
+async with asyncio.TaskGroup() as tg:
+    for i in range(2):
+        tg.create_task(task(sid, i))
+# 期望：version 1, 2；check_consent 返回 version=2
+# 实际：可能 version 1, 2（其中 2 是两条都写），check_consent 返回 version=2 中任一条
+建议：
+
+用 PG 序列：CREATE SEQUENCE per (sid, purpose) 太重；改用 UNIQUE(student_alias_id, scope->>'purpose', version) + INSERT ... ON CONFLICT DO NOTHING 重试。
+或在 record_consent 起头用 SELECT ... FOR UPDATE 锁住当前 MAX 行。
+改完后写并发测试（已有 test_parental_consent.py 但没有并发用例）。
+🟠 BUG-PC2（中等）：record_consent 缺 version 唯一约束，无 DB 兜底
+位置：0015_parental_consent.py:75-111
+
+问题：
+
+迁移只定义了 CHECK (version >= 1)，没有 UNIQUE (student_alias_id, scope->>'purpose', version)。
+即使 _next_version 有 bug，DB 也不会报错。
+而 ix_parental_consent_student_purpose_version 只是普通索引（不是 UNIQUE）。
+复现：
+
+
+SQL
+
+INSERT INTO parental_consent VALUES (gen_random_uuid(), sid, 'grant', '{"purpose":"practice"}',
+                                    now(), now()+interval '1 day', 1);
+INSERT INTO parental_consent VALUES (gen_random_uuid(), sid, 'grant', '{"purpose":"practice"}',
+                                    now(), now()+interval '1 day', 1);
+-- 两条同 version 都成功 → 历史可追溯性破坏
+建议：
+
+
+Python
+
+op.create_index(
+    "uq_parental_consent_student_purpose_version",
+    "parental_consent",
+    ["student_alias_id", sa.text("(scope ->> 'purpose')"), "version"],
+    unique=True,
+)
+🟡 BUG-PC3（轻微）：scope JSONB 内 subject 等扩展字段在 history 输出时是 raw dict，没有规范化
+位置：parental_consent.py:346-357
+
+
+Python
+
+return [
+    {
+        "consent_id": str(r.consent_id),
+        "event_type": r.event_type,
+        "scope": r.scope,   # ← 原始 dict，没有按规则序列化
+        "valid_from": r.valid_from,
+        ...
+    }
+    for r in rows
+]
+问题：
+
+调用方拿到 raw dict（可能含 datetime / Decimal 等），反序列化时容易出错。
+ConsentStatus 是 typed DTO，但 list_consent_history 返回 dict——两个 DTO 风格不一致。
+审计日志需要 stable schema，应该用 Pydantic 模型而不是 dict-of-anything。
+建议：
+
+
+Python
+
+class ConsentHistoryEntry(BaseModel):
+    consent_id: uuid.UUID
+    event_type: Literal["grant", "revoke"]
+    scope: dict
+    valid_from: Optional[datetime]
+    valid_until: Optional[datetime]
+    version: int
+    created_at: datetime
+四、ORM 模型与数据库迁移（src/core/models/ + alembic/）—— 6 个可复现问题
+🔴 BUG-ORM1（架构性，核心）：gate_certificate_id 在所有内容表上无 FK 约束，可塞入任意字符串
+位置：
+
+item_version.py:217 注释明说「FK 待 T-W1-006 替换占位表后补」
+material_version.py:60 同
+[corpus_version] 0005 补的列 0005_append_only_unify.py:70-73 同
+passage.py:62 同
+item_lifecycle_transition.py:125 同
+
+Python
+
+# 全部都是 nullable Text，注释「引用关系在应用层校验」
+gate_certificate_id: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+问题：
+
+「D2 门强制」的物理保证只是 ck_*_published_requires_gate_cert 这个 CHECK——它只检查「非空时是否伴随 published_at」，不检查 gate_certificate_id 是否真的存在。
+一条 published item_version 行可以填 gate_certificate_id = 'cert_anything'，CHECK 通过，serving 视图返回，组装服务组装——但 gate_certificate 表里没有这一行，没有真实校验历史。
+同时 gate_certificate_id 在内容表上是 plain text，类型（cert_xxx ULID vs 其他）也没有约束。
+复现：
+
+
+SQL
+
+-- 1. 准备一个 item（不需要门证书）
+INSERT INTO item (item_id, pack_id, tier) VALUES ('item-001', 'platform', 'C');
+
+-- 2. 写入 published item_version，gate_certificate_id 填一个不存在的 id
+INSERT INTO item_version (item_version_id, item_id, status, objective, interaction_ref,
+                          content, scoring_ref, error_bindings, lineage, rendered_snapshot,
+                          published_at, gate_certificate_id)
+VALUES ('iv-001', 'item-001', 'published', '{}', '{}', '{}', '{}', '[]', '{}', '{}',
+        now(), 'cert_FAKE_DOES_NOT_EXIST');
+-- CHECK 通过，INSERT 成功
+-- 但 gate_certificate 表里没有 cert_FAKE_DOES_NOT_EXIST
+
+-- 3. serving 视图返回这行
+SELECT * FROM v_serving_item_version WHERE item_version_id = 'iv-001';
+-- 返回 1 行
+-- 但对应 gate_certificate.cert_id = 'cert_FAKE_DOES_NOT_EXIST' 不存在
+这是 D2「门强制」的最严重架构漏洞——三层防护（CHECK / append-only / role）都不验证 gate_certificate_id 真实存在。
+
+建议：
+
+
+Python
+
+# 在迁移 0004 落地后立即补 FK（所有内容表）
+op.create_foreign_key(
+    "fk_item_version_gate_cert",
+    "item_version", "gate_certificate",
+    ["gate_certificate_id"], ["cert_id"],
+    ondelete="RESTRICT",  # 门证书禁删（D1 三本账的物化），RESTRICT 是双保险
+)
+# material_version / corpus_version / passage / item_lifecycle_transition 同
+🟠 BUG-ORM2（中等）：spec_table 复合主键是 (spec_table_id, spec_table_version)，但 cells JSONB 内没有结构性约束
+位置：0019_spec_table.py:81-100
+
+
+Python
+
+sa.Column("cells", JSONB(), nullable=False),
+sa.PrimaryKeyConstraint(
+    "spec_table_id", "spec_table_version", name="pk_spec_table",
+),
+问题：
+
+cells 是 JSONB，DB 层不做 schema 校验（注释承认「schema 校验在 Pydantic 层」）。
+但 Pydantic 校验在应用层，直接 SQL 写入可绕过（与 gate_certificate_id 同样问题）。
+双向细目表本身有完整性约束（知识点不能指向不存在的 kp_node、cell count 必须非负），但DB 完全不强制。
+建议：
+
+用 CHECK 约束做基础域校验（如 cells_count > 0、difficulty_min < difficulty_max）。
+加 JSONB Schema 校验 trigger。
+🟠 BUG-ORM3（中等）：practice_session.item_sequence 在会话开始后没有 DB 级保护不被修改
+位置：0011_practice_session.py:68
+
+
+Python
+
+sa.Column("item_sequence", JSONB(), nullable=False),
+问题：
+
+迁移注释：「item_sequence 在会话开始时快照固化（确定性），之后不变（应用层纪律，DB 以 NOT NULL + 应用层只写一次保证）」。
+但 practice_session 没有 append-only 触发器（D1 豁免），允许 UPDATE——会话进度（current_index 等）必须 UPDATE。
+应用层纪律没有 DB 兜底——一个 bug 让 item_sequence 被改了，会让作答事件与原始卷序列错位。
+对比 item_lifecycle_transition（用 append-only 触发器保护 from_state/to_state 不被改，但允许 INSERT 新行），这里连 INSERT 新行的版本化机制都没有。
+建议：
+
+拆出 practice_session_snapshot 表（append-only），存 item_sequence 历史；主表只存当前状态。
+或用 trigger 阻止 item_sequence 列的 UPDATE：
+
+SQL
+
+CREATE TRIGGER trg_practice_session_item_sequence_immutable
+    BEFORE UPDATE OF item_sequence ON practice_session
+    FOR EACH ROW EXECUTE FUNCTION raise_immutable_error();
+🟠 BUG-ORM4（中等）：append-only 触发器函数被多张表共用，错误消息无法定位违规表
+位置：0005_append_only_unify.py:39-45
+
+
+Python
+
+_UNIFIED_TRIGGER_FUNCTION_SQL = """
+CREATE OR REPLACE FUNCTION raise_append_only_error() RETURNS TRIGGER AS $$
+BEGIN
+    RAISE EXCEPTION 'append-only table rejects UPDATE/DELETE';
+END;
+$$ LANGUAGE plpgsql;
+"""
+问题：
+
+同一函数被 response_event、gate_certificate、gate_run、gate_verdict 四张表共用（外加 item_lifecycle_transition、spec_table、parental_consent 各自单独函数）。
+统一函数的好处是简化，坏处是错误信息无表名。
+实际生产报错时，开发者从消息 "append-only table rejects UPDATE/DELETE" 看不到是哪张表，只能看 PG 上下文的 relation_name。
+触发器名 trg_*_append_only 是唯一线索，没有专门的 errcode / hint。
+建议：
+
+用 TG_TABLE_NAME 在错误消息中嵌入表名：
+
+SQL
+
+RAISE EXCEPTION 'append-only table % rejects UPDATE/DELETE', TG_TABLE_NAME;
+或每个表单独函数（当前 item_lifecycle / spec_table / parental_consent 的做法），保持错误消息精确。
+🟡 BUG-ORM5（轻微）：item_version.materialized_snapshot（应为 rendered_snapshot）的 CHECK 约束允许 quarantined 状态缺 rendered_snapshot 的边界 case
+位置：0002_item_model.py:202-205
+
+
+Python
+
+sa.CheckConstraint(
+    "status = 'draft' OR rendered_snapshot IS NOT NULL",
+    name="ck_iv_quarantine_requires_rendered",
+),
+问题：
+
+CHECK 允许 status='retired' 缺 rendered_snapshot——但 retired 状态来自 published，理应有 snapshot。
+状态机 draft → quarantined → published → retired（无回边），retired 必经过 published，所以 理论上有 snapshot。
+但如果未来加状态 quarantined 直跳 retired（W4 飞轮未排除），CHECK 不阻挡。
+防御性写法应是 status IN ('draft') OR rendered_snapshot IS NOT NULL。
+建议：把 CHECK 改为显式枚举（精确列出允许缺 rendered_snapshot 的状态）。
+
+🟡 BUG-ORM6（轻微）：item_param 表的 purpose_scope 与 source 字段没有 enum 约束，靠 Pydantic 兜底
+（未读源码但从注释 0019_spec_table.py:73-75 推断）— source ∈ {prior, measured}、purpose_scope ∈ {practice, diagnosis, measurement} 是宪法 D5 关键约束，但 schema 中是 text+CHECK 还是 enum 需要确认。
+
+五、测试组织 —— 5 个覆盖空洞
+🔴 BUG-T1：DuplicatePlaceholderValidator 单元测试用「写假 id=hash」掩盖 BUG-G1
+位置：test_generic_validators.py:337-392
+
+
+Python
+
+async def _insert_published_item(async_session, item_version_id):
+    # 注释：「published_at=NULL 避免 gate_certificate CHECK」
+    await async_session.execute(text(
+        "INSERT INTO item_version (item_version_id, ...) VALUES (:vid, ...)"
+    ), {"vid": item_version_id, ...})  # ← 用 digest 作为 id
+
+Python
+
+async def test_duplicate_validator_review_on_duplicate(async_session):
+    payload = {"objective": {"kp": "dup"}, "content": {"q": "重复题"}}
+    digest = _canonical_hash(payload)  # = "sha256:..."
+    await _insert_published_item(async_session, digest)  # ← 写入 id=digest
+    ...
+问题：测试不真实——真实生产中 item_version_id 永远是 ULID，不会等于 sha256 摘要。这个测试通过了错误的实现。
+
+复现（按真实生产路径）：
+
+写一个 item_version，id = "01J8X..."（ULID）
+跑 DuplicatePlaceholderValidator
+即便 payload 内容完全相同，也返回 pass（因为 SQL 查 id="sha256:..." 不会匹配 ULID）
+修复优先级 = P0，与 BUG-G1 同等严重。
+
+🟠 BUG-T2：run_gate 没有「非阻断 fail 混入阻断 pass」场景的测试
+位置：test_gate_orchestrator.py
+
+问题：mock validator 工厂支持 blocking 参数，但组合测试用例只测了「全阻断项」「全非阻断」「单阻断 fail」等，未测：
+
+「阻断 pass + 非阻断 fail」组合
+「阻断 pass + 非阻断 review」组合
+「非阻断 fail + 非阻断 review」组合（不阻断但 verdict=?）
+_compute_final_verdict 的边界行为缺乏回归测试。
+
+建议：补 3 个 case 锁定行为。
+
+🟠 BUG-T3：parental_consent 无并发测试
+位置：test_parental_consent.py 全部
+
+问题：record_consent 的 version 分配是 SELECT MAX + INSERT 三步非原子，但所有测试都是顺序执行。并发下会出现 BUG-PC1 描述的版本号冲突。
+
+建议：用 asyncio.gather + 两个独立 session 跑并发，断言 MAX(version) == 2（不是 1 或乱序）。
+
+🟠 BUG-T4：gate_certificate_id FK 缺失没有任何测试覆盖
+问题：BUG-ORM1 描述的漏洞在所有测试里都被 published_at=NULL 的 trick 绕过——_insert_published_item 注释承认「published_at=NULL 让 CHECK 通过」。
+
+复现：
+
+
+Python
+
+# 写一个 published item_version，gate_certificate_id='cert_FAKE'
+# 期待：FK violation
+# 实际：INSERT 成功（FK 不存在）
+建议：
+
+显式测试「published item_version 必须有真实存在的 gate_certificate_id」：
+
+Python
+
+with pytest.raises(IntegrityError):
+    await session.execute(text(
+        "INSERT INTO item_version (..., published_at, gate_certificate_id) "
+        "VALUES (..., now(), 'cert_FAKE')"
+    ))
+🟡 BUG-T5：PII vault 测试用 hardcoded 测试密钥，生产密钥轮转流程无测试
+位置：test_pii_vault.py:42-45
+
+
+Python
+
+_TEST_KEY_B64 = "4+H57udVMoZpDOg0U4lmmJu7JqxEhbrgBPfXNZXieXU="
+问题：
+
+测试密钥在源码里是常量（虽然不影响生产安全，因为 32 字节足够）。
+生产密钥轮转流程——加新密钥、双密钥解密、迁移完删旧密钥——没有任何代码也没有任何测试。
+密钥泄漏/轮转是 PII 系统的核心运维动作，缺失测试=上线即裸奔。
+建议：
+
+设计 key_version 列（key_id）+ 多个 pii_vault_key_* 表，或 KMS 接入层。
+写 test_key_rotation.py 跑完整轮转。
+六、AI 总线（src/core/ai/bus/router.py）—— 3 个可观察问题
+🟠 BUG-AI1（中等）：PII 剥离静默降级，没有 DB 留痕
+位置：router.py:87-108
+
+
+Python
+
+def _sanitize_prompt(prompt: str) -> tuple[str, list[str]]:
+    try:
+        from src.core.ai.ledger.pii_filter import strip as pii_strip
+    except ImportError:
+        return prompt, ["pii_filter_unavailable"]   # ← 静默 fallback
+    try:
+        sanitized, stripped = pii_strip(prompt)
+        ...
+    except Exception as exc:
+        return prompt, [f"pii_filter_error:{type(exc).__name__}"]   # ← 静默 fallback
+问题：
+
+当 pii_filter 不可用或抛异常时，原 prompt 仍发给 LLM——违反 D7「调用 LLM/TTS 前必须剥离」的硬约束。
+仅在 result.raw.pii 记 warning，但这条 AI 调用仍产生 token 计费、audit log、AI 起草的 item 仍可能进入 pipeline。
+实际生产中（pii_filter 部署后），如果 pii_filter 自身 bug 让 strip 抛异常，所有 PII 直送 LLM。
+复现：
+
+
+Python
+
+# 1. 让 pii_filter 抛异常（mock）
+# 2. 调 ai_call("L1", prompt_with_pii)
+# 3. 检查：原始 prompt（含手机号）传给 LLM
+建议：
+
+默认 bypass_pii_filter=False 抛 PIIDisabledError（不可静默降级），仅在显式 bypass_pii_filter=True 时放行。
+增加一个全局 STRICT_PII=1 环境变量控制。
+🟠 BUG-AI2（中等）：fallback 配置递归风险——同 provider fallback 时可能无限调用
+位置：router.py:182-198
+
+
+Python
+
+except Exception as exc:
+    fb = cfg.get("fallback")
+    if not fb:
+        raise
+    fb_client = _resolve_client(fb["provider"], clients)
+    fb_result = fb_client.complete(sanitized_prompt, ...)
+问题：
+
+若 policy.yaml 误配 fallback.provider == primary.provider（同供应商），主客户端抛 RateLimitError 时 fallback 调同供应商同方法，会再抛 RateLimitError——这次没有再 fallback（仅一层）。
+但如果 fallback provider 是 StubClient 默认（policy 未注册），StubClient 走 _resolve_client 默认返回 StubClient(provider=provider)——可能没有抛错就成功返回空内容，调用方拿到空内容不知是 fallback 失败。
+建议：
+
+policy.yaml 校验：禁止 fallback.provider == provider。
+跟踪递归深度（fallback_depth 参数），超过 1 即拒绝。
+🟡 BUG-AI3（轻微）：_load_policy_cached 进程级缓存，多 worker 配置漂移无通知
+位置：router.py:37-49
+
+
+Python
+
+@lru_cache(maxsize=1)
+def _load_policy_cached() -> dict[str, Any]:
+    with _POLICY_PATH.open(encoding="utf-8") as f:
+        data = yaml.safe_load(f)
+    ...
+问题：
+
+进程内 lru_cache 缓存，多 gunicorn worker 启动时各自加载一份 policy——生产改 policy.yaml 后必须重启所有 worker。
+注释承认「T-W4-009 的配置热加载由 reload_policy() 显式失效缓存」——但 reload_policy() 需要 SIGHUP 等外部信号，没有自动 reload。
+政策版本与 gate_run.policy_version 是手动对齐的，没有「policy.yaml 修改 → 自动 reload + ai_ledger 留痕」机制。
+建议：
+
+用 watchdog 监控 policy.yaml 修改 → 自动 cache_clear + 记 audit event。
+或在 policy.yaml 加 version 字段，ai_call 每次对比磁盘文件 mtime。
+七、其他次要问题（按发现位置整理）
+src/core/gate/validator.py
+位置	问题	建议
+validator.py:122-126	Validator ABC 把 validator_id/version/blocking/cost_tier 声明为 ClassVar，但没有抽象方法强制子类实现——子类漏写 validator_id 时 register_validator 才报错，但已 import 的子类实例化时才报	用 __init_subclass__ 在子类定义时校验非空
+validator.py:255	SchemaValidator.validate 中 ctx.model_dump().get("required_keys", []) 走 model_dump（含 extra 字段）而非 getattr，性能差	改用 getattr(ctx, "required_keys", [])
+src/core/gate/policy/loader.py
+位置	问题	建议
+loader.py:285-308	_ensure_generic_validator_stubs 用 except Exception: pass 静默吞 import 错误——真实 import 失败被掩盖	区分 ImportError（合法 fallback）vs 其他异常（应 propagate）
+loader.py:188-204	get_chain 对未注册 artifact_type 抛 ValueError，对无匹配返回空 list——两套错误风格	统一：空 list 表示无匹配，ValueError 表示参数非法
+src/core/gate/validators/passage_age_appropriate.py
+位置	问题	建议
+passage_age_appropriate.py:89	payload.get("grade_band", "") 默认空串，grade_band == "L" 判 False 但 grade_band_sentence_length_ceiling("") 未测——可能 KeyError	用 grade_band or "M" 兜底（设默认 M 段）
+passage_age_appropriate.py:115-126	avg_sent_len 显著超限与轻微超限的倍数 1.5 是魔法数——没有从 difficulty_analyzer 读阈值的扩展点	接收 ctx 注入阈值（与 AudioAgeCheck 的 target_wpm 扩展点同手法）
+src/core/gate/validators/audio_quality.py
+位置	问题	建议
+audio_quality.py:104-118	占位模式仅比 text_length，ASR 扩展点依赖 ctx 注入——但没有任何调用方注入 asr_transcript 的代码	加 audio/consumer.py 集成 ASR 的接入示例
+src/core/gate/certifier/service.py
+位置	问题	建议
+certifier/service.py:132	await db.commit() 在 service 层——与 orchestrator 同样问题。调用方如果还要做事（继续 INSERT）就被自己的后续操作 commit 走了	改为调用方 commit（与 consent 模式一致）
+certifier/service.py:194-213	result.evidence 二次 JSON 序列化到 gate_run.evidence 与 gate_verdict.detail——信息冗余（两者都含 evidence）	detail 只存 blocking + 摘要，evidence 全量存 gate_run
+src/core/compliance/pii_encryption.py
+位置	问题	建议
+pii_encryption.py:54-68	StudentIdentity DTO 是 @dataclass(frozen=True, slots=True)——slots=True 与 frozen 防止 attribute 修改，但 Phone/Address 仍是 str——一旦 DTO 引用被外部代码 hold 住，明文不会 GC	加 __del__ 显式覆盖字段为 None（参考 Django 的 sensitive field cleanup）
+pii_encryption.py:131	encrypt_field 不接受 associated_data（AAD）——同一 key 不同语义的密文不可区分	加 AAD 参数（如 table:column:student_id）防止攻击者跨字段替换密文
+八、问题汇总表（按严重程度排序）
+#	严重	位置	一句话描述	复现难度
+BUG-ORM1	🔴 P0	所有内容表 gate_certificate_id	无 FK 约束，可塞任意字符串绕过门强制	5 行 SQL
+BUG-G1	🔴 P0	generic.py:331	查重用错列名（id vs digest），生产 100% 失效	1 个真实 INSERT
+BUG-T1	🔴 P0	test_generic_validators.py:337	测试用假 id=digest 掩盖 BUG-G1	读测试
+BUG-G2	🔴 P0	passage_fact_check.py:136	语篇门默认 verdict=review，正常语篇永远入库失败	1 次 asyncio.run
+BUG-G3	🟠 P1	orchestrator.py:375	依赖隐藏占位行 cert:none，迁移未预插	alembic upgrade + 1 次 fail 调用
+BUG-C1	🟠 P1	0014_pii_vault.py:100	pii_vault_reader 无 INSERT，应用写入会失败	SET ROLE + INSERT
+BUG-C2	🟠 P1	redaction.py:40	CJK 姓名无词边界，短姓名误匹配长姓名前缀	1 行 Python
+BUG-C3	🟠 P1	pii_encryption.py:271	access_log 与读事务耦合，回滚丢失审计	1 次 try/except
+BUG-PC1	🟠 P1	parental_consent.py:140	SELECT MAX + INSERT 三步非原子，并发版本冲突	asyncio.gather
+BUG-ORM2	🟠 P1	0019_spec_table.py:81	spec_table cells JSONB 无结构性约束	直接 SQL INSERT
+BUG-ORM3	🟠 P1	0011_practice_session.py:68	item_sequence 无 DB 保护，应用 bug 可改	直接 SQL UPDATE
+BUG-AI1	🟠 P1	router.py:87	PII 剥离静默降级，原 prompt 仍发 LLM	mock 抛异常 + 1 次 ai_call
+BUG-G4	🟡 P2	orchestrator.py:301	非阻断 fail/review 组合判定无回归测试	写测试
+BUG-G5	🟡 P2	orchestrator.py:279	静默 fallback 掩盖配置错误	写测试
+BUG-PC2	🟡 P2	0015_parental_consent.py:75	缺 UNIQUE(student, purpose, version)	2 次 INSERT 同 version
+BUG-PC3	🟡 P2	parental_consent.py:346	list_consent_history 返回 dict 而非 Pydantic	调函数
+BUG-ORM4	🟡 P2	0005_append_only_unify.py:39	append-only 错误消息无表名	触发 1 次违规 UPDATE
+BUG-ORM5	🟡 P2	0002_item_model.py:202	rendered_snapshot CHECK 允许 retired 缺 snapshot	直接 SQL INSERT
+BUG-T2	🟡 P2	test_gate_orchestrator.py	非阻断 fail/review 组合无测试	读测试
+BUG-T3	🟡 P2	test_parental_consent.py	无并发测试	写测试
+BUG-T4	🟡 P2	缺	gate_certificate_id 假 id 无负向测试	写 1 个测试
+BUG-T5	🟡 P2	缺	密钥轮转流程无代码无测试	写 1 个测试
+BUG-AI2	🟡 P2	router.py:182	fallback provider 可同主 provider，递归风险	写配置 + 测
+BUG-AI3	🟡 P2	router.py:37	policy.yaml 进程缓存，worker 漂移无通知	改配置 + 测
+BUG-C4	⚪ P3	redaction.py:23	_is_cjk 含日韩假名/谚文	写测试
+validator.py 多处	⚪ P3	validator.py	ClassVar 缺强制、required_keys 走 model_dump	写测试
+loader.py 多处	⚪ P3	loader.py	静默 import 吞错、错误风格不一致	写测试
+passage_age_appropriate.py	⚪ P3	passage_age_appropriate.py:89	grade_band 默认空串、句长阈值魔法数	写测试
+audio_quality.py	⚪ P3	audio_quality.py:104	ASR 扩展点无调用方	写代码
+certifier/service.py	⚪ P3	certifier/service.py:132	service 层 commit 与 orchestrator 重复	重构
+pii_encryption.py	⚪ P3	pii_encryption.py:54	StudentIdentity 无主动清理、encrypt_field 无 AAD	加代码
+九、修复建议优先级
+第 0 优先（上线阻塞）：
+
+BUG-ORM1：所有内容表加 gate_certificate_id FK 约束 + 同步测试 (T4)
+BUG-G1 + T1：查重 SQL 改列 + 改测试为真实路径
+BUG-G2：明确 passage_fact_check 的 verdict 默认值（pass / blocking=False）
+BUG-G3：cert:none 占位要么删，要么迁移预插，要么 schema 改可空
+第 1 优先（生产稳定性）： 5. BUG-C1：pii_vault_writer 角色 + 权限最小化 6. BUG-C2：CJK 姓名加 lookaround 词边界 7. BUG-C3：audit log 独立事务 8. BUG-PC1 + T3：version 分配原子化 + 并发测试 9. BUG-ORM2/3：spec_table.cells 约束 / practice_session.item_sequence 不可变保护 10. BUG-AI1：PII 剥离失败必须 fail-loud
+
+第 2 优先（代码质量）：
+
+8 个 P2 / P3 级别问题（见汇总表）
+十、整体架构评价（保留意见）
+优点：
+
+三本账 append-only 的物理强制（DB 触发器 + CHECK 约束 + 角色权限三层）是真的硬核设计——很多项目只在文档里写「不删」，这里是 DB 层做不到。
+内容寻址 ID（item_version_id = sha256）与「同内容必同 id」原则（公式一/二）让数据飞轮成为可能。
+学科包隔离（X6 静态扫描测试）做得很彻底——核心域真的不 import 学科包。
+PII vault 独立 schema 配合列级加密，比直接放主库 + 加密字段清晰。
+架构性隐患：
+
+D2「门强制」 的物理保证有结构性漏洞（BUG-ORM1）：FK 缺失让 gate_certificate_id 成为字符串而非真引用——这是 D2 哲学的破坏。
+「失败占位行」反模式（BUG-G3）：用 'cert:none' 字符串当 FK 目标，依赖迁移预插但没在迁移预插——分布式系统里的「伪节点」反模式（参考 The Daily Impossible "Fake Root"）。
+审计日志与业务事务耦合（BUG-C3）：D7 的「每次读必留痕」承诺在事务回滚时静默失效——审计系统应该独立于业务事务。
+AI 总线的 PII 降级策略（BUG-AI1）：宁可调少不宁可漏调（注释原话）违反 D7 的「必须剥离」硬约束——合规层的硬约束不能用「降级」绕开。
+测试与实现互证掩盖（BUG-T1）：用「写假 id=digest」让错误实现通过测试——这是技术债最危险的来源，比 BUG 本身更值得警惕。
+查重 SQL 用错列名（BUG-G1）：一个本应作为「防御机制」的验证器完全失效——在无限批量出题场景下，重复题会直接进入已发布池。
+关键验证器默认 verdict=review（BUG-G2）：passage_fact_check 的设计让正常语篇永远过不了门——这种「永远失败」的规则比「无规则」更危险，会让运维认为系统正常但实际阻塞。
+给工程团队的行动建议：
+
+把 4 个 P0 列为下个 sprint 的 hard blocker。
+加 1 个 CI 步骤：所有内容表 published 行必须 join gate_certificate 成功——这是 BUG-ORM1 的回归保险。
+加 1 个 CI 步骤：passage_fact_check 在干净语篇上的 verdict 必须是 pass 或显式 blocking=False——这是 BUG-G2 的回归保险。
+把「测试与实现互证」列为 code review 红线——任何「为了测试通过而修改被测代码」的 PR 应被拒。
+把 AI 总线的 fail-loud 模式列为合规层硬约束（与 PII vault 角色同等地位）。
+附录：本报告覆盖的文件清单
+类别	路径
+门引擎核心	src/core/gate/validator.py · src/core/gate/models.py · src/core/gate/orchestrator/orchestrator.py · src/core/gate/certifier/service.py · src/core/gate/policy/loader.py · src/core/gate/certifier/serving_views.sql
+验证器实现	src/core/gate/validators/generic.py · src/core/gate/validators/passage_fact_check.py · src/core/gate/validators/passage_age_appropriate.py · src/core/gate/validators/passage_difficulty_gate.py · src/core/gate/validators/audio_age_check.py · src/core/gate/validators/audio_quality.py
+合规/隐私	src/core/compliance/pii_encryption.py · src/core/compliance/pii_vault_schema.sql · src/core/compliance/parental_consent.py · src/core/compliance/redaction.py
+ORM 基类	src/core/models/_base.py · src/core/models/item.py · src/core/models/item_version.py · src/core/models/material_version.py · src/core/models/material_license.py
+迁移	alembic/versions/0002_item_model.py · 0003_response_event.py · 0004_gate_tables.py · 0005_append_only_unify.py · 0008_serving_views.py · 0011_practice_session.py · 0014_pii_vault.py · 0015_parental_consent.py · 0018_item_lifecycle.py · 0019_spec_table.py · 0020_passage.py
+AI 总线	src/core/ai/bus/router.py
+测试	tests/conftest.py · tests/unit/test_generic_validators.py · tests/unit/test_gate_orchestrator.py · tests/unit/test_gate_validator_base.py · tests/unit/test_pii_vault.py · tests/unit/test_parental_consent.py · tests/unit/test_redaction.py · tests/unit/test_passage_gate.py
+报告结束。所有 P0/P1 问题均附复现脚本或步骤，可直接进 issue tracker 派单。代码审阅报告：可客观复现问题清单
+审阅范围
+核心领域：item / item_version / 内容寻址 / 校验门 / 作答事件 / 评分 / 参数标定
+数据层：Alembic 迁移、append-only 约束、serving 视图、PII 保险库
+服务层：组卷、渲染、会话、AI 总线、TTS
+插件与注册表：interaction / scorer / validator 注册机制、学科包
+工程纪律：测试、CI/CD、依赖锁定、静态扫描
+P0 级（必须立即修复，违反宪法或导致数据飞轮断链）
+P0-1 A/B 级 item_version_id 在参数缺失时退化为 UUID，破坏内容寻址
+位置：src/core/content/writer.py#L63-L98
+
+问题：_compute_item_version_id 在 A/B 级缺少 template_version_digest 等参数时，退化为 uuid.uuid4().hex，导致同一内容产生不同 id。
+
+
+Python
+
+except KeyError:
+    # 参数不全，退化为 UUID（TODO：生产线接入后补全）
+    return "sha256:" + uuid.uuid4().hex
+宪法违反：D3（内容寻址确定性）。
+
+复现步骤：
+
+
+Python
+
+version_data = {
+    "tier": "A",
+    "template_version_id": "tv1",
+    # 缺少 template_version_digest / pack_digest / engine_digest
+}
+await publish_item_version(None, version_data, db=session)
+# 两次调用得到不同 item_version_id
+影响：A/B 级实例无法去重、无法追溯、重复生成同一题。
+
+修复：缺失公式一必填参数时直接抛 ValueError，禁止退化生成 UUID。
+
+P0-2 publish_item_version 不验证 gate_certificate_id 真伪
+位置：src/core/content/writer.py#L105-L141
+
+问题：仅检查 gate_certificate_id 是否非空，不校验该证书是否真实存在于 gate_certificate 表。
+
+宪法违反：D2（门强制）。
+
+复现步骤：
+
+
+Python
+
+await publish_item_version(
+    None,
+    {"status": "published", ...},
+    gate_certificate_id="cert_totally_fake",
+    db=session,
+)
+# 成功发布，DB CHECK 只检查非空
+影响：任何人传入任意非空字符串即可绕过校验门发布题目。
+
+修复：在 writer.py 中查询 gate_certificate 表，确认 cert_id 存在且 artifact_ref 匹配当前 item_version_id，否则抛 GateEnforcementError。
+
+P0-3 record_event 内部调用 session.commit()，破坏上层事务原子性
+位置：src/core/events/writer.py#L128
+
+问题：record_event 在函数末尾自行 commit。上层服务（如 score_and_record）若后续失败，已写入的 response_event 无法回滚。
+
+复现步骤：
+
+
+Python
+
+try:
+    outcome = await score_and_record(db, item_version, response, ...)
+    # record_event 内部已 commit
+    raise RuntimeError("下游失败")
+except:
+    # response_event 已经持久化，无法回滚
+    pass
+影响：数据不一致；会话状态与事件记录不同步。
+
+修复：移除 record_event 内部的 session.commit()，由调用方统一控制事务边界。同步更新 score_and_record 文档说明调用方负责 commit。
+
+P0-4 score_and_record 与 record_event 的 commit 职责重复且不明确
+位置：src/core/scoring/service.py#L201-L280
+
+问题：score_and_record 不 commit，但依赖的 record_event 会 commit。调用方无法安全地嵌入更大事务。
+
+复现步骤：同 P0-3。
+
+影响：任何调用 score_and_record 的代码都隐式提交事件，违反事务组合原则。
+
+修复：统一改为"服务函数不 commit，由调用方 commit"。
+
+P0-5 run_scorer 对评分器返回结果做二次转换时缺乏校验
+位置：src/core/scoring/service.py#L100-L109
+
+
+Python
+
+return ScoreResult(
+    dimension_scores=dict(result.dimension_scores),
+    error_inferences=[dict(x) for x in result.error_inferences],
+    confidence=dict(result.confidence),
+    evidence=dict(result.evidence),
+    scorer_version=str(result.scorer_version),
+)
+问题：假设 result 一定具有 dimension_scores 等属性。若学科包评分器返回普通 dict 或缺失字段，会抛 AttributeError。
+
+宪法违反：D4（评分器必须来自注册表且符合契约）。
+
+复现步骤：
+
+
+Python
+
+class BadScorer:
+    scorer_id = "bad"
+    version = "1.0"
+    def score(self, response, item_version, params):
+        return {"dimension_scores": {"correct": 1.0}}  # 缺其他字段
+
+register_scorer("platform", BadScorer())
+run_scorer(item_version, response)
+# AttributeError: 'dict' object has no attribute 'error_inferences'
+修复：在 run_scorer 中对结果做契约校验，或使用 ScoreResult.model_validate 强制转换，不符合时抛 ScorerNotRegisteredError 或新的 ScorerContractError。
+
+P0-6 exact_match 评分器全角转换表缺失标点和运算符
+位置：src/core/scoring/platform_scorers.py#L52-L58
+
+问题：_FULLWIDTH_TABLE 只转换数字和字母，未转换全角标点、运算符、括号等。
+
+复现步骤：
+
+
+Python
+
+normalize_text("１＋１", {"fullwidth_to_half": True})
+# 返回 "１＋１"（+ 仍是全角）
+# 与 "1+1" 比较会判错
+影响：学生使用中文输入法输入答案时容易被误判。
+
+修复：扩展全角表覆盖常见数学/标点符号（＋－×÷＝％／．，（）［］｛｝ 等）。
+
+P0-7 ai_call 提供 bypass_pii_filter=True 参数可绕过 PII 剥离
+位置：src/core/ai/bus/router.py#L111-L118
+
+问题：bypass_pii_filter 开关允许调用方直接发送含 PII 的 prompt。
+
+宪法违反：D7（调用 LLM 前必须剥离 PII）。
+
+复现步骤：
+
+
+Python
+
+ai_call("L3", "学生张三的电话是13800138000", bypass_pii_filter=True)
+# 原始文本直接发送给 LLM
+影响：任何获得该参数使用权的代码都可绕过 PII 保护，无法审计。
+
+修复：
+
+方案 A：完全移除 bypass_pii_filter 参数；
+方案 B：仅允许特定审计角色/白名单任务绕过，并在 AIResult.raw_meta 中强制记录 pii_bypassed_by。
+P0-8 TTS 内容 ID 仅取 SHA-256 前 32 位，碰撞风险过高
+位置：src/core/ai/tts/router.py（compute_content_id）
+
+问题（根据上下文摘要）：compute_content_id 返回 sha256(...).hexdigest()[:32]。
+
+复现：生成大量不同文本的 TTS 时，理论上 32 位 hex（128 bit）对一般规模足够，但仓库其他内容寻址函数使用完整 64 位，此处不一致。
+
+影响：长期运行或大规模缓存场景下可能产生缓存污染。
+
+修复：统一使用完整 64 位 hex，与 content_addressing.py 保持一致。
+
+P0-9 ActiveModelPointer.set_active 直接 UPDATE 旧版本 retired_at
+位置：src/core/data/active_model_pointer.py#L100-L106
+
+问题：虽然 estimator_run 被声明为"非三本账"而允许 UPDATE，但并发调用 set_active 时存在竞态条件，偏唯一索引可能冲突。
+
+复现步骤：
+
+
+Python
+
+# 两个并发请求同时 set_active('practice', ...)
+# 1) 都 UPDATE 到 retired_at IS NULL 的同一行
+# 2) 同时 INSERT 新活跃行
+# 可能触发 unique index violation
+影响：参数标定任务并发部署时失败。
+
+修复：使用 SELECT ... FOR UPDATE 锁定旧行，或在应用层做串行化；考虑改用 INSERT-only + 视图取最新活跃版本。
+
+P0-10 PDF Exporter 使用 --no-sandbox 并将"文件存在"作为成功标准
+位置：src/core/render/pdf_exporter.py#L134-L160
+
+问题：
+
+Edge/Chromium 启动参数包含 --no-sandbox，在 Linux 服务器上运行任意 HTML 有安全风险。
+以"输出文件存在且非空"判定成功，可能被恶意内容提前写入文件。
+复现步骤：
+
+
+Python
+
+PdfExporter(backend="edge").export("<script>...</script>", Path("/tmp/out.pdf"))
+# --no-sandbox 执行任意 JS
+影响：HTML 内容若来自未充分过滤的用户输入，可能导致 RCE 或信息泄露。
+
+修复：
+
+移除 --no-sandbox，改用专用用户命名空间运行；
+校验 PDF 文件头（%PDF-）和最小页数；
+对输入 HTML 做 DOMPurify 或等价过滤。
+P1 级（重要，影响正确性、可维护性或部署稳定性）
+P1-1 学科包评分器/验证器注册依赖隐式 import 顺序
+位置：src/core/scoring/registry.py#L105-L145、src/core/gate/validator.py#L175-L216
+
+问题：注册表是全局可变 dict。学科包评分器必须被某处显式 import 才会注册，但核心域不 import 学科包（A5/X6），生产入口若漏 import 则运行时找不到。
+
+复现步骤：
+
+
+Python
+
+from src.core.scoring.registry import get_scorer
+get_scorer("math_equivalence", "subject-math")
+# KeyError：学科包 scorer 未注册
+影响：部署时若入口未加载学科包，学生作答无法评分。
+
+修复：建立显式插件入口（如 src/packs/__init__.py 自动扫描并注册所有学科包），或在应用启动时显式 import 并注册。
+
+P1-2 src/packs/subject-math/ 缺少 __init__.py
+位置：目录 /workspace/src/packs/subject-math/
+
+问题：该目录下无 __init__.py，无法作为常规 Python 包导入。
+
+复现步骤：
+
+
+Bash
+
+python -c "import src.packs.subject-math"
+# SyntaxError: invalid syntax（因为包名含连字符路径）
+实际上因为路径含 - 也不能直接 import，但即使作为 namespace package，缺少 __init__.py 也会导致 setuptools package discovery 不一致。
+
+影响：部署和测试时需要特殊处理；pyproject.toml 中 src.packs.subject-math 的声明与实际结构不完全匹配。
+
+修复：添加 __init__.py；若 - 导致 import 问题，考虑重命名目录为 subject_math 或配置 package_dir 映射。
+
+P1-3 serving_views.sql 中角色密码硬编码
+位置：src/core/gate/certifier/serving_views.sql#L31-L36
+
+问题：
+
+
+SQL
+
+CREATE ROLE serving_reader LOGIN PASSWORD 'serving_reader_pwd';
+影响：本地开发密码入仓，生产必须 ALTER ROLE 覆盖，但代码中默认密码仍存在。
+
+修复：使用环境变量或部署脚本创建角色；SQL 文件中不写死密码。
+
+P1-4 check_no_ranking.py 的 route_rank 检测不拼接 APIRouter.prefix
+位置：scripts/ci/check_no_ranking.py#L78-L89
+
+问题：只检查装饰器参数字符串，不检查 router 对象的 prefix 属性。
+
+复现步骤：
+
+
+Python
+
+router = APIRouter(prefix="/rankings")
+@router.get("/")
+async def handler(): ...
+静态扫描不会报违规，但实际端点是 /rankings/。
+
+影响：D8 禁令可被 router prefix 绕过。
+
+修复：扩展扫描器，在 visit_Assign 中收集 APIRouter(prefix=...)，并与装饰器路径拼接后检测。
+
+P1-5 check_no_ranking.py 的 _RE_SQL_RANK_COLUMN 容易误报
+位置：scripts/ci/check_no_ranking.py#L67-L70
+
+问题：正则匹配 SELECT rank FROM ... 等，但 rank 可能是普通列名（如职级、等级字段），与 score 无关。
+
+影响：可能产生假阳性，CI 阻断合法代码。
+
+修复：将 _RE_SQL_RANK_COLUMN 与 _SCORE_COLUMNS 上下文结合，或仅保留明确的 RANK() 窗口函数检测。
+
+P1-6 PII 地址正则可能误伤教学内容
+位置：src/core/ai/ledger/pii_filter.py#L43-L45
+
+问题：_ADDRESS_RE 匹配"连续汉字 + 省市区县等关键字"。教学文本中常见的"北京市""三角形ABC"等会被替换。
+
+复现步骤：
+
+
+Python
+
+strip("小明从北京市出发去上海市")
+# 结果可能含 [ADDRESS][ADDRESS]
+影响：教学内容被错误替换，影响题目质量和 LLM 理解。
+
+修复：
+
+增加更严格的门牌号/路名模式；
+维护教学地名白名单；
+将地址剥离改为 opt-in 或标记 review 而非直接替换。
+P1-7 tests/conftest.py 的 .env 加载器会覆盖任意环境变量
+位置：tests/conftest.py#L49-L70
+
+问题：
+
+
+Python
+
+os.environ[key.strip()] = value.strip().strip('"').strip("'")
+不加过滤地覆盖所有环境变量。若 .env 中含 PATH、HOME 等，会破坏测试环境。
+
+复现步骤：在 .env 中写 PATH=/bad/path，运行测试。
+
+影响：测试环境不可预测，可能引入难以排查的副作用。
+
+修复：仅加载以 POSTGRES_、MINIO_、REDIS_、APP_、PII_ 等前缀开头的变量，或维护白名单。
+
+P1-8 src/api/deps.py 重复实现 .env 加载逻辑
+位置：src/api/deps.py#L25-L42
+
+问题：与 tests/conftest.py 几乎完全相同的 _load_dotenv_if_needed 和 _build_async_dsn。
+
+影响：违反 DRY；一处修改容易遗漏另一处。
+
+修复：提取到 src/core/config.py 等共享模块，两边复用。
+
+P1-9 publish_item_version 的 db 参数签名与实际必填不一致
+位置：src/core/content/writer.py#L105-L112
+
+问题：
+
+
+Python
+
+async def publish_item_version(
+    ...
+    db: AsyncSession = None,
+    ...
+)
+类型签名暗示可选，但函数体内立即 if db is None: raise ValueError。
+
+影响：静态类型检查（mypy）无法发现漏传；API 不友好。
+
+修复：移除默认值 = None，改为 db: AsyncSession。
+
+P1-10 状态机未在写入服务层强制：draft 可直接 published
+位置：src/core/content/writer.py#L134-L141
+
+问题：writer.py 允许 status='published' 直接发布，不检查是否经过 quarantined。
+
+影响：未渲染、未隔离的版本可直接进入已发布区。
+
+修复：在 writer.py 或 DB CHECK 中强制状态转换顺序：draft → quarantined → published → retired，禁止跳跃。
+
+P1-11 run_scorer 在 async 函数中同步调用 CPU 密集型评分器
+位置：src/core/scoring/service.py#L100
+
+问题：
+
+
+Python
+
+result = scorer.score(response, item_version, params)
+在 score_and_record（async）中同步调用。math_equivalence 使用 SymPy，可能耗时较长。
+
+影响：阻塞 FastAPI 事件循环，降低并发能力。
+
+修复：对非异步评分器使用 asyncio.to_thread 或 loop.run_in_executor。
+
+P1-12 ai_call 是同步函数
+位置：src/core/ai/bus/router.py#L111
+
+问题：根据当前代码，ai_call 是同步函数，但 LLM 调用是网络 I/O。
+
+影响：在 FastAPI async 路由中调用会阻塞事件循环。
+
+修复：将 ai_call 改为 async def，并确保 LLMClient 接口也是 async。
+
+P1-13 TTS router 缓存是无限增长的全局 dict
+位置：src/core/ai/tts/router.py（_cache）
+
+问题：缓存无大小限制和 TTL。
+
+影响：长期运行服务会内存泄漏。
+
+修复：改用 functools.lru_cache 或带 TTL 的缓存，并定期清理。
+
+P1-14 GateRun.certificate_id 在失败路径依赖 cert:none 占位行
+位置：src/core/gate/orchestrator/orchestrator.py#L375
+
+问题：失败时 target_cert_id = "cert:none"，但 DB 中必须预插该行，否则 FK 失败。
+
+复现步骤：在新迁移后的空库中运行 run_gate 且验证失败。
+
+影响：生产部署若未正确插入 cert:none，门失败会导致内部错误而非清晰错误。
+
+修复：
+
+方案 A：在迁移 0008 或专门迁移中 INSERT cert:none 占位行；
+方案 B：将 gate_run.certificate_id 改为 nullable，失败时存 NULL。
+P1-15 GateOrchestrator 与 CertifierService 重复实现落库逻辑
+位置：src/core/gate/orchestrator/orchestrator.py#L331-L431、src/core/gate/certifier/service.py#L143-L232
+
+问题：_insert_certificate、_insert_run_and_verdict、JSON 序列化函数几乎相同。
+
+影响：一处修复（如 JSON 编码）容易遗漏另一处。
+
+修复：提取公共落库工具到 src/core/gate/certifier/_persist.py，两模块复用。
+
+P1-16 StepwiseRubricScorer._get_scorer_any 直接遍历私有注册表
+位置：src/core/scoring/platform_scorers.py#L486-L502
+
+问题：from src.core.scoring.registry import _SCORER_REGISTRY 访问私有变量，并按 (pid, sid) 排序后线性查找。
+
+影响：破坏注册表封装；排序结果依赖 pack_id 字符串顺序，不稳定。
+
+修复：扩展 get_scorer(scorer_id, pack_id=None) 支持"任意 pack 查找"，或让步骤级 scorer 必须显式声明 pack_id。
+
+P2 级（中低风险，但应记录并择机处理）
+P2-1 Makefile 的 test 目标使用 -x
+位置：Makefile#L31
+
+问题：
+
+
+makefile
+
+test: ; python -m pytest tests/ -x -q
+第一个失败就停止，不利于 CI 看到全部失败面。
+
+修复：CI 使用 pytest tests/ -q --tb=short，本地可保留 -x。
+
+P2-2 PR CI 的学科包 import 检查正则不完整
+位置：.github/workflows/pr-check.yml#L30-L33
+
+问题：
+
+
+YAML
+
+! grep -rnE '(import|from)\s+(packs|subject_)' src/core/
+漏检 from src.packs import ...、from packs.subject_math import ... 等形式。
+
+复现步骤：在 src/core/foo.py 中写：
+
+
+Python
+
+from src.packs.subject_math.scorers import math_equivalence
+grep 不会命中。
+
+修复：扩展正则为 (import|from)\s+(src\.)?(packs|subject_|gradeband_) 或改用 AST 扫描。
+
+P2-3 pyproject.toml 手工维护 packages 列表
+位置：pyproject.toml#L81-L127
+
+问题：新增子包容易遗漏，例如 src.core.review、src.core.report 等是否完整需要核对。
+
+影响：打包安装时可能缺失模块。
+
+修复：改用 setuptools.find_packages 或 find_namespace_packages，或添加 CI 检查确认 packages 列表与源码目录一致。
+
+P2-4 requirements.txt 中手工追加了 ortools/pyarrow 块
+位置：requirements.txt#L10-L18
+
+问题：注释说明因 pip-compile 网络超时手工追加，未完整记录传递依赖版本约束。
+
+影响：锁定文件不完整，CI/生产依赖可能漂移。
+
+修复：恢复使用 pip-compile 自动生成，或至少完整列出传递依赖。
+
+P2-5 Nightly CI 安装 Playwright 系统依赖容易失败
+位置：.github/workflows/nightly.yml#L39
+
+问题：
+
+
+YAML
+
+python -m playwright install --with-deps chromium
+需要 sudo 安装系统依赖，在 GitHub Actions ubuntu-latest 上可能因权限或网络失败。
+
+影响：Nightly 不稳定，失败即创建 issue 会导致噪音。
+
+修复：使用 playwright install chromium（不装系统依赖）+ apt-get 显式安装必要包；或改用预装 Playwright 的 Docker 镜像。
+
+P2-6 会话时长保护依赖墙上时钟，未处理回拨
+位置：src/core/session/service.py#L138-L141
+
+问题：
+
+
+Python
+
+return max(0, int((now - session.last_resume_at).total_seconds()))
+使用 datetime.now(timezone.utc)，系统时间回拨会导致 elapsed 变小甚至为 0。
+
+影响：学生可绕过时长保护。
+
+修复：在 PracticeSession 中记录单调时钟（time.monotonic()）锚点，或同时使用两者校验。
+
+P2-7 keypoint_hit 正则未限制方言
+位置：src/core/scoring/platform_scorers.py#L365-L381
+
+问题：直接使用 re.search(pat[3:], text)，未禁用后向引用、原子组等实现相关特性。
+
+影响：不同 Python 版本/实现间重放行为可能不一致。
+
+修复：预编译正则并拒绝含 (?P<...>)、后向引用、条件断言等高级特性的 pattern。
+
+P2-8 PII vault 的 access_log 授予 INSERT 但未授予 SELECT
+位置：alembic/versions/0014_pii_vault.py#L104
+
+问题：
+
+
+Python
+
+op.execute("GRANT INSERT ON pii_vault.access_log TO pii_vault_reader")
+pii_vault_reader 是审计读取角色，却无法读取审计日志。
+
+影响：审计角色无法查询 access_log。
+
+修复：根据审计需求，授予 SELECT ON pii_vault.access_log，或创建独立审计角色。
+
+P2-9 SourceRegistry.is_approved 每次调用都取当前时间
+位置：src/core/content/source_registry.py#L145-L167
+
+问题：每次调用 datetime.now(timezone.utc)。
+
+影响：高频调用时性能可忽略，但测试注入时间不友好。
+
+修复：接受可选 now 参数便于测试。
+
+P2-10 pii_filter 姓名替换同时替换上下文关键字
+位置：src/core/ai/ledger/pii_filter.py#L51-L113
+
+问题：_NAME_CONTEXT_RE 匹配 (学生|同学|家长|我叫|姓名)(姓名)，替换函数返回 学生A，把"学生"等前缀也替换掉了。
+
+复现步骤：
+
+
+Python
+
+strip("学生张三")
+# 返回 "学生A" 而非 "学生学生A"
+影响：语义一致性尚可接受，但测试断言和日志可读性受影响。
+
+修复：正则仅捕获姓名部分，替换时保留前缀。
+
+架构层面的总体评价
+做得好的地方
+宪法规则有物理落地：append-only 触发器、serving 视图角色隔离、CHECK 约束、PII 独立 schema 等不仅是文档，而是有代码和迁移支撑。
+注册表设计方向正确：interaction/scorer/validator 通过 YAML + 运行时注册表分离平台与学科包，符合 A5/X6。
+参数标定版本化：ActiveModelPointer + estimator_run 实现了按时间回溯的估计器版本切换，D5/D6 有落实。
+测试覆盖关键契约：test_gate_bypass.py、test_no_ranking_query.py 等直接验证 DB 层权限和合规静态扫描。
+需要加强的方面
+事务边界混乱：多个服务函数内部 commit，破坏了原子性。
+门强制有缺口：gate_certificate_id 真伪未校验，状态机未强制。
+内容寻址有退化路径：A/B 级参数缺失时退化为 UUID。
+学科包注册机制脆弱：依赖隐式 import，缺少统一插件入口。
+PII 过滤有绕过开关和误伤风险：bypass_pii_filter 和地址正则都需收紧。
+异步代码中同步调用 CPU 密集型操作：评分器和 AI 总线若不改 async，会阻塞事件循环。
+CI/CD 静态扫描有盲区：学科包 import 检查、排名查询 router prefix 拼接等需要加强。
+建议修复优先级排期
+优先级	问题编号	责任领域	预计性质
+P0	P0-1, P0-2, P0-3, P0-4, P0-5, P0-7, P0-10	核心域/安全	Bug/设计缺陷
+P0	P0-6, P0-8, P0-9	评分/缓存/参数标定	Bug/稳定性
+P1	P1-1, P1-2, P1-10, P1-11, P1-12, P1-14	插件/状态机/性能	架构补强
+P1	P1-3, P1-6, P1-7, P1-8, P1-9, P1-15, P1-16	工程纪律/安全/DRY	代码质量
+P1	P1-4, P1-5, P1-13	静态扫描/缓存	工具改进
+P2	P2-1 ~ P2-10	CI/CD/测试/审计	择机处理
+以上清单中的每一项都可以通过单元测试、契约测试或 CI 脚本直接复现。建议先成立一个"宪法合规"专项，把 P0 级问题在下一个波次全部闭环，再逐步处理 P1/P2。
+
+1 个文件已更改
