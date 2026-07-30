@@ -10,21 +10,33 @@
     "graph_release": "v1"
   },
   "interaction_ref": {
-    "interaction_id": "mcq",
+    "interaction_id": "single_choice",
     "interaction_params": {"shuffle": false}
   },
   "content": {
     "blocks": [
-      {"type": "stem", "text": "小明有 3 个苹果，小红给了他 2 个，现有多少个苹果？"},
-      {"type": "options", "choices": ["4", "5", "6", "7"]},
-      {"type": "answer", "value": "5"}
+      {"type": "stem", "text": "小明有 3 个苹果，小红给了他 2 个，现在小明有多少个苹果？"},
+      {"type": "options", "choices": [
+        {"id": "A", "label": "4"},
+        {"id": "B", "label": "5"},
+        {"id": "C", "label": "6"},
+        {"id": "D", "label": "7"}
+      ]}
     ]
   },
   "scoring_ref": {
-    "scorer_id": "mcq_exact",
-    "scorer_params": {}
+    "scorer_id": "exact_match",
+    "scorer_params": {
+      "answer": {"selected": "B"},
+      "partial_credit": null,
+      "normalization": null
+    }
   },
-  "error_bindings": [],
+  "error_bindings": [
+    {"option_id": "A", "error_type_id": "math.arithmetic.off_by_one_minus", "confidence": 0.8, "rule_version": "v1"},
+    {"option_id": "C", "error_type_id": "math.arithmetic.off_by_one_plus", "confidence": 0.8, "rule_version": "v1"},
+    {"option_id": "D", "error_type_id": "math.arithmetic.multiplication_confusion", "confidence": 0.6, "rule_version": "v1"}
+  ],
   "lineage": {
     "tier": "A",
     "pipeline": {"id": "manual_import", "version": "v0"},

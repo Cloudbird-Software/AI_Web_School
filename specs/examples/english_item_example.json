@@ -1,0 +1,46 @@
+{
+  "item_version_id": "english-example-0001",
+  "item_id": "english-item-0001",
+  "status": "draft",
+  "objective": {
+    "kp_set": [{"dimension": "kp", "code": "english.vocab.definition"}],
+    "kp_set_mode": "single",
+    "cognitive_level": "understand",
+    "gradeband": "L",
+    "graph_release": "v1"
+  },
+  "interaction_ref": {
+    "interaction_id": "single_choice",
+    "interaction_params": {"shuffle": true}
+  },
+  "content": {
+    "blocks": [
+      {"type": "stem", "text": "Choose the correct meaning of the word \"apple\"."},
+      {"type": "options", "choices": [
+        {"id": "A", "label": "A kind of fruit"},
+        {"id": "B", "label": "A kind of animal"},
+        {"id": "C", "label": "A kind of vehicle"},
+        {"id": "D", "label": "A kind of building"}
+      ]}
+    ]
+  },
+  "scoring_ref": {
+    "scorer_id": "exact_match",
+    "scorer_params": {
+      "answer": {"selected": "A"},
+      "partial_credit": null,
+      "normalization": {"case_insensitive": true, "trim": true}
+    }
+  },
+  "error_bindings": [
+    {"option_id": "B", "error_type_id": "english.vocab.category_confusion_animal", "confidence": 0.5, "rule_version": "v1"},
+    {"option_id": "C", "error_type_id": "english.vocab.category_confusion_vehicle", "confidence": 0.4, "rule_version": "v1"},
+    {"option_id": "D", "error_type_id": "english.vocab.category_confusion_building", "confidence": 0.4, "rule_version": "v1"}
+  ],
+  "lineage": {
+    "tier": "A",
+    "pipeline": {"id": "manual_import", "version": "v0"},
+    "signed_by": "importer",
+    "signed_at": "2026-07-28T00:00:00Z"
+  }
+}

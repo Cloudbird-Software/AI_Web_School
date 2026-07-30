@@ -1,56 +1,219 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "ItemVersionImport",
+  "description": "item_version 导入契约（W0-1）。六大块结构对齐 src/core/models/item_version.py::ItemVersionPydantic。",
   "type": "object",
-  "required": ["item_version_id","item_id","status","objective","interaction_ref","content","scoring_ref","error_bindings","lineage"],
+  "required": [
+    "item_version_id",
+    "item_id",
+    "status",
+    "objective",
+    "interaction_ref",
+    "content",
+    "scoring_ref",
+    "error_bindings",
+    "lineage"
+  ],
+  "additionalProperties": false,
   "properties": {
-    "item_version_id": {"type":"string"},
-    "item_id": {"type":"string"},
-    "status": {"type":"string","enum":["draft","quarantined","published","retired"]},
+    "item_version_id": {
+      "type": "string",
+      "description": "内容寻址哈希 ID（同内容必同 ID）"
+    },
+    "item_id": {
+      "type": "string",
+      "description": "题目逻辑 ID（跨版本不变）"
+    },
+    "status": {
+      "type": "string",
+      "enum": ["draft", "quarantined", "published", "retired"]
+    },
     "objective": {
-      "type":"object",
-      "required":["kp_set","kp_set_mode","cognitive_level","gradeband","graph_release"],
-      "properties":{
-        "kp_set":{"type":"array","items":{"type":"object","required":["dimension","code"], "properties":{"dimension":{"type":"string"},"code":{"type":"string"}}}},
-        "kp_set_mode":{"type":"string","enum":["single","all_required","compensatory"]},
-        "cognitive_level":{"type":"string"},
-        "gradeband":{"type":"string","enum":["L","M","H"]},
-        "graph_release":{"type":"string"}
+      "type": "object",
+      "description": "知识标注集 + 认知层级 + 学段 + 图谱版本",
+      "required": ["kp_set", "kp_set_mode", "cognitive_level", "gradeband", "graph_release"],
+      "additionalProperties": false,
+      "properties": {
+        "kp_set": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["dimension", "code"],
+            "additionalProperties": false,
+            "properties": {
+              "dimension": {
+                "type": "string",
+                "description": "知识维度（如 'kp'）"
+              },
+              "code": {
+                "type": "string",
+                "description": "知识点编码（如 'math.arithmetic.addition'）"
+              }
+            }
+          }
+        },
+        "kp_set_mode": {
+          "type": "string",
+          "enum": ["single", "all_required", "compensatory"]
+        },
+        "cognitive_level": {
+          "type": "string",
+          "enum": ["remember", "understand", "apply", "analyze", "evaluate", "create"]
+        },
+        "gradeband": {
+          "type": "string",
+          "enum": ["L", "M", "H"]
+        },
+        "graph_release": {
+          "type": "string",
+          "description": "知识图谱版本号（如 'v1'）"
+        },
+        "steps": {
+          "type": "array",
+          "description": "分步过程题的步骤级标注（可选）",
+          "items": {
+            "type": "object",
+            "required": ["step_id", "kp"],
+            "additionalProperties": false,
+            "properties": {
+              "step_id": { "type": "string" },
+              "kp": {
+                "type": "array",
+                "items": { "type": "string" }
+              }
+            }
+          }
+        }
       }
     },
     "interaction_ref": {
-      "type":"object",
-      "required":["interaction_id","interaction_params"],
-      "properties":{
-        "interaction_id":{"type":"string"},
-        "interaction_params":{"type":"object"}
+      "type": "object",
+      "description": "交互类型引用（interaction_id 必须在注册表中存在）",
+      "required": ["interaction_id", "interaction_params"],
+      "additionalProperties": false,
+      "properties": {
+        "interaction_id": {
+          "type": "string",
+          "description": "交互类型 id（见 specs/contracts/registries/interaction.yaml）"
+        },
+        "interaction_params": {
+          "type": "object",
+          "description": "交互参数（结构由交互类型决定，permissive）"
+        }
       }
     },
     "content": {
-      "type":"object",
-      "required":["blocks"],
-      "properties":{
-        "blocks":{"type":"array","items":{"type":"object"}}
+      "type": "object",
+      "description": "题面语义 AST 块（permissive，结构因交互类型而异）",
+      "required": ["blocks"],
+      "additionalProperties": true,
+      "properties": {
+        "blocks": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "description": "单个题面块（如 stem/options/answer/passage 等）"
+          }
+        }
       }
     },
     "scoring_ref": {
-      "type":"object",
-      "required":["scorer_id","scorer_params"],
-      "properties":{
-        "scorer_id":{"type":"string"},
-        "scorer_params":{"type":"object"}
+      "type": "object",
+      "description": "评分器引用（scorer_id 必须在注册表中存在）",
+      "required": ["scorer_id", "scorer_params"],
+      "additionalProperties": false,
+      "properties": {
+        "scorer_id": {
+          "type": "string",
+          "description": "评分器 id（见 specs/contracts/registries/scorer.yaml）"
+        },
+        "scorer_params": {
+          "type": "object",
+          "description": "评分参数（结构由评分器决定，含答案程序/量规/关键点表）"
+        }
       }
     },
-    "error_bindings":{"type":"array","items":{"type":"object"}},
-    "lineage": {
-      "type":"object",
-      "required":["tier","pipeline","signed_by","signed_at"],
-      "properties":{
-        "tier":{"type":"string","enum":["A","B","C","D"]},
-        "pipeline":{"type":"object","required":["id","version"],"properties":{"id":{"type":"string"},"version":{"type":"string"}}},
-        "signed_by":{"type":"string"},
-        "signed_at":{"type":"string"}
+    "error_bindings": {
+      "type": "array",
+      "description": "选项/评分维度 → 错误类型 + 置信规则（顶层为数组）",
+      "items": {
+        "type": "object",
+        "description": "单个错误绑定（permissive，结构由错误类型注册表承载）"
       }
+    },
+    "lineage": {
+      "type": "object",
+      "description": "生产谱系（tier A/B/C/D 四级结构一致）",
+      "required": ["tier", "pipeline", "signed_by", "signed_at"],
+      "additionalProperties": false,
+      "properties": {
+        "tier": {
+          "type": "string",
+          "enum": ["A", "B", "C", "D"]
+        },
+        "pipeline": {
+          "type": "object",
+          "required": ["id", "version"],
+          "additionalProperties": false,
+          "properties": {
+            "id": { "type": "string" },
+            "version": { "type": "string" }
+          }
+        },
+        "template_version_id": {
+          "type": "string",
+          "description": "模板版本 id（tier A/B 时通常必填）"
+        },
+        "params": {
+          "type": "object",
+          "description": "模板参数（tier A/B 时通常必填）"
+        },
+        "seed": {
+          "type": "integer",
+          "description": "随机种子（变异/实例化线使用）"
+        },
+        "corpus_refs": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["corpus_version_id", "digest"],
+            "additionalProperties": false,
+            "properties": {
+              "corpus_version_id": { "type": "string" },
+              "digest": { "type": "string" }
+            }
+          }
+        },
+        "ai_ledger_refs": {
+          "type": "array",
+          "description": "AI 台账引用（tier C/D 且经 AI 起草时非空）",
+          "items": { "type": "string" }
+        },
+        "signed_by": {
+          "type": "string",
+          "description": "签名人（校验签发服务 id 或人工 id）"
+        },
+        "signed_at": {
+          "type": "string",
+          "description": "签名时间（ISO 8601，如 2026-07-28T00:00:00Z）"
+        }
+      }
+    },
+    "rendered_snapshot": {
+      "type": "object",
+      "description": "渲染快照（quarantined 前必填，导入时可省略由服务端生成）"
+    },
+    "gate_certificate_id": {
+      "type": "string",
+      "description": "校验门证书 id（导入阶段通常为空，由 gate 服务签发后回填）"
+    },
+    "published_at": {
+      "type": "string",
+      "description": "发布时间（导入阶段通常为空）"
+    },
+    "retired_at": {
+      "type": "string",
+      "description": "退役时间（导入阶段通常为空）"
     }
   }
 }

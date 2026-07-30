@@ -58,7 +58,7 @@ def _find_edge() -> Optional[str]:
 # PDF 导出器
 # ════════════════════════════════════════════════════════════════════
 
-PdfBackend = Literal["edge", "playwright"]
+PdfBackend = Literal["edge", "playwright", "noop"]
 
 
 class PdfExporter:
@@ -87,8 +87,8 @@ class PdfExporter:
             edge_path: Edge 可执行文件路径（None 则自动探测）
             timeout: 导出超时秒数（Edge headless 启动+渲染）
         """
-        if backend not in ("edge", "playwright"):
-            raise ValueError(f"未知 PDF 后端: {backend!r}（支持 edge|playwright）")
+        if backend not in ("edge", "playwright", "noop"):
+            raise ValueError(f"未知 PDF 后端: {backend!r}（支持 edge|playwright|noop）")
         self.backend = backend
         self.edge_path = edge_path
         self.timeout = timeout
@@ -210,6 +210,13 @@ class PdfExporter:
         """
         output_path = Path(output_path)
         output_path.parent.mkdir(parents=True, exist_ok=True)
+        if self.backend == "noop":
+            # 测试 / 本地无浏览器：落 HTML 占位文件而不是空 PDF 给调用方判断
+            html_placeholder = output_path.with_suffix(".html")
+            html_placeholder.write_text(html, encoding="utf-8")
+            # 写一个 1 字节占位 PDF（caller 可通过后缀存在性判断是否要 skip）
+            output_path.write_bytes(b"%PDF-1.4\n%placeholder\n")
+            return output_path
         if self.backend == "edge":
             return self._export_with_edge(html, output_path)
         return self._export_with_playwright(html, output_path)

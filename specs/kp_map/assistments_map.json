@@ -1,0 +1,132 @@
+{
+  "__default__": "math.generic.unknown_skill",
+
+  "1": "math.arithmetic.addition_within_20",
+  "addition-within-20": "math.arithmetic.addition_within_20",
+  "Addition within 20": "math.arithmetic.addition_within_20",
+  "Addition within 100": "math.arithmetic.addition_within_100",
+
+  "2": "math.arithmetic.subtraction_within_20",
+  "subtraction-within-20": "math.arithmetic.subtraction_within_20",
+  "Subtraction within 20": "math.arithmetic.subtraction_within_20",
+
+  "3": "math.arithmetic.multiplication_basic",
+  "multiplication-basic": "math.arithmetic.multiplication_basic",
+  "Multiplication Basic Facts": "math.arithmetic.multiplication_basic",
+
+  "4": "math.arithmetic.division_basic",
+  "division-basic": "math.arithmetic.division_basic",
+  "Division Basic Facts": "math.arithmetic.division_basic",
+
+  "5": "math.fraction.identification",
+  "fractions-identification": "math.fraction.identification",
+  "Fraction Identification": "math.fraction.identification",
+  "Identifying Fractions": "math.fraction.identification",
+
+  "6": "math.fraction.equivalent",
+  "equivalent-fractions": "math.fraction.equivalent",
+  "Equivalent Fractions": "math.fraction.equivalent",
+
+  "7": "math.fraction.addition",
+  "fraction-addition": "math.fraction.addition",
+  "Adding Fractions": "math.fraction.addition",
+
+  "8": "math.decimal.comparison",
+  "decimal-comparison": "math.decimal.comparison",
+  "Comparing Decimals": "math.decimal.comparison",
+
+  "9": "math.geometry.area_rectangle",
+  "area-rectangle": "math.geometry.area_rectangle",
+  "Area of a Rectangle": "math.geometry.area_rectangle",
+  "Area Rectangles": "math.geometry.area_rectangle",
+
+  "10": "math.geometry.perimeter",
+  "perimeter": "math.geometry.perimeter",
+  "Perimeter": "math.geometry.perimeter",
+
+  "11": "math.algebra.expression_evaluation",
+  "expression-evaluation": "math.algebra.expression_evaluation",
+  "Evaluating Expressions": "math.algebra.expression_evaluation",
+
+  "12": "math.unit.length_convert",
+  "unit-conversion-length": "math.unit.length_convert",
+  "Length Conversion": "math.unit.length_convert",
+
+  "13": "math.unit.mass_convert",
+  "unit-conversion-mass": "math.unit.mass_convert",
+  "Mass Conversion": "math.unit.mass_convert",
+
+  "14": "math.unit.time_convert",
+  "unit-conversion-time": "math.unit.time_convert",
+  "Time Conversion": "math.unit.time_convert",
+
+  "15": "math.statistics.bar_graph",
+  "bar-graphs": "math.statistics.bar_graph",
+  "Bar Graphs": "math.statistics.bar_graph",
+
+  "16": "math.word_problem.one_step",
+  "one-step-word-problems": "math.word_problem.one_step",
+  "One Step Word Problems": "math.word_problem.one_step",
+
+  "17": "math.word_problem.two_step",
+  "two-step-word-problems": "math.word_problem.two_step",
+  "Two Step Word Problems": "math.word_problem.two_step",
+
+  "18": "math.nal.ordering",
+  "number-ordering": "math.nal.ordering",
+  "Ordering Numbers": "math.nal.ordering",
+
+  "19": "math.nal.even_odd",
+  "even-odd": "math.nal.even_odd",
+  "Even and Odd": "math.nal.even_odd",
+
+  "20": "math.nal.place_value",
+  "place-value": "math.nal.place_value",
+  "Place Value": "math.nal.place_value",
+
+  "21": "math.nal.prime_composite",
+  "prime-composite": "math.nal.prime_composite",
+  "Prime and Composite": "math.nal.prime_composite",
+  "Primes vs Composites": "math.nal.prime_composite",
+
+  "22": "math.nal.factors_multiples",
+  "factors-multiples": "math.nal.factors_multiples",
+  "Factors and Multiples": "math.nal.factors_multiples",
+
+  "23": "math.geometry.shape_classify",
+  "classify-shapes": "math.geometry.shape_classify",
+  "Classifying Shapes": "math.geometry.shape_classify",
+  "Shape Identification": "math.geometry.shape_classify",
+
+  "24": "math.geometry.angle_type",
+  "angle-types": "math.geometry.angle_type",
+  "Types of Angles": "math.geometry.angle_type",
+  "Right Angles": "math.geometry.angle_type",
+
+  "25": "math.arithmetic.single_multiplication",
+  "one-digit-multiplication": "math.arithmetic.single_multiplication",
+  "One Digit Multiplication": "math.arithmetic.single_multiplication",
+  "Multiplication One Digit": "math.arithmetic.single_multiplication",
+
+  "26": "math.arithmetic.two_by_one_division",
+  "two-by-one-division": "math.arithmetic.two_by_one_division",
+  "Two by One Digit Division": "math.arithmetic.two_by_one_division",
+
+  "27": "math.unit.money",
+  "money": "math.unit.money",
+  "Counting Money": "math.unit.money",
+  "Money Amounts": "math.unit.money",
+
+  "28": "math.unit.telling_time",
+  "telling-time": "math.unit.telling_time",
+  "Telling Time": "math.unit.telling_time",
+  "Reading Clocks": "math.unit.telling_time",
+
+  "29": "math.fraction.decimal_convert",
+  "fraction-decimal-convert": "math.fraction.decimal_convert",
+  "Fractions to Decimals": "math.fraction.decimal_convert",
+
+  "30": "math.word_problem.multi_step",
+  "multi-step-word-problems": "math.word_problem.multi_step",
+  "Multi-step Word Problems": "math.word_problem.multi_step"
+}

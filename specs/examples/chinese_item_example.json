@@ -1,0 +1,39 @@
+{
+  "item_version_id": "chinese-example-0001",
+  "item_id": "chinese-item-0001",
+  "status": "draft",
+  "objective": {
+    "kp_set": [{"dimension": "kp", "code": "chinese.vocab.pinyin_to_word"}],
+    "kp_set_mode": "single",
+    "cognitive_level": "remember",
+    "gradeband": "L",
+    "graph_release": "v1"
+  },
+  "interaction_ref": {
+    "interaction_id": "text_blank",
+    "interaction_params": {"blank_count": 1}
+  },
+  "content": {
+    "blocks": [
+      {"type": "passage", "text": "看拼音写词语。"},
+      {"type": "pinyin", "text": "píng guǒ"},
+      {"type": "stem", "text": "请根据拼音写出对应的词语：____"}
+    ]
+  },
+  "scoring_ref": {
+    "scorer_id": "exact_match",
+    "scorer_params": {
+      "answer": {"blanks": {"blank_1": "苹果"}},
+      "normalization": {"trim": true, "fullwidth_to_halfwidth": false}
+    }
+  },
+  "error_bindings": [
+    {"blank_id": "blank_1", "error_type_id": "chinese.pinyin.tone_mismatch", "confidence": 0.7, "rule_version": "v1"}
+  ],
+  "lineage": {
+    "tier": "A",
+    "pipeline": {"id": "manual_import", "version": "v0"},
+    "signed_by": "importer",
+    "signed_at": "2026-07-28T00:00:00Z"
+  }
+}

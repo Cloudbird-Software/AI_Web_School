@@ -50,7 +50,12 @@ def _get(obj: Any, key: str, default: Any = None) -> Any:
 
 
 def _convert_text_block(raw: Mapping[str, Any]) -> TextBlock:
-    return TextBlock(value=str(raw["value"]))
+    """text / stem / passage 块兼容：value 或 text 任一字段."""
+    if "value" in raw:
+        return TextBlock(value=str(raw["value"]))
+    if "text" in raw:
+        return TextBlock(value=str(raw["text"]))
+    raise ValueError(f"text/stem/passage 块缺 value 或 text 字段: {raw!r}")
 
 
 def _convert_fill_block(
@@ -58,8 +63,9 @@ def _convert_fill_block(
 ) -> FillBlock:
     """填空块转换：kind 优先取 block 声明，否则由 interaction_id 推导."""
     kind = raw.get("kind") or _INTERACTION_FILL_KIND.get(interaction_id, "text")
+    blank_id = str(raw.get("blank_id") or raw.get("id") or "blank_1")
     return FillBlock(
-        blank_id=str(raw["blank_id"]),
+        blank_id=blank_id,
         kind=kind,
         unit=raw.get("unit"),
         width=int(raw.get("width", 0)),
@@ -69,13 +75,26 @@ def _convert_fill_block(
 def _convert_choice_block(
     raw: Mapping[str, Any], interaction_id: str
 ) -> ChoiceBlock:
-    """选择题块转换：mode 优先取 block 声明，否则由 interaction_id 推导."""
+    """选择题块转换：mode 优先取 block 声明，否则由 interaction_id 推导.
+
+    兼容两种选项结构：
+    - RenderIR 原生：raw["options"] = [{id, label}, ...]
+    - W0 schema 级：raw 直接 id/label 表示单选项；或 raw["choices"] = [{id, label}]
+    """
     mode = raw.get("mode") or _INTERACTION_CHOICE_MODE.get(
         interaction_id, "single"
     )
+    options_raw = raw.get("options")
+    if options_raw is None and isinstance(raw.get("choices"), (list, tuple)):
+        options_raw = list(raw["choices"])
+    if options_raw is None and "id" in raw and "label" in raw:
+        # 单选项展开
+        options_raw = [{"id": raw.get("id"), "label": raw.get("label")}]
+    if options_raw is None:
+        options_raw = []
     options = [
         OptionItem(id=str(o["id"]), label=str(o["label"]))
-        for o in raw.get("options", [])
+        for o in options_raw
     ]
     return ChoiceBlock(mode=mode, options=options)
 
@@ -120,8 +139,44 @@ def _convert_group_block(
 def _convert_block(
     raw: Mapping[str, Any], interaction_id: str
 ) -> Block:
-    """单 block dict → 强类型 Block（按 type 分发）."""
-    block_type = raw.get("type")
+    """单 block dict → 强类型 Block（按 type 分发）.
+
+    兼容两层 type：
+    - 下层渲染类型：text / fill / choice / math_svg / group（RenderIR 原生）
+    - W0 schema 级语义块类型：stem / passage / options / blank
+      本函数在内存中转为等价的下层类型（不改写 caller 数据）。
+    """
+    raw_type = raw.get("type")
+    # ── 兼容：schema 级语义块 → RenderIR 原生块 ────────────────────
+    if raw_type in ("stem", "passage"):
+        # stem / passage 等价于 text block（附加 source_id 若有）
+        r: dict[str, Any] = dict(raw)
+        r["type"] = "text"
+        if raw_type == "passage":
+            # passage 增加一级「阅读材料」标记，前端/样式可按 material 区分
+            if "metadata" not in r or not isinstance(r["metadata"], dict):
+                r["metadata"] = {}
+            r["metadata"].setdefault("block_kind", raw_type)
+        return _convert_text_block(r)
+    if raw_type == "options":
+        # options 块 → 单个 ChoiceBlock（所有 options 作为一个 choices 数组）
+        choices = raw.get("choices") or []
+        if not isinstance(choices, (list, tuple)) or not choices:
+            raise ValueError(f"options.choices 必须是非空 list: {raw!r}")
+        normalized: dict[str, Any] = {
+            "type": "choice",
+            "options": list(choices),  # [{id,label}, ...] → 透传给 _convert_choice_block
+        }
+        for k in ("mode",):
+            if k in raw:
+                normalized[k] = raw[k]  # type: ignore[assignment]
+        return _convert_choice_block(normalized, interaction_id)
+    if raw_type == "blank":
+        r = dict(raw)
+        r["type"] = "fill"
+        return _convert_fill_block(r, interaction_id)
+    # ── 原生 RenderIR 类型 ───────────────────────────────────────────
+    block_type = raw_type
     if block_type == "text":
         return _convert_text_block(raw)
     if block_type == "fill":
@@ -132,6 +187,29 @@ def _convert_block(
         return _convert_math_svg_block(raw)
     if block_type == "group":
         return _convert_group_block(raw, interaction_id)
+    # ── 学科语义块降级：有 text 则当 text（附加 metadata.kind 保留语义）──
+    # 宪法 A5：核心域零特判学科包 → 未知 block_type 不做语义识别，
+    # 只在已知的学科扩展 type 白名单（可作为文本降级展示） + 有 text 字段时才降级，
+    # 其他陌生 type（如 "bogus"）继续 fail fast，避免静默吞错。
+    DEGRADED_WHITELIST = {
+        # 语文学科（拼音/注音/部首/田字格 等）
+        "pinyin", "zhuyin", "radical", "tianzi_ge", "stroke_order",
+        # 英语学科（词汇/音标/词形变换）
+        "ipa", "phonetic", "word_form",
+        # 数学学科（表达式/图形/数轴/表格）
+        "math_expr", "figure_zh", "number_line", "tabular",
+        # 通用扩展
+        "rubric", "hint", "solution", "explanation", "note", "figure",
+        "audio", "video", "image", "illustration",
+    }
+    if raw_type in DEGRADED_WHITELIST and isinstance(raw.get("text"), str):
+        r = dict(raw)
+        r["type"] = "text"
+        if "metadata" not in r or not isinstance(r["metadata"], dict):
+            r["metadata"] = {}
+        r["metadata"].setdefault("block_kind", str(raw_type))
+        return _convert_text_block(r)
+    # value 字段只有在原生 type（text/fill/...）时生效——陌生 type 带 value 不降级
     raise ValueError(f"未知 block type: {block_type!r}（block={raw!r}）")
 
 

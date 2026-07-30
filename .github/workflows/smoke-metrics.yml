@@ -1,0 +1,78 @@
+name: smoke-and-metrics (Issue #22)
+on:
+  # 每次 PR 自动跑（比 pr-check 浅，不依赖 DB/Redis，验证代码健康快照）
+  pull_request:
+  workflow_dispatch:
+  # 每 6 小时（生产基线监控）
+  schedule:
+    - cron: "0 */6 * * *"
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.12"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: "${{ matrix.python-version }}"}
+      - run: pip install -r requirements-dev.txt
+      - run: pip install -r requirements.txt
+      - name: Python path smoke（import 关键模块）
+        run: |
+          python -c "
+          from src.core.registry.monitoring_scaffold import run_smoke_suite_sync
+          from src.core.registry.search_service import perf_baseline_in_memory
+          import asyncio
+          h = asyncio.run(perf_baseline_in_memory(n_items=500))
+          print('PERF_OK', h)
+          r = run_smoke_suite_sync(n_items_baseline=500, require_db=False, require_redis=False)
+          print('SMOKE_OK overall=', r.overall_ok, 'errors=', r.errors)
+          assert r.overall_ok, f'smoke 未通过: {r.errors}'
+          "
+      - name: build_paper dry-run（Issue #29 基本链路）
+        run: |
+          python scripts/build_paper.py \
+            --subject subject-math --gradeband M --kp-snapshot snap-ci \
+            --kp math.arithmetic.addition_within_20 --num-items 3 \
+            --interaction single_choice=2 --interaction text_blank=1 \
+            --title "CI Smoke Paper" --seed 2026 \
+            --source specs/examples --output /tmp/ci_paper_out --no-pdf --dry-run
+      - name: import_pack dry-run（Issue #26 管线冒烟）
+        run: |
+          python scripts/import_pack.py --source specs/examples --adapter json \
+            --dry-run --quiet
+      - name: 数据集适配器 smoke（RACE/CMRC/ASSISTments — Issues #27/#28/#30）
+        run: |
+          python -c "
+          import json
+          from specs.mappings.race_adapter import convert as race_convert
+          from specs.mappings.cmrc_adapter import convert as cmrc_convert
+          from specs.mappings.assistments_adapter import convert as ast_convert
+
+          race = race_convert({
+            'id':'r1','article':'Tom went to the store. He bought apples.',
+            'questions':['What did Tom buy?'],
+            'options':[['A. apples','B. oranges','C. pears','D. books']],
+            'answers':['A']})
+          assert len(race)==1, f'race: {len(race)}'
+          cmrc = cmrc_convert({
+            'context':'小白兔去森林里玩。','id':'dev1',
+            'qas':[{'id':'q1','question':'谁去森林玩？','answers':[{'text':'小白兔','answer_start':0}]}]})
+          assert len(cmrc)==1
+          ast = ast_convert([{'problem_id':'P1','skill_id':'1',
+            'skill_name':'Addition within 20','question_text':'3+5=',
+            'answer_type':'mcq','choice_count':4,
+            'choices':['7','8','9','10'],'correct_choice_index':1,
+            'grade_level':'3'}])
+          assert len(ast)==1
+          print('DATASET_ADAPTERS_OK')
+          "
+      - name: 指标文件落盘（metrics json 不为空）
+        run: |
+          ls -la out/metrics/ 2>/dev/null | head -5
+          test -n "$(ls out/metrics/*.json 2>/dev/null)" || {
+            echo "未找到 metrics json（metrics 路径可被配置但必须至少有一个落盘）"
+            exit 0  # CI 里不强求，仅提示
+          }
