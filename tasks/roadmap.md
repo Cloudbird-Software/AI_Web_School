@@ -57,3 +57,13 @@ W7 ──→ W8-S4 单位经济性（需真实成本与转化数据）
 - `tasks/w<N>/ISSUES.md` 是**派工台账**（含验证方法、依赖、并行批次、owner_module 互斥关系），可直接作为 GitHub Issue 正文。
 - `tasks/w<N>/T-W<N>-XXX.md` 是**执行契约**（agent 实际读取的文件，含 spec 锚点、交付物、验收标准、非目标）。
 - W7/W8 当前只有 ISSUES 台账；按 P5「波内冻结」原则，在波次启动时才物化为任务卡，避免过早冻结不成熟的设计。
+- 仓库原有的 10 条 GitHub Issue（#20–#30）的逐条裁决见 `tasks/LEGACY-ISSUES.md`：其中 #24/#26/#28 的有效诉求已重写为 T-W6-012 / T-W6-008 / T-W6-009，其余关闭。
+
+## 七、各波交付物索引
+
+| 波次 | BRIEF | ISSUES 台账 | 任务卡 |
+|---|---|---|---|
+| W5 | `tasks/w5/BRIEF.md` | `tasks/w5/ISSUES.md`（32 条） | `tasks/w5/T-W5-001..029` + `T01..T03` |
+| W6 | `tasks/w6/BRIEF.md` | `tasks/w6/ISSUES.md`（20 条） | `tasks/w6/T-W6-001..018` + `T01..T02` |
+| W7 | `tasks/w7/BRIEF.md` | `tasks/w7/ISSUES.md`（18 条） | 待 W6 尾声物化 |
+| W8 | `tasks/w8/BRIEF.md` | `tasks/w8/ISSUES.md`（14 条，候选池） | 待 W7 尾声物化 |
