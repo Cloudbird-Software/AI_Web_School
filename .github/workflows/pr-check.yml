@@ -29,7 +29,7 @@ jobs:
 
       - name: 核心域禁止 import 学科包（X6）
         run: |
-          ! grep -rnE '(import|from)\s+(packs|subject_)' src/core/ 2>/dev/null \
+          ! grep -rnE '(import|from)\s+(packs|subject_|src\.packs|src\.subject)' src/core/ 2>/dev/null \
             || { echo "❌ 核心域引用了学科包"; exit 1; }
 
       - name: 规则文件同步一致性

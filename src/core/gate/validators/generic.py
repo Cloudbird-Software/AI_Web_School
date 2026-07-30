@@ -330,9 +330,9 @@ class LicenseValidator(Validator):
 
 _PUBLISHED_HASH_QUERY: dict[str, str] = {
     # artifact_type → 查询已 published 版本是否已存在该内容哈希
-    "item": "SELECT 1 FROM item_version WHERE item_version_id = :h AND status = 'published' LIMIT 1",
-    "material": "SELECT 1 FROM material_version WHERE material_version_id = :h AND status = 'published' LIMIT 1",
-    "corpus": "SELECT 1 FROM corpus_version WHERE version_id = :h AND status = 'published' LIMIT 1",
+    "item": "SELECT 1 FROM item_version WHERE digest = :h AND status = 'published' LIMIT 1",
+    "material": "SELECT 1 FROM material_version WHERE digest = :h AND status = 'published' LIMIT 1",
+    "corpus": "SELECT 1 FROM corpus_version WHERE digest = :h AND status = 'published' LIMIT 1",
 }
 
 

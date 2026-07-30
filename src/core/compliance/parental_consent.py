@@ -111,15 +111,22 @@ _LATEST_VERSION_SQL = text(
     """
 )
 
-# 写入新事件
-_INSERT_EVENT_SQL = text(
+# 写入新事件（原子版本：INSERT ... SELECT COALESCE(MAX,0)+1）
+# 替代旧的 SELECT MAX + INSERT 两步模式，消除版本号冲突竞态（BUG-PC1）。
+# 迁移 0023 已对 (student_alias_id, scope->>'purpose', version) 加唯一索引兜底：
+# 若并发 INSERT 仍冲突（极端时序），调用方捕获 IntegrityError 后重试。
+_INSERT_EVENT_ATOMIC_SQL = text(
     """
     INSERT INTO parental_consent
         (consent_id, student_alias_id, event_type, scope,
          valid_from, valid_until, version)
-    VALUES
-        (:cid, :sid, :etype, CAST(:scope AS jsonb),
-         :vfrom, :vuntil, :ver)
+    SELECT
+        :cid, :sid, :etype, CAST(:scope AS jsonb),
+        :vfrom, :vuntil,
+        COALESCE((SELECT MAX(version)
+                    FROM parental_consent
+                   WHERE student_alias_id = :sid
+                     AND scope ->> 'purpose' = :purpose), 0) + 1
     """
 )
 
@@ -137,14 +144,34 @@ _LATEST_EVENT_SQL = text(
 )
 
 
-async def _next_version(
-    db: AsyncSession, student_alias_id: uuid.UUID, purpose: str
-) -> int:
-    """取下一个版本号（当前最大版本 + 1；无记录则 1）."""
-    current = (await db.execute(
-        _LATEST_VERSION_SQL, {"sid": student_alias_id, "purpose": purpose}
-    )).scalar() or 0
-    return current + 1
+async def _insert_event_atomic(
+    db: AsyncSession,
+    *,
+    consent_id: uuid.UUID,
+    student_alias_id: uuid.UUID,
+    event_type: str,
+    scope_json: str,
+    purpose: str,
+    valid_from: Optional[datetime],
+    valid_until: Optional[datetime],
+) -> None:
+    """原子写入新授权事件：单条 SQL 计算 version 并 INSERT（BUG-PC1 修复）.
+
+    唯一冲突（并发同一学生同一 purpose 写入）时抛 IntegrityError，
+    由调用方（或上层事务）重试。
+    """
+    await db.execute(
+        _INSERT_EVENT_ATOMIC_SQL,
+        {
+            "cid": consent_id,
+            "sid": student_alias_id,
+            "etype": event_type,
+            "scope": scope_json,
+            "purpose": purpose,
+            "vfrom": valid_from,
+            "vuntil": valid_until,
+        },
+    )
 
 
 # ────────────────────────────────────────────────────────────────────
@@ -185,20 +212,19 @@ async def record_consent(
             f"valid_until({valid_until}) 须晚于 valid_from({vfrom})"
         )
 
-    version = await _next_version(db, student_alias_id, purpose)
     consent_id = uuid.uuid4()
     import json
-    await db.execute(
-        _INSERT_EVENT_SQL,
-        {
-            "cid": consent_id,
-            "sid": student_alias_id,
-            "etype": "grant",
-            "scope": json.dumps(norm_scope, ensure_ascii=False),
-            "vfrom": vfrom,
-            "vuntil": valid_until,
-            "ver": version,
-        },
+    # BUG-PC1 修复：原子 INSERT（版本号由子查询在单条 SQL 内计算）
+    # 唯一冲突（并发写入）时抛 IntegrityError → 调用方重试
+    await _insert_event_atomic(
+        db,
+        consent_id=consent_id,
+        student_alias_id=student_alias_id,
+        event_type="grant",
+        scope_json=json.dumps(norm_scope, ensure_ascii=False),
+        purpose=purpose,
+        valid_from=vfrom,
+        valid_until=valid_until,
     )
     # commit 由调用方控制
     return consent_id
@@ -241,20 +267,18 @@ async def revoke_consent(
             f"（当前状态：{status.state}）"
         )
 
-    version = await _next_version(db, student_alias_id, purpose)
     consent_id = uuid.uuid4()
     import json
-    await db.execute(
-        _INSERT_EVENT_SQL,
-        {
-            "cid": consent_id,
-            "sid": student_alias_id,
-            "etype": "revoke",
-            "scope": json.dumps(norm_scope, ensure_ascii=False),
-            "vfrom": None,
-            "vuntil": None,
-            "ver": version,
-        },
+    # BUG-PC1 修复：原子 INSERT（版本号由子查询在单条 SQL 内计算）
+    await _insert_event_atomic(
+        db,
+        consent_id=consent_id,
+        student_alias_id=student_alias_id,
+        event_type="revoke",
+        scope_json=json.dumps(norm_scope, ensure_ascii=False),
+        purpose=purpose,
+        valid_from=None,
+        valid_until=None,
     )
     return consent_id
 

@@ -152,20 +152,34 @@ def test_no_subject_pack_imports_in_ledger() -> None:
 # ── 剥离结果可逆性：剥离后文本不再含原始 PII ───────────────────────
 
 @pytest.mark.parametrize(
-    "pii_sample",
+    "pii_sample,expected_placeholder",
     [
-        "学生赵六",
-        "电话13900001111",
-        "身份证110101199003071234",
-        "邮箱zhao6@test.org",
-        "住址广州市天河区体育西路",
+        ("学生赵六", "学生A"),
+        ("电话13900001111", "[PHONE]"),
+        ("身份证110101199003071234", "[ID_CARD]"),
+        ("邮箱zhao6@test.org", "[EMAIL]"),
+        ("住址广州市天河区体育西路", "[ADDRESS]"),
     ],
     ids=["name", "phone", "id_card", "email", "address"],
 )
-def test_stripped_text_contains_no_original_pii(pii_sample: str) -> None:
-    """剥离后文本不得残留任何原始 PII 字面量（D7 闭环验证）."""
+def test_stripped_text_contains_no_original_pii(
+    pii_sample: str, expected_placeholder: str
+) -> None:
+    """P1-8 修复：剥离后文本不得残留任何原始 PII 字面量，且正确替换为占位符.
+
+    原弱断言 OR 链（只要一个条件为真即通过）→ 强断言 AND 链：
+    1. 原文 pii_sample 不得出现在 sanitized
+    2. 对应占位符必须出现在 sanitized
+    3. stripped 非空（识别到 PII 类型）
+    """
     sanitized, stripped = pii_strip(pii_sample)
-    # 原始 PII 字面量不应出现在剥离结果中
-    # 提取原始 PII 关键部分（姓名取汉字、号码取数字串等）
-    assert pii_sample not in sanitized or "[PHONE]" in sanitized or "[ID_CARD]" in sanitized or "[EMAIL]" in sanitized or "[ADDRESS]" in sanitized or "学生" in sanitized
+    # 1. 原始 PII 字面量不得出现在剥离结果中（AND：必须满足）
+    assert pii_sample not in sanitized, (
+        f"原始 PII 仍残留于剥离结果中：{pii_sample!r} → {sanitized!r}"
+    )
+    # 2. 对应占位符必须出现（AND：必须满足）
+    assert expected_placeholder in sanitized, (
+        f"期望占位符 {expected_placeholder!r} 未出现：{sanitized!r}"
+    )
+    # 3. 识别到 PII 类型（AND：必须满足）
     assert stripped, f"应识别出 PII 类型：{pii_sample}"

@@ -6,6 +6,8 @@
   2. slot 类型不在 ALLOWED_SLOT_TYPES
   3. variation_axis 引用不存在的 slot
   4. difficulty_relevant 不是 boolean
+  5. 表达式语法校验（ast.parse mode='eval' 捕获 SyntaxError）
+  6. 表达式槽引用校验（AST Name 节点与 spec.slots 比对）
 
 并叠加 Pydantic 全量结构校验（extra='forbid'、字段类型、必填项），
 把 ValidationError 转成结构化错误，使 Linter 单次调用即可收集全部问题。
@@ -14,7 +16,8 @@
 """
 from __future__ import annotations
 
-from typing import Any, Optional
+import ast
+from typing import Any, Iterator, Optional
 
 from pydantic import BaseModel, ValidationError
 
@@ -215,6 +218,131 @@ def _check_difficulty_relevant(spec: Any) -> Optional[list[LintError]]:
     return errs or None
 
 
+# ────────────────────────────────────────────────────────────────────
+# 表达式收集：遍历 spec 找出所有表达式字符串及其 JSON 路径
+# ────────────────────────────────────────────────────────────────────
+
+def _iter_expressions(spec: Any) -> Iterator[tuple[str, str]]:
+    """迭代产出 (json_path, expression_str)，防御性解包（非 dict/list 直接跳过）.
+
+    覆盖：
+      - answer_program.expression
+      - distractor_rules.rules[i].expression（rule_type=deterministic 时必填但无论有无都扫）
+    """
+    if not isinstance(spec, dict):
+        return
+
+    ap = spec.get("answer_program")
+    if isinstance(ap, dict):
+        expr = ap.get("expression")
+        if isinstance(expr, str):
+            yield "answer_program.expression", expr
+
+    dr = spec.get("distractor_rules")
+    if isinstance(dr, dict):
+        rules = dr.get("rules")
+        if isinstance(rules, list):
+            for i, rule in enumerate(rules):
+                if not isinstance(rule, dict):
+                    continue
+                expr = rule.get("expression")
+                if isinstance(expr, str):
+                    yield f"distractor_rules.rules[{i}].expression", expr
+
+
+# ────────────────────────────────────────────────────────────────────
+# 新增 Checker 5：表达式语法校验
+# ────────────────────────────────────────────────────────────────────
+
+def _check_expression_syntax(spec: Any) -> Optional[list[LintError]]:
+    """对每个表达式用 ast.parse(mode='eval') 校验语法，捕获 SyntaxError."""
+    errs: list[LintError] = []
+    for path, expr in _iter_expressions(spec):
+        try:
+            ast.parse(expr, mode="eval")
+        except SyntaxError as e:
+            errs.append(
+                LintError(
+                    code="expression_syntax_error",
+                    path=path,
+                    message=(
+                        f"表达式语法错误：{e.msg} "
+                        f"(line {e.lineno}, col {e.offset}): {expr!r}"
+                    ),
+                )
+            )
+    return errs or None
+
+
+# ────────────────────────────────────────────────────────────────────
+# 新增 Checker 6：表达式槽引用校验
+# ────────────────────────────────────────────────────────────────────
+
+def _collect_value_name_ids(tree: ast.AST) -> list[str]:
+    """从 AST 收集"值引用型 Name 节点（排除 Call.func 函数名与内置常量），去重保序.
+
+    为什么排除 Call.func：函数名可能在运行时通过 register_subject_functions()
+    延迟注册，静态 lint 时未知；仅槽值引用必须在 DSL 声明时存在。
+    使用节点身份（id()）而非 id 字符串匹配：同一名字既可作函数名也可作槽值引用。
+    """
+    builtin_consts = {"True", "False", "None"}
+    call_func_node_ids: set[int] = set()
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Call) and isinstance(node.func, ast.Name):
+            call_func_node_ids.add(id(node.func))
+    seen: set[str] = set()
+    result: list[str] = []
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.Name):
+            continue
+        if node.id in builtin_consts:
+            continue
+        if id(node) in call_func_node_ids:
+            continue
+        if node.id in seen:
+            continue
+        seen.add(node.id)
+        result.append(node.id)
+    return result
+
+
+def _check_slot_references(spec: Any) -> Optional[list[LintError]]:
+    """对每个语法合法的表达式，收集值引用型 Name 节点并与 spec.slots.keys() 比对.
+
+    仅校验槽值引用（Call.func 不校验——运行时注册学科函数）；
+    未定义的槽记录 error。语法不合法的表达式由 Checker 5 报出，
+    本 checker 跳过以免重复噪音。
+    """
+    if not isinstance(spec, dict):
+        return None
+    slots = spec.get("slots")
+    if not isinstance(slots, dict):
+        return None  # slots 结构异常由 Pydantic/其他 checker 兜底
+    slot_names = set(slots.keys())
+
+    errs: list[LintError] = []
+    for path, expr in _iter_expressions(spec):
+        try:
+            tree = ast.parse(expr, mode="eval")
+        except SyntaxError:
+            continue  # 语法错误由 Checker 5 处理
+        refs = _collect_value_name_ids(tree)
+        for ref in refs:
+            if ref in slot_names:
+                continue
+            errs.append(
+                LintError(
+                    code="undefined_slot_reference",
+                    path=path,
+                    message=(
+                        f"表达式引用了未声明的槽 {ref!r}。"
+                        f"已声明槽：{sorted(slot_names)}"
+                    ),
+                )
+            )
+    return errs or None
+
+
 def lint(spec: Any) -> LintResult:
     """对母题 spec 做静态校验，返回结构化结果。
 
@@ -230,12 +358,14 @@ def lint(spec: Any) -> LintResult:
     """
     errors: list[LintError] = []
 
-    # ── 阶段 1：验收 §2 四类必检（手动收集，不短路） ──
+    # ── 阶段 1：验收 §2 必检（手动收集，不短路） ──
     for checker in (
         _check_required_blocks,
         _check_slot_types,
         _check_variation_axis_slots,
         _check_difficulty_relevant,
+        _check_expression_syntax,
+        _check_slot_references,
     ):
         found = checker(spec)
         if found:

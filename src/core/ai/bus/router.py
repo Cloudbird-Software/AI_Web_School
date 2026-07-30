@@ -31,6 +31,11 @@ from src.core.ai.bus.models import (
     TaskLevel,
 )
 
+
+class PIIFilterError(RuntimeError):
+    """D7强制：PII剥离失败禁止外发。"""
+
+
 _POLICY_PATH = Path(__file__).resolve().parent / "policy.yaml"
 
 
@@ -104,8 +109,10 @@ def _sanitize_prompt(prompt: str) -> tuple[str, list[str]]:
             return sanitized, [f"stripped:{','.join(stripped)}"]
         return sanitized, []
     except Exception as exc:  # noqa: BLE001
-        # 剥离失败不阻断调用（降级策略：宁可调少不宁可漏调），但记入 warning
-        return prompt, [f"pii_filter_error:{type(exc).__name__}"]
+        # D7强制：剥离失败必须阻断LLM调用，fail-closed
+        raise ValueError(
+            "PII filter failed, D7 forbids sending unsanitized prompt to LLM"
+        ) from exc
 
 
 def ai_call(
@@ -151,13 +158,35 @@ def ai_call(
     cfg = levels[task_level]
     if not cfg.get("use_ai", False):
         # L0：不用 AI，直接返回空（验收 #1）
-        return AIResult(
+        result = AIResult(
             content="",
             model=f"{task_level}-noop",
             token_in=0,
             token_out=0,
             duration_ms=0.0,
         )
+        # P0-10：L0也记台账
+        try:
+            from src.core.ai.ledger.ledger import record_call as ledger_record_call
+            ctx = context or {}
+            ledger_record_call(
+                task_level=task_level,
+                task_name=ctx.get("task_name", "ai_call"),
+                provider="noop",
+                model=result.model,
+                prompt=prompt,
+                token_in=0,
+                token_out=0,
+                duration_ms=0.0,
+                prompt_version=ctx.get("prompt_version", "v1"),
+                task_stage=ctx.get("task_stage", "other"),
+                fallback=False,
+                artifact_ref=ctx.get("artifact_ref"),
+                raw_meta=ctx,
+            )
+        except Exception:  # noqa: BLE001
+            pass
+        return result
 
     # PII 剥离（D7）：在调用 client 前完成
     pii_warnings: list[str] = []
@@ -205,4 +234,30 @@ def ai_call(
         extra_raw["context"] = context
     if extra_raw:
         result = dc_replace(result, raw={**result.raw, **extra_raw})
+
+    # P0-10：成功返回前记台账
+    try:
+        from src.core.ai.ledger.ledger import record_call as ledger_record_call
+        ctx = context or {}
+        ledger_record_call(
+            task_level=task_level,
+            task_name=ctx.get("task_name", "ai_call"),
+            provider=provider,
+            model=result.model,
+            prompt=sanitized_prompt,
+            token_in=result.token_in,
+            token_out=result.token_out,
+            duration_ms=result.duration_ms,
+            prompt_version=ctx.get("prompt_version", "v1"),
+            task_stage=ctx.get("task_stage", "other"),
+            fallback=result.fallback,
+            artifact_ref=ctx.get("artifact_ref"),
+            raw_meta={
+                **result.raw,
+                **({"pii_warnings": pii_warnings} if pii_warnings else {}),
+            },
+        )
+    except Exception:  # noqa: BLE001
+        pass
+
     return result

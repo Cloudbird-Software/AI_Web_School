@@ -7,15 +7,21 @@ DSL answer_program 与 distractor_rules 使用的纯函数表达式求值：
 宪法 X6：本模块不 import 任何学科包/学段包。
 """
 from src.core.instantiation.expr.evaluator import (
+    BASE_SAFE_FUNCTIONS,
+    REGISTERED_SUBJECT_FUNCTIONS,
     SAFE_FUNCTIONS,
     ExpressionUnsafeError,
     evaluate,
+    register_subject_functions,
     validate,
 )
 
 __all__ = [
+    "BASE_SAFE_FUNCTIONS",
+    "REGISTERED_SUBJECT_FUNCTIONS",
     "SAFE_FUNCTIONS",
     "ExpressionUnsafeError",
     "evaluate",
+    "register_subject_functions",
     "validate",
 ]

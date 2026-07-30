@@ -66,6 +66,7 @@ async def record_event(
     session_id: Optional[UUID] = None,
     audio_play_events: Optional[list[dict[str, Any]]] = None,
     source_ref: Optional[dict[str, Any]] = None,
+    auto_commit: bool = False,
 ) -> UUID:
     """Append-only 写入一条作答事件，返回 event_id.
 
@@ -88,6 +89,7 @@ async def record_event(
             source_ref.batch_id，勿伪造会话）。契约 v1.1 可空。
         audio_play_events: 音频播放行为（音频题必填）。
         source_ref: 来源追溯 {paper_id, placement_token} 或 {assembly_run_id}（A4 入水口）。
+        auto_commit: 是否在写入后立即 commit；默认 False，由上层事务边界统一 commit。
 
     Returns:
         event_id（与入参一致，便于调用方链式引用）。
@@ -96,6 +98,7 @@ async def record_event(
         - 内部仅执行 INSERT；UPDATE/DELETE 由 DB 触发器物理强制拒绝（D1）。
         - 调用方负责保证 event_id 全局唯一；重复 event_id + 相同 created_at 会
           因 PK 冲突失败（这是预期行为，应用层应保证幂等键）。
+        - 默认仅 flush 不 commit，避免上层调用（如 submit_answer）导致双 commit。
     """
     await session.execute(
         text(_INSERT_SQL),
@@ -125,5 +128,7 @@ async def record_event(
             "created_at": created_at,
         },
     )
-    await session.commit()
+    await session.flush()
+    if auto_commit:
+        await session.commit()
     return event_id

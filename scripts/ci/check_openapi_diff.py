@@ -34,8 +34,29 @@ import sys
 from dataclasses import dataclass
 from pathlib import Path
 
-# 冻结契约文件路径（相对项目根）
-FROZEN_CONTRACT = "specs/contracts/api/openapi-v1.yaml"
+# 冻结契约清单文件（每行一个路径；空行和 # 注释跳过）
+FROZEN_MANIFEST = Path("specs/contracts/FROZEN.txt")
+
+
+def _load_frozen_contracts() -> list[str]:
+    """从 FROZEN.txt 加载冻结契约路径列表."""
+    if not FROZEN_MANIFEST.exists():
+        # 向后兼容：若清单文件不存在，回退至旧的硬编码单契约
+        return ["specs/contracts/api/openapi-v1.yaml"]
+    contracts: list[str] = []
+    for raw in FROZEN_MANIFEST.read_text(encoding="utf-8").splitlines():
+        line = raw.strip()
+        if not line or line.startswith("#"):
+            continue
+        contracts.append(line)
+    return contracts
+
+
+# 冻结契约文件路径列表（从 specs/contracts/FROZEN.txt 读取，P1-9 修复）
+FROZEN_CONTRACTS: list[str] = _load_frozen_contracts()
+
+# 向后兼容：保留 FROZEN_CONTRACT 旧名，取清单首项
+FROZEN_CONTRACT: str = FROZEN_CONTRACTS[0] if FROZEN_CONTRACTS else "specs/contracts/api/openapi-v1.yaml"
 
 # 例外标记：commit message 含此标记时放行（人类显式批准）
 EXEMPTION_MARKER = "[FROZEN-APPROVE]"
@@ -97,42 +118,47 @@ def _extract_paths(diff_text: str) -> tuple[list[str], list[str]]:
     return added, removed
 
 
-def _file_exists_in_ref(ref: str) -> bool:
-    """检查 FROZEN_CONTRACT 在指定 ref 是否存在（git cat-file）.
+def _file_exists_in_ref(ref: str, contract_path: str) -> bool:
+    """检查指定冻结契约在指定 ref 是否存在（git cat-file）.
 
     用于区分「初始冻结」（base 无此文件）与「修改既有冻结契约」（base 已有）：
     初始冻结是创建冻结契约本身，不属「未经批准修改既有冻结契约」的拦截范围。
     """
     try:
-        _run_git(["cat-file", "-e", f"{ref}:{FROZEN_CONTRACT}"])
+        _run_git(["cat-file", "-e", f"{ref}:{contract_path}"])
         return True
     except RuntimeError:
         return False
 
 
-def collect_diff(base: str = "origin/main", head: str = "HEAD") -> DiffSummary:
-    """收集 base..head 范围内对 openapi-v1.yaml 的 diff.
+def collect_diff(
+    base: str = "origin/main",
+    head: str = "HEAD",
+    contract_path: Optional[str] = None,
+) -> DiffSummary:
+    """收集 base..head 范围内对某冻结契约文件的 diff（P1-9 多契约支持）.
 
     Args:
         base: 基线 ref（默认 origin/main）。
         head: 当前 ref（默认 HEAD）。
+        contract_path: 契约文件路径（相对项目根）；None 时取 FROZEN_CONTRACT。
 
     Returns:
         DiffSummary：增删行数 + 新增/删除路径列表 + 原始 diff 文本。
 
     Notes:
-        若 ``FROZEN_CONTRACT`` 在 base 不存在（初始冻结场景，如 W4 波次首次
-        引入 openapi-v1.yaml），返回空 DiffSummary——初始冻结是创建冻结契约
-        本身，本守卫只拦截「对既有冻结契约的未经批准修改」，不拦截首次创建。
+        若契约文件在 base 不存在（初始冻结场景），返回空 DiffSummary——
+        初始冻结是创建冻结契约本身，本守卫只拦截「对既有冻结契约的未经批准修改」。
     """
+    cp = contract_path or FROZEN_CONTRACT
     # 初始冻结：base 无此文件 → 不属「修改既有冻结契约」，放行
-    if not _file_exists_in_ref(base):
+    if not _file_exists_in_ref(base, cp):
         return DiffSummary(0, 0, [], [], "")
 
     # git diff <base> <head> -- <path>
     try:
         diff_text = _run_git(
-            ["diff", f"{base}..{head}", "--", FROZEN_CONTRACT]
+            ["diff", f"{base}..{head}", "--", cp]
         )
     except RuntimeError as e:
         # 基线不存在（如本地无 origin/main）→ 视为无 diff（不阻断）
@@ -153,6 +179,23 @@ def collect_diff(base: str = "origin/main", head: str = "HEAD") -> DiffSummary:
     )
 
 
+def collect_all_diffs(
+    base: str = "origin/main",
+    head: str = "HEAD",
+) -> dict[str, DiffSummary]:
+    """P1-9：收集 FROZEN_CONTRACTS 清单中所有契约的 diff.
+
+    Returns:
+        dict: {contract_path: DiffSummary}，仅含「有改动」的契约。
+    """
+    changed: dict[str, DiffSummary] = {}
+    for cp in FROZEN_CONTRACTS:
+        s = collect_diff(base=base, head=head, contract_path=cp)
+        if s.has_changes:
+            changed[cp] = s
+    return changed
+
+
 def is_exempt(head: str = "HEAD") -> bool:
     """检查当前 HEAD 的 commit message 是否含例外标记.
 
@@ -167,17 +210,17 @@ def is_exempt(head: str = "HEAD") -> bool:
 
 
 def has_frozen_changes(base: str = "origin/main", head: str = "HEAD") -> bool:
-    """便捷接口：是否有未豁免的冻结契约改动."""
-    summary = collect_diff(base=base, head=head)
-    if not summary.has_changes:
+    """便捷接口：是否有未豁免的冻结契约改动（P1-9：遍历清单全部契约）."""
+    changed = collect_all_diffs(base=base, head=head)
+    if not changed:
         return False
     return not is_exempt(head=head)
 
 
 def main(argv: list[str] | None = None) -> int:
-    """CLI 入口：检测冻结契约 diff，有改动且未豁免则退出码非零."""
+    """CLI 入口：检测全部冻结契约 diff，任一被改且未豁免即 exit(1)（P1-9）."""
     parser = argparse.ArgumentParser(
-        description="检测 openapi-v1.yaml 冻结契约是否被修改（T-W4-042）"
+        description="检测 specs/contracts/FROZEN.txt 清单中全部冻结契约是否被修改（T-W4-042 / P1-9）"
     )
     parser.add_argument(
         "--base", default="origin/main",
@@ -193,38 +236,44 @@ def main(argv: list[str] | None = None) -> int:
     )
     args = parser.parse_args(argv)
 
-    summary = collect_diff(base=args.base, head=args.head)
+    changed = collect_all_diffs(base=args.base, head=args.head)
 
-    if not summary.has_changes:
-        print(f"✅ {FROZEN_CONTRACT} 未被修改（相对 {args.base}）")
+    if not changed:
+        for cp in FROZEN_CONTRACTS:
+            print(f"✅ {cp} 未被修改（相对 {args.base}）")
         return 0
 
     if is_exempt(head=args.head):
-        print(
-            f"✅ {FROZEN_CONTRACT} 有修改但含 {EXEMPTION_MARKER} 例外标记"
-            f"（人类批准放行）"
-        )
-        if not args.quiet and summary.raw_diff:
-            print("\n--- diff 摘要 ---")
-            print(summary.raw_diff)
+        for cp, summary in changed.items():
+            print(
+                f"✅ {cp} 有修改（+{summary.added_lines}/-{summary.removed_lines}）"
+                f"但含 {EXEMPTION_MARKER} 例外标记（人类批准放行）"
+            )
+            if not args.quiet and summary.raw_diff:
+                print(f"\n--- {cp} diff 摘要 ---")
+                print(summary.raw_diff)
         return 0
 
-    # 未豁免的修改 → 阻断
-    print(
-        f"❌ {FROZEN_CONTRACT} 被修改（+{summary.added_lines}/-{summary.removed_lines} 行）"
-        f"，未含 {EXEMPTION_MARKER} 例外标记"
-    )
-    if summary.added_paths:
-        print(f"  新增路径: {summary.added_paths}")
-    if summary.removed_paths:
-        print(f"  删除路径: {summary.removed_paths}")
-    print(
-        f"\n冻结契约修改需人类批准：在合并 commit message 中加入 {EXEMPTION_MARKER} 标记。"
-    )
-    if not args.quiet and summary.raw_diff:
-        print("\n--- 完整 diff ---")
-        print(summary.raw_diff)
-    return 1
+    # 未豁免的修改 → 阻断（任一契约被改即失败）
+    exit_code = 0
+    for cp, summary in changed.items():
+        exit_code = 1
+        print(
+            f"❌ {cp} 被修改（+{summary.added_lines}/-{summary.removed_lines} 行）"
+            f"，未含 {EXEMPTION_MARKER} 例外标记"
+        )
+        if summary.added_paths:
+            print(f"  新增路径: {summary.added_paths}")
+        if summary.removed_paths:
+            print(f"  删除路径: {summary.removed_paths}")
+        if not args.quiet and summary.raw_diff:
+            print(f"\n--- {cp} 完整 diff ---")
+            print(summary.raw_diff)
+    if exit_code != 0:
+        print(
+            f"\n冻结契约修改需人类批准：在合并 commit message 中加入 {EXEMPTION_MARKER} 标记。"
+        )
+    return exit_code
 
 
 if __name__ == "__main__":

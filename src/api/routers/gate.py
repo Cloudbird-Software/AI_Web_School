@@ -16,7 +16,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from src.api.deps import get_async_session
+from src.api.deps import get_async_session, require_auth
 from src.core.gate.models import GateCertificate, GateRun, GateVerdict
 
 router = APIRouter(prefix="", tags=["gate"])
@@ -90,6 +90,7 @@ class GateCertificateRead(BaseModel):
 async def get_gate_certificate(
     cert_id: str,
     session: AsyncSession = Depends(get_async_session),
+    _auth: None = Depends(require_auth),
 ) -> GateCertificateRead:
     """返回门证书 + 关联的所有 gate_run（含 gate_verdict 明细）."""
     stmt = (

@@ -51,6 +51,105 @@ from src.core.session.models import (
 )
 
 
+class ConsentRequired(Exception):
+    """家长授权缺失或已失效."""
+
+
+def _build_stub_exposure_items(
+    item_version_ids: list[str],
+    template_version_ids: Optional[dict[str, str]] = None,
+) -> list[Any]:
+    """TODO: 替换为 src.core.assembly.candidates.CandidateItem 正式构造.
+    当前 stub 仅提供 item_version_id / template_version_id 属性，
+    配合下面 _record_paper_exposures_stub / _record_student_exposures_stub
+    使用，保证代码可运行；待 exposure 模块接口稳定后切换至正式实现。
+    """
+    template_version_ids = template_version_ids or {}
+
+    class _StubCandidateItem:
+        def __init__(self, ivid: str, tvid: Optional[str]) -> None:
+            self.item_version_id = ivid
+            self.template_version_id = tvid
+
+    return [
+        _StubCandidateItem(ivid, template_version_ids.get(ivid))
+        for ivid in item_version_ids
+    ]
+
+
+async def _record_paper_exposures_stub(
+    session: AsyncSession,
+    *,
+    channel: str,
+    subject_pack_id: str,
+    gradeband: str,
+    week_label: str,
+    item_version_ids: list[str],
+    textbook_version: Optional[str] = None,
+    paper_id: Optional[str] = None,
+) -> int:
+    """TODO: 切换至 src.core.assembly.exposure.record_paper_exposures.
+    当前为本地 stub，直接 INSERT 行至 paper_exposure（与正式接口同 schema），
+    避免依赖 assembly 层导致循环 import。
+    """
+    try:
+        from src.core.models.exposure import PaperExposure
+    except Exception:
+        return 0
+    import ulid as _ulid
+    rows = [
+        PaperExposure(
+            exposure_id=str(_ulid.new()),
+            channel=channel,
+            subject_pack_id=subject_pack_id,
+            textbook_version=textbook_version,
+            gradeband=gradeband,
+            week_label=week_label,
+            item_version_id=ivid,
+            template_version_id=None,
+            paper_id=paper_id,
+        )
+        for ivid in item_version_ids
+    ]
+    session.add_all(rows)
+    await session.flush()
+    return len(rows)
+
+
+async def _record_student_exposures_stub(
+    session: AsyncSession,
+    *,
+    student_alias_id: str,
+    purpose: str,
+    item_version_ids: list[str],
+    paper_id: Optional[str] = None,
+    session_id: Optional[str] = None,
+) -> int:
+    """TODO: 切换至 src.core.assembly.exposure.record_student_exposures.
+    当前为本地 stub，直接 INSERT 行至 student_exposure。
+    """
+    try:
+        from src.core.models.exposure import StudentExposure
+    except Exception:
+        return 0
+    import ulid as _ulid
+    rows = [
+        StudentExposure(
+            exposure_id=str(_ulid.new()),
+            student_alias_id=student_alias_id,
+            item_version_id=ivid,
+            template_version_id=None,
+            paper_id=paper_id,
+            session_id=session_id,
+            purpose=purpose,
+        )
+        for ivid in item_version_ids
+    ]
+    session.add_all(rows)
+    await session.flush()
+    return len(rows)
+
+
 # ────────────────────────────────────────────────────────────────────
 # 常量
 # ────────────────────────────────────────────────────────────────────
@@ -126,10 +225,30 @@ def _utcnow() -> datetime:
     return datetime.now(timezone.utc)
 
 
-async def _load_session(db: AsyncSession, session_id: UUID | str) -> PracticeSession:
-    """按 id 取会话（str 自动转 UUID）；不存在抛 SessionNotFoundError."""
+async def _load_session(
+    db: AsyncSession,
+    session_id: UUID | str,
+    *,
+    for_update: bool = False,
+) -> PracticeSession:
+    """按 id 取会话（str 自动转 UUID）；不存在抛 SessionNotFoundError.
+
+    for_update=True 时使用 SELECT ... FOR UPDATE 获取行级锁，
+    防止并发 submit_answer 同时读到相同的 current_index（P1-5 lost update）.
+    """
     sid = UUID(str(session_id)) if not isinstance(session_id, UUID) else session_id
-    session = await db.get(PracticeSession, sid)
+    if not for_update:
+        session = await db.get(PracticeSession, sid)
+    else:
+        # AsyncSession 没有直接的 get(with_for_update)，用 execute + select
+        from sqlalchemy import select
+        stmt = (
+            select(PracticeSession)
+            .where(PracticeSession.session_id == sid)
+            .with_for_update()
+        )
+        result = await db.execute(stmt)
+        session = result.scalar_one_or_none()
     if session is None:
         raise SessionNotFoundError(f"会话 {sid} 不存在")
     return session
@@ -198,6 +317,28 @@ async def start_session(
         ValueError: 参数互斥/缺失、scene 非法、paper 不存在、题目序列为空。
         UnpublishedItemError: 题目不存在或未发布（门纪律）。
     """
+    # ── P0-4: 家长授权前置校验（宪法 D7） ──────────────────────────────
+    try:
+        from src.core.compliance.parental_consent import check_consent
+        from fastapi import HTTPException as _HTTPException
+        consent_ok = await check_consent(
+            db,
+            student_alias_id=student_alias_id,
+            purpose=scene,
+            now=now,
+        )
+        if not consent_ok.is_valid:
+            raise _HTTPException(
+                status_code=403,
+                detail="parental consent not granted",
+            )
+    except ConsentRequired:
+        raise
+    except ImportError:
+        raise ConsentRequired(
+            "家长授权校验模块未加载，需先完成 src.core.compliance 初始化"
+        )
+
     if (paper_id is None) == (item_version_ids is None):
         raise ValueError("paper_id 与 item_version_ids 必须且只能提供一个")
     if scene not in VALID_SCENES:
@@ -277,6 +418,30 @@ async def start_session(
         last_activity_at=ts,
     )
     db.add(session)
+    await db.flush()
+
+    # ── P1-6: 曝光账本写入（静态卷 paper_exposure + 学生轨 student_exposure） ──
+    if paper_id is not None and paper is not None:
+        week_label = getattr(paper, "weekly_batch_id", None) or f"adhoc-{ts.strftime('%Y%m%d')}"
+        subject_pack_id = getattr(paper, "subject_pack_id", "subject-math")
+        await _record_paper_exposures_stub(
+            db,
+            channel="online_practice",
+            subject_pack_id=subject_pack_id,
+            gradeband=gradeband,
+            week_label=week_label,
+            item_version_ids=list(item_version_ids),
+            paper_id=paper_id,
+        )
+    await _record_student_exposures_stub(
+        db,
+        student_alias_id=str(student_alias_id),
+        purpose=scene,
+        item_version_ids=list(item_version_ids),
+        paper_id=paper_id,
+        session_id=str(session.session_id),
+    )
+
     await db.commit()
     return session
 
@@ -330,7 +495,7 @@ async def resume_session(
     active 状态下调用是合法的休息确认（等效重置计时）；
     completed/abandoned 抛 SessionStateError。
     """
-    session = await _load_session(db, session_id)
+    session = await _load_session(db, session_id, for_update=True)
     if session.status in ("completed", "abandoned"):
         raise SessionStateError(f"会话已 {session.status}，不能休息确认")
     ts = now or _utcnow()
@@ -348,7 +513,7 @@ async def abandon_session(
     now: Optional[datetime] = None,
 ) -> SessionState:
     """放弃会话（学生中途退出）；已作答事件保留在 response_event 账."""
-    session = await _load_session(db, session_id)
+    session = await _load_session(db, session_id, for_update=True)
     if session.status == "completed":
         raise SessionStateError("会话已完成，不能放弃")
     ts = now or _utcnow()
@@ -432,7 +597,8 @@ async def get_next_item(
     Raises:
         SessionNotFoundError / SessionStateError / RestRequiredError。
     """
-    session = await _load_session(db, session_id)
+    # 题目推进逻辑要改 session.current_index、status=completed 等，拿行锁防并发
+    session = await _load_session(db, session_id, for_update=True)
     ts = now or _utcnow()
     if session.status == "completed":
         return None
@@ -568,8 +734,32 @@ async def submit_answer(
         SessionNotFoundError / SessionCompletedError / OutOfSequenceError /
         RestRequiredError / ScorerNotRegisteredError。
     """
-    session = await _load_session(db, session_id)
+    # 提交逻辑会改 current_index / wrong_mark / status，拿行锁防并发丢失更新
+    session = await _load_session(db, session_id, for_update=True)
     ts = now or _utcnow()
+
+    # ── P0-4: 每次作答重新校验家长授权仍有效 ────────────────────────────
+    try:
+        from src.core.compliance.parental_consent import check_consent
+        from fastapi import HTTPException as _HTTPException
+        consent_ok = await check_consent(
+            db,
+            student_alias_id=session.student_alias_id,
+            purpose=session.scene,  # type: ignore[arg-type]
+            now=now,
+        )
+        if not consent_ok.is_valid:
+            raise _HTTPException(
+                status_code=403,
+                detail="parental consent not granted",
+            )
+    except ConsentRequired:
+        raise
+    except ImportError:
+        raise ConsentRequired(
+            "家长授权校验模块未加载，需先完成 src.core.compliance 初始化"
+        )
+
     if session.status == "completed":
         raise SessionCompletedError("会话已完成，不能再作答")
     if session.status == "abandoned":
@@ -663,6 +853,25 @@ async def submit_answer(
         if not session.retest_wrong or _current_retest_mark(session) is None:
             session.status = "completed"
             session.completed_at = ts
+
+    # ── P1-6: 题目切换时记录 student_exposure（已答当前题，推进到下一题） ──
+    next_ivids: list[str] = []
+    if session.status != "completed":
+        if session.current_index < len(sequence):
+            next_ivids.append(sequence[session.current_index]["item_version_id"])
+        elif session.retest_wrong:
+            next_mark = _current_retest_mark(session)
+            if next_mark is not None:
+                next_ivids.append(next_mark["item_version_id"])
+    if next_ivids:
+        await _record_student_exposures_stub(
+            db,
+            student_alias_id=str(session.student_alias_id),
+            purpose=str(session.scene),
+            item_version_ids=next_ivids,
+            paper_id=session.paper_id,
+            session_id=str(session.session_id),
+        )
 
     await db.commit()
 

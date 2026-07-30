@@ -25,7 +25,7 @@ down: ; docker compose down
 
 ## 数据库迁移（一切 DDL 走这里，禁止手工改库）
 migrate: ; alembic upgrade head
-migrate-check: ; alembic upgrade head && alembic downgrade -1 && alembic upgrade head && echo "✅ 迁移可逆"
+migrate-check: ; alembic upgrade head && alembic downgrade base && alembic upgrade head && echo "✅ 迁移可逆（全量回滚验证）"
 
 ## 测试与验收
 test: ; python -m pytest tests/ -x -q

@@ -80,21 +80,59 @@ dev = [
 
 [tool.setuptools]
 # src 作为扁平包导入（import src.core.models），不启用 src-layout
+# M-40 修复：补全 packages 列表（find 所有 __init__.py 路径）
 packages = [
     "src",
     "src.core",
     "src.core.models",
     "src.core.events",
     "src.core.gate",
+    "src.core.gate.orchestrator",
+    "src.core.gate.policy",
+    "src.core.gate.certifier",
+    "src.core.gate.validators",
     "src.core.content",
     "src.core.knowledge",
     "src.core.instantiation",
+    "src.core.instantiation.dsl",
+    "src.core.instantiation.difficulty",
+    "src.core.instantiation.distractor",
+    "src.core.instantiation.engine",
+    "src.core.instantiation.variation",
+    "src.core.instantiation.expr",
     "src.core.production",
     "src.core.render",
+    "src.core.render.components",
+    "src.core.assembly",
     "src.core.assembly.solver",
+    "src.core.ai",
+    "src.core.ai.adapter",
+    "src.core.ai.bus",
+    "src.core.ai.cost",
+    "src.core.ai.ledger",
+    "src.core.ai.tts",
+    "src.core.scoring",
+    "src.core.session",
+    "src.core.compliance",
+    "src.core.report",
+    "src.core.review",
+    "src.core.data",
+    "src.core.monitoring",
+    "src.core.audio",
     "src.packs",
     "src.packs.subject-math",
     "src.packs.subject-math.render",
+    "src.packs.subject-math.validators",
+    "src.packs.subject-math.scorers",
+    "src.packs.subject-chinese",
+    "src.packs.subject-chinese.corpora",
+    "src.packs.subject-chinese.validators",
+    "src.packs.subject-chinese.templates",
+    "src.packs.subject-english",
+    "src.packs.subject-english.corpora",
+    "src.packs.subject-english.validators",
+    "src.packs.subject-english.templates",
+    "src.packs.gradeband_low",
     "src.registry",
     "src.api",
     "src.api.routers",
@@ -110,15 +148,52 @@ packages = [
 "src.core.models" = "src/core/models"
 "src.core.events" = "src/core/events"
 "src.core.gate" = "src/core/gate"
+"src.core.gate.orchestrator" = "src/core/gate/orchestrator"
+"src.core.gate.policy" = "src/core/gate/policy"
+"src.core.gate.certifier" = "src/core/gate/certifier"
+"src.core.gate.validators" = "src/core/gate/validators"
 "src.core.content" = "src/core/content"
 "src.core.knowledge" = "src/core/knowledge"
 "src.core.instantiation" = "src/core/instantiation"
+"src.core.instantiation.dsl" = "src/core/instantiation/dsl"
+"src.core.instantiation.difficulty" = "src/core/instantiation/difficulty"
+"src.core.instantiation.distractor" = "src/core/instantiation/distractor"
+"src.core.instantiation.engine" = "src/core/instantiation/engine"
+"src.core.instantiation.variation" = "src/core/instantiation/variation"
+"src.core.instantiation.expr" = "src/core/instantiation/expr"
 "src.core.production" = "src/core/production"
 "src.core.render" = "src/core/render"
+"src.core.render.components" = "src/core/render/components"
+"src.core.assembly" = "src/core/assembly"
 "src.core.assembly.solver" = "src/core/assembly/solver"
+"src.core.ai" = "src/core/ai"
+"src.core.ai.adapter" = "src/core/ai/adapter"
+"src.core.ai.bus" = "src/core/ai/bus"
+"src.core.ai.cost" = "src/core/ai/cost"
+"src.core.ai.ledger" = "src/core/ai/ledger"
+"src.core.ai.tts" = "src/core/ai/tts"
+"src.core.scoring" = "src/core/scoring"
+"src.core.session" = "src/core/session"
+"src.core.compliance" = "src/core/compliance"
+"src.core.report" = "src/core/report"
+"src.core.review" = "src/core/review"
+"src.core.data" = "src/core/data"
+"src.core.monitoring" = "src/core/monitoring"
+"src.core.audio" = "src/core/audio"
 "src.packs" = "src/packs"
 "src.packs.subject-math" = "src/packs/subject-math"
 "src.packs.subject-math.render" = "src/packs/subject-math/render"
+"src.packs.subject-math.validators" = "src/packs/subject-math/validators"
+"src.packs.subject-math.scorers" = "src/packs/subject-math/scorers"
+"src.packs.subject-chinese" = "src/packs/subject-chinese"
+"src.packs.subject-chinese.corpora" = "src/packs/subject-chinese/corpora"
+"src.packs.subject-chinese.validators" = "src/packs/subject-chinese/validators"
+"src.packs.subject-chinese.templates" = "src/packs/subject-chinese/templates"
+"src.packs.subject-english" = "src/packs/subject-english"
+"src.packs.subject-english.corpora" = "src/packs/subject-english/corpora"
+"src.packs.subject-english.validators" = "src/packs/subject-english/validators"
+"src.packs.subject-english.templates" = "src/packs/subject-english/templates"
+"src.packs.gradeband_low" = "src/packs/gradeband_low"
 "src.registry" = "src/registry"
 "src.api" = "src/api"
 "src.api.routers" = "src/api/routers"

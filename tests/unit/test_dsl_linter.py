@@ -54,7 +54,7 @@ def _single_choice_spec() -> dict:
             ]
         },
         "answer_program": {
-            "expression": "if a >= b then 'A' else 'B'",
+            "expression": "'A' if a >= b else 'B'",
             "returns": "option_id",
         },
         "distractor_rules": {
@@ -62,7 +62,7 @@ def _single_choice_spec() -> dict:
                 {
                     "rule_type": "deterministic",
                     "error_type_id": "math.compare.swap",
-                    "expression": "if a >= b then 'B' else 'A'",
+                    "expression": "'B' if a >= b else 'A'",
                 },
             ]
         },

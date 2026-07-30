@@ -21,9 +21,10 @@ from typing import Any, Callable
 # ────────────────────────────────────────────────────────────────────
 # 白名单函数表
 # 为什么用 dict 而非 module：函数级白名单避免暴露 __builtins__ 等危险属性；
-# 学科函数库通过新 dict 注入 env（架构 v2 §4.1 扩展点），不污染本表。
+# 学科函数库通过 REGISTERED_SUBJECT_FUNCTIONS 注入（架构 v2 §4.1 扩展点），
+# 不污染本表。
 # ────────────────────────────────────────────────────────────────────
-SAFE_FUNCTIONS: dict[str, Callable[..., Any]] = {
+BASE_SAFE_FUNCTIONS: dict[str, Callable[..., Any]] = {
     "abs": abs,
     "min": min,
     "max": max,
@@ -32,6 +33,24 @@ SAFE_FUNCTIONS: dict[str, Callable[..., Any]] = {
     "floor": math.floor,
     "ceil": math.ceil,
 }
+
+REGISTERED_SUBJECT_FUNCTIONS: dict[str, Callable[..., Any]] = {}
+
+
+def register_subject_functions(fn_dict: dict[str, Callable[..., Any]]) -> None:
+    """注册学科函数到求值器白名单（A5合规：核心不硬引学科，由调用方延迟注册）.
+
+    与 BASE_SAFE_FUNCTIONS 命名冲突时，后注册的覆盖先注册的（学科可覆盖内置）。
+    """
+    REGISTERED_SUBJECT_FUNCTIONS.update(fn_dict)
+
+
+def _get_allowed_fns() -> dict[str, Callable[..., Any]]:
+    """合并内置白名单与已注册学科函数（运行时动态合并）."""
+    merged: dict[str, Callable[..., Any]] = {}
+    merged.update(BASE_SAFE_FUNCTIONS)
+    merged.update(REGISTERED_SUBJECT_FUNCTIONS)
+    return merged
 
 
 # 允许的 AST 节点类型集合
@@ -148,7 +167,8 @@ def _validate_node(node: ast.AST) -> None:
                 f"禁止的调用形式：{_node_name(node.func)}（仅允许白名单函数直调）"
             )
         func_name = node.func.id
-        if func_name not in SAFE_FUNCTIONS:
+        allowed_fns = _get_allowed_fns()
+        if func_name not in allowed_fns:
             raise ExpressionUnsafeError(
                 f"调用非白名单函数：{func_name!r}"
             )
@@ -295,7 +315,8 @@ def _eval_node(node: ast.AST, env: dict[str, Any]) -> Any:
 
     if isinstance(node, ast.Call):
         func_name = node.func.id  # type: ignore[attr-defined]
-        func = SAFE_FUNCTIONS[func_name]
+        allowed_fns = _get_allowed_fns()
+        func = allowed_fns[func_name]
         args = [_eval_node(a, env) for a in node.args]
         try:
             return func(*args)
@@ -379,9 +400,15 @@ def evaluate(expression: str, env: dict[str, Any] | None = None) -> Any:
     return _eval_node(tree, env)
 
 
+# 向后兼容别名（原 SAFE_FUNCTIONS = BASE_SAFE_FUNCTIONS）
+SAFE_FUNCTIONS: dict[str, Callable[..., Any]] = BASE_SAFE_FUNCTIONS
+
 __all__ = [
+    "BASE_SAFE_FUNCTIONS",
+    "REGISTERED_SUBJECT_FUNCTIONS",
     "SAFE_FUNCTIONS",
     "ExpressionUnsafeError",
     "evaluate",
+    "register_subject_functions",
     "validate",
 ]

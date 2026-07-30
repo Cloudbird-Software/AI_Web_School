@@ -19,6 +19,8 @@ A/B 级（template_version_id 非空）用 §3 公式一 compute_instance_id，
 """
 from __future__ import annotations
 
+import hashlib
+import json
 import uuid
 from datetime import datetime, timezone
 from typing import Any, Optional
@@ -84,8 +86,10 @@ def _compute_item_version_id(version_data: dict) -> str:
                 locale=locale,
             )
         except KeyError:
-            # 参数不全，退化为 UUID（TODO：生产线接入后补全）
-            return "sha256:" + uuid.uuid4().hex
+            # 参数不全，退化为确定性内容哈希（D3 可复现）
+            hash_input = json.dumps(version_data, sort_keys=True, ensure_ascii=False, default=str)
+            content_hash = hashlib.sha256(hash_input.encode("utf-8")).hexdigest()
+            return f"sha256:{content_hash}"
 
     # C/D 级：公式二内容寻址
     return compute_canonical_item_version_id(

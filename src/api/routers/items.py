@@ -14,7 +14,7 @@ from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.api.deps import get_async_session
+from src.api.deps import get_async_session, require_auth
 from src.core.models.item import Item, ItemPydantic
 from src.core.models.item_template import ItemTemplate, ItemTemplatePydantic
 from src.core.models.item_template_version import (
@@ -60,6 +60,7 @@ class TemplateDetailResponse(ItemTemplatePydantic):
 async def get_item(
     item_id: str,
     session: AsyncSession = Depends(get_async_session),
+    _auth: None = Depends(require_auth),
 ) -> ItemDetailResponse:
     """返回 item 不变身份 + current_version_id 指向的版本内容（若有）.
 
@@ -100,6 +101,7 @@ async def get_item(
 async def get_item_version(
     item_version_id: str,
     session: AsyncSession = Depends(get_async_session),
+    _auth: None = Depends(require_auth),
 ) -> ItemVersionPydantic:
     """返回 item_version 六大块 + 谱系 + 门证书引用（若已发布）."""
     version = await session.get(ItemVersion, item_version_id)
@@ -120,6 +122,7 @@ async def get_item_version(
 async def get_template(
     template_id: str,
     session: AsyncSession = Depends(get_async_session),
+    _auth: None = Depends(require_auth),
 ) -> TemplateDetailResponse:
     """返回母题不变身份 + current_version_id 指向的母题版本（若有）."""
     template = await session.get(ItemTemplate, template_id)

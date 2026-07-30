@@ -16,7 +16,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.api.deps import get_async_session
+from src.api.deps import get_async_session, require_auth
 from src.core.report.schemas import WeaknessReport
 from src.core.report.service import build_weakness_report
 from src.core.review.models import ReviewQueueEntryPydantic
@@ -40,6 +40,7 @@ async def get_weakness_report(
         default=3, ge=1, description="证据阈值：低于此数输出「证据不足」"
     ),
     session: AsyncSession = Depends(get_async_session),
+    _auth: None = Depends(require_auth),
 ) -> WeaknessReport:
     """按 error_type 聚合该学生作答事件的错误推断，产出弱项报告.
 
@@ -66,6 +67,7 @@ async def get_due_review_items(
     ),
     limit: int = Query(default=20, ge=1, le=100),
     session: AsyncSession = Depends(get_async_session),
+    _auth: None = Depends(require_auth),
 ) -> list[ReviewQueueEntryPydantic]:
     """返回该学生已到期的在队复习条目（最逾期优先）.
 

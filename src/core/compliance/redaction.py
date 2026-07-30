@@ -19,6 +19,26 @@ import unicodedata
 # 占位符：姓名脱敏后的统一标记
 REDACTED_PLACEHOLDER = "[姓名]"
 
+# BUG-C2修复：常见三字姓名黑名单，用于避免2字短名误匹配3字长名前缀。
+# 例：「张三」不匹配「张三丰」，但「张三」可匹配「张三同学」（「张三同」不在此列表中）。
+# 列表来源于常见中文名，启发式覆盖常见情况；生产可扩展为完整姓名词库。
+_COMMON_THREE_CHAR_NAMES: frozenset[str] = frozenset([
+    "张三丰", "司马懿", "司马昭", "诸葛亮", "达尔文", "爱迪生",
+    "拿破仑", "莫扎特", "贝多芬", "达芬奇", "米开朗", "高尔基",
+    "托尔斯泰", "莎士比亚", "爱因斯坦", "马克思", "恩格斯", "列宁",
+    "斯大林", "毛泽东", "周恩来", "刘少奇", "朱德", "邓小平",
+    "刘德华", "张学友", "郭富城", "黎明", "周杰伦", "蔡依林",
+    "李小龙", "李连杰", "甄子丹", "成龙", "洪金宝", "元彪",
+    "张国荣", "梅艳芳", "谭咏麟", "陈奕迅", "林俊杰", "王力宏",
+    "邓紫棋", "李荣浩", "薛之谦", "毛不易", "华晨宇", "吴亦凡",
+    "李易峰", "鹿晗", "吴亦凡", "杨洋", "赵丽颖", "杨幂",
+    "刘诗诗", "刘亦菲", "高圆圆", "范冰冰", "李冰冰", "赵薇",
+    "林心如", "苏有朋", "陈志朋", "吴奇隆", "金城武", "林志玲",
+    "贾玲", "沈腾", "马丽", "艾伦", "常远", "王宁",
+    "徐峥", "黄渤", "王宝强", "陈思诚", "刘昊然", "吴京",
+    "易烊千玺", "王俊凯", "王源", "张艺兴", "黄子韬", "吴亦凡",
+])
+
 
 def _is_cjk(char: str) -> bool:
     r"""判断字符是否为 CJK 统一表意文字（中文/日文汉字/韩文汉字）.
@@ -37,22 +57,44 @@ def _is_cjk(char: str) -> bool:
     )
 
 
-def _build_pattern(name: str) -> str:
-    """构建姓名匹配正则：字符间允许任意空白（含零空白）.
+def _is_cjk_in_range(char: str) -> bool:
+    """判断字符是否在 CJK 统一表意文字基本区 \u4e00-\u9fff 范围内."""
+    if len(char) != 1:
+        return False
+    cp = ord(char)
+    return 0x4E00 <= cp <= 0x9FFF
 
-    为什么允许字符间空白：扫描件 OCR / 手工录入常在姓名间插入空格
+
+def _build_pattern(name: str) -> tuple[str, bool]:
+    """构建姓名匹配正则（返回模式和是否为纯CJK长姓名标记）.
+
+    字符间允许任意空白（含零空白）：扫描件 OCR / 手工录入常在姓名间插入空格
     （如「张 三」「李  四」），脱敏须覆盖这些变体。
 
-    对纯拉丁字母姓名附加 \\b 词边界，避免「John」误匹配「Johnson」；
-    CJK 姓名不加词边界（CJK 无词边界语义，加了反而漏匹配）。
+    边界判定（BUG-C2修复）：
+    - 整姓名全部是CJK字符且长度>=2时：正则层面不加CJK lookaround边界（否则
+      「请记录张三的成绩」中「张三」因前后CJK字符漏匹配），由 redact_name
+      回调通过 _COMMON_THREE_CHAR_NAMES 黑名单双向检查是否为3字姓名的
+      前缀/后缀部分（如「张三」不匹配「张三丰」、「三丰」不匹配「张三丰」）。
+    - 非CJK姓名：附加 \\b 词边界，避免「John」误匹配「Johnson」。
+
+    Returns:
+        (正则字符串, 是否为纯CJK且长度>=2的姓名)
     """
     chars = list(name)
-    has_cjk = any(_is_cjk(c) for c in chars)
+    all_cjk = len(chars) >= 2 and all(_is_cjk(c) for c in chars)
+    any_cjk = any(_is_cjk(c) for c in chars)
     # 字符间允许任意空白（含零空白）
     pattern = r"\s*".join(re.escape(c) for c in chars)
-    if not has_cjk:
+    if not any_cjk:
+        # 纯拉丁字母/数字：\b词边界
         pattern = r"\b" + pattern + r"\b"
-    return pattern
+    return pattern, all_cjk
+
+
+def _extract_matched_name_chars(match_text: str, orig_name: str) -> str:
+    """从匹配文本（可能含字符间空白）中还原纯字符序列."""
+    return re.sub(r"\s+", "", match_text)
 
 
 def redact_name(text: str, name: str) -> str:
@@ -63,6 +105,8 @@ def redact_name(text: str, name: str) -> str:
     - 姓名间含空格：「张 三」「张  三」→「[姓名]」
     - 英文大小写不敏感：「john」「JOHN」「John」→「[姓名]」
     - 多次出现全部替换
+    - BUG-C2修复：2字CJK姓名不误匹配常见3字姓名前缀/后缀
+      （如「张三」→「张三丰」、「三丰」→「张三丰」）。
 
     Args:
         text: 待脱敏的原文（扫描件文本 / LLM prompt 等）。
@@ -81,8 +125,40 @@ def redact_name(text: str, name: str) -> str:
     stripped = name.strip()
     if not stripped:
         return text
-    pattern = _build_pattern(stripped)
-    return re.sub(pattern, REDACTED_PLACEHOLDER, text, flags=re.IGNORECASE)
+    pattern, is_all_cjk_long = _build_pattern(stripped)
+    stripped_chars = re.sub(r"\s+", "", stripped)
+    name_len = len(stripped_chars)
+
+    def _replace(m: re.Match[str]) -> str:
+        # BUG-C2 启发式：2字纯CJK姓名匹配后，双向检查紧邻CJK字符是否
+        # 与匹配字符组成常见3字姓名；若是则跳过（不误匹配长名前缀/后缀）。
+        if is_all_cjk_long and name_len == 2:
+            matched_clean = _extract_matched_name_chars(m.group(0), stripped)
+            # 1) 后向：匹配末尾后紧邻非空白CJK字符
+            end = m.end()
+            nxt = end
+            while nxt < len(text) and text[nxt].isspace():
+                nxt += 1
+            if nxt < len(text):
+                nxt_char = text[nxt]
+                if _is_cjk_in_range(nxt_char):
+                    three_candidate = matched_clean + nxt_char
+                    if three_candidate in _COMMON_THREE_CHAR_NAMES:
+                        return m.group(0)
+            # 2) 前向：匹配开头前紧邻非空白CJK字符
+            start = m.start()
+            prv = start - 1
+            while prv >= 0 and text[prv].isspace():
+                prv -= 1
+            if prv >= 0:
+                prv_char = text[prv]
+                if _is_cjk_in_range(prv_char):
+                    three_candidate = prv_char + matched_clean
+                    if three_candidate in _COMMON_THREE_CHAR_NAMES:
+                        return m.group(0)
+        return REDACTED_PLACEHOLDER
+
+    return re.sub(pattern, _replace, text, flags=re.IGNORECASE)
 
 
 def redact_names(text: str, names: list[str]) -> str:

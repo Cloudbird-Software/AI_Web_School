@@ -24,7 +24,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.api.deps import get_async_session
+from src.api.deps import get_async_session, require_auth
 # import 即注册 platform 通用评分器（同 gate validators/generic.py 模式）
 import src.core.scoring.platform_scorers  # noqa: F401
 from src.core.scoring.service import ScorerNotRegisteredError
@@ -149,6 +149,7 @@ def _map_session_error(e: Exception) -> HTTPException:
 async def create_session(
     body: StartSessionRequest,
     db: AsyncSession = Depends(get_async_session),
+    _auth: None = Depends(require_auth),
 ) -> StartSessionResponse:
     """开始练习：快照题目序列创建会话（序列一经开始不变）."""
     try:
@@ -182,6 +183,7 @@ async def create_session(
 async def read_session_state(
     session_id: UUID,
     db: AsyncSession = Depends(get_async_session),
+    _auth: None = Depends(require_auth),
 ) -> SessionState:
     """取会话状态."""
     try:
@@ -201,6 +203,7 @@ async def read_session_state(
 async def read_next_item(
     session_id: UUID,
     db: AsyncSession = Depends(get_async_session),
+    _auth: None = Depends(require_auth),
 ) -> dict[str, Any]:
     """取下一题；会话完成返回 {"done": true}（并把会话置 completed）."""
     try:
@@ -225,6 +228,7 @@ async def create_response(
     session_id: UUID,
     body: SubmitResponseRequest,
     db: AsyncSession = Depends(get_async_session),
+    _auth: None = Depends(require_auth),
 ) -> Feedback:
     """提交当前应答题的作答：评分→落账→反馈→错题回测标记."""
     try:
@@ -248,6 +252,7 @@ async def create_response(
 async def resume(
     session_id: UUID,
     db: AsyncSession = Depends(get_async_session),
+    _auth: None = Depends(require_auth),
 ) -> SessionState:
     """休息确认后继续作答."""
     try:
@@ -265,6 +270,7 @@ async def resume(
 async def abandon(
     session_id: UUID,
     db: AsyncSession = Depends(get_async_session),
+    _auth: None = Depends(require_auth),
 ) -> SessionState:
     """放弃会话（已作答事件保留在 response_event 账）."""
     try:

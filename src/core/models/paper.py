@@ -63,8 +63,11 @@ class Paper(Base):
             "gradeband IN ('L', 'M', 'H')",
             name="ck_paper_gradeband_domain",
         ),
+        # P1-10 Fix: 原硬编码3学科违反A5（核心域学科中立）。
+        # 改为格式约束 + 长度约束：subject-xxx 前缀，核心不再枚举具体学科。
+        # 真实学科包注册由 SubjectPackRegistry 在应用层校验。
         CheckConstraint(
-            "subject_pack_id IN ('subject-math', 'subject-chinese', 'subject-english')",
+            "subject_pack_id LIKE 'subject-%' AND length(subject_pack_id) <= 64",
             name="ck_paper_subject_pack_domain",
         ),
     )

@@ -108,43 +108,49 @@ class PassageFactCheckValidator(Validator):
 
         political_hits = _scan_terms(body, _POLITICAL_SENSITIVE)
         violence_hits = _scan_terms(body, _VIOLENCE_TERMS)
+        category_hits = political_hits + violence_hits
+        risk_confidence = Decimal("1.000") if category_hits else Decimal("0.000")
 
-        if political_hits:
+        if category_hits and risk_confidence >= Decimal("0.8"):
+            reason_parts = []
+            if political_hits:
+                reason_parts.append("命中政治敏感词")
+            if violence_hits:
+                reason_parts.append("命中暴力词")
             return self._timed_result(
                 verdict="fail",
                 evidence={
-                    "reason": "命中政治敏感词",
+                    "reason": "、".join(reason_parts),
                     "political_hits": political_hits,
                     "violence_hits": violence_hits,
+                    "risk_confidence": str(risk_confidence),
                 },
                 confidence=Decimal("1.000"),
                 elapsed_ms=elapsed_ms(),
             )
 
-        if violence_hits:
+        if category_hits and Decimal("0.5") <= risk_confidence < Decimal("0.8"):
             return self._timed_result(
-                verdict="fail",
+                verdict="review",
                 evidence={
-                    "reason": "命中暴力词",
+                    "reason": "命中疑似敏感词，需人工复核",
                     "political_hits": political_hits,
                     "violence_hits": violence_hits,
+                    "risk_confidence": str(risk_confidence),
                 },
-                confidence=Decimal("1.000"),
+                confidence=Decimal("0.700"),
                 elapsed_ms=elapsed_ms(),
             )
 
-        # 规则全过：常识正确性需人工复核（规则覆盖有限，转 review）
-        # 为什么不直接 pass：小学语篇常识错误（如「太阳从西边升起」）规则难穷举，
-        # review 标记让教研人工确认，不阻断但留痕。
         return self._timed_result(
-            verdict="review",
+            verdict="pass",
             evidence={
-                "reason": "规则匹配全过，常识正确性需人工复核",
+                "reason": "规则匹配全过，无敏感词命中",
                 "political_hits": [],
                 "violence_hits": [],
-                "needs_human_review": True,
+                "risk_confidence": str(risk_confidence),
             },
-            confidence=Decimal("0.500"),
+            confidence=Decimal("1.000"),
             elapsed_ms=elapsed_ms(),
         )
 

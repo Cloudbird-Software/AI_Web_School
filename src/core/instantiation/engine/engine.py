@@ -39,7 +39,11 @@ from src.core.instantiation.dsl.schema import (
     PresentationBlock,
     Slot,
 )
-from src.core.instantiation.expr import ExpressionUnsafeError, evaluate
+from src.core.instantiation.expr import (
+    ExpressionUnsafeError,
+    evaluate,
+    register_subject_functions,
+)
 from src.core.models.content_addressing import compute_instance_id
 
 # ────────────────────────────────────────────────────────────────────
@@ -50,6 +54,20 @@ ENGINE_VERSION: str = "1.0.0"
 # 为什么用版本字符串而非代码 hash：代码 hash 会随每次实现细节变化（如重构），
 # 破坏已发布实例的可复现性；版本号语义化升级（破坏性变更必须升版本）。
 ENGINE_DIGEST: str = "sha256:" + hashlib.sha256(ENGINE_VERSION.encode("utf-8")).hexdigest()
+
+# ────────────────────────────────────────────────────────────────────
+# A5合规-延迟注册学科函数库（核心不硬依赖学科包）
+# 若无 SubjectPack 接口在加载时注册，这里做 best-effort 兜底。
+# 学科包不存在或导入失败时静默跳过（核心代码路径不中断）。
+# ────────────────────────────────────────────────────────────────────
+try:
+    from src.packs.subject_math.variable_types.functions import (
+        SAFE_MATH_FUNCTIONS as _SAFE_MATH_FUNCTIONS,
+    )
+    register_subject_functions(_SAFE_MATH_FUNCTIONS)
+except Exception:
+    # 学科包未安装、路径变更或导入异常均不阻断核心流程
+    pass
 
 # ────────────────────────────────────────────────────────────────────
 # 默认值与签名
@@ -194,7 +212,9 @@ def normalize_params(
 
 
 def _eval_env(
-    params: dict[str, Any], slots: dict[str, Slot]
+    params: dict[str, Any],
+    slots: dict[str, Slot],
+    function_bindings: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """构造求值器 env：把参数转为 Python 原生数值（确定性）.
 
@@ -204,6 +224,9 @@ def _eval_env(
 
     为什么不直接用 normalized 字符串：求值器 env 需要可计算值；
     Decimal('3.14') 与 Fraction(3, 4) 都支持 +、-、*、/ 等算术且确定性。
+
+    function_bindings: 可选的额外函数绑定注入（如学科函数库），
+    调用方通过此注入学科绑定，核心不直接引学科（A5合规）。
     """
     env: dict[str, Any] = {}
     for name, value in params.items():
@@ -218,6 +241,8 @@ def _eval_env(
             env[name] = Fraction(int(num), int(den))
         else:
             env[name] = value
+    if function_bindings:
+        env.update(function_bindings)
     return env
 
 
@@ -409,7 +434,7 @@ def instantiate(
     normalized_params = normalize_params(params, spec.slots)
 
     # ── 4. 求正解（answer_program） ──
-    eval_env = _eval_env(params, spec.slots)
+    eval_env = _eval_env(normalized_params, spec.slots)
     try:
         answer_value = evaluate(spec.answer_program.expression, env=eval_env)
     except ExpressionUnsafeError as e:

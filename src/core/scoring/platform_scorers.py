@@ -57,6 +57,43 @@ _FULLWIDTH_TABLE = {
     ord(chr(0xFF41 + i)): chr(ord("a") + i) for i in range(26)
 }
 
+_FULLWIDTH_PUNCT_TABLE = {
+    ord("＋"): "+",
+    ord("－"): "-",
+    ord("×"): "x",
+    ord("÷"): "÷",
+    ord("＝"): "=",
+    ord("％"): "%",
+    ord("／"): "/",
+    ord("．"): ".",
+    ord("，"): ",",
+    ord("。"): "。",
+    ord("；"): ";",
+    ord("："): ":",
+    ord("！"): "!",
+    ord("？"): "?",
+    ord("（"): "(",
+    ord("）"): ")",
+    ord("［"): "[",
+    ord("］"): "]",
+    ord("｛"): "{",
+    ord("｝"): "}",
+    ord("＜"): "<",
+    ord("＞"): ">",
+    ord("＠"): "@",
+    ord("＃"): "#",
+    ord("＆"): "&",
+    ord("＊"): "*",
+    ord("＿"): "_",
+    ord("｜"): "|",
+    ord("～"): "~",
+    ord("￥"): "¥",
+    ord("＂"): '"',
+    ord("＇"): "'",
+}
+
+_FULLWIDTH_TABLE |= _FULLWIDTH_PUNCT_TABLE
+
 
 def normalize_text(s: str, normalization: Mapping[str, Any] | None) -> str:
     """文本规范化（scorer.yaml exact_match.params_schema.normalization）.

@@ -1,6 +1,6 @@
 """T-W4-009 LiteLLM 兼容层客户端.
 
-LiteLLM proxy 网关统一 OpenAI 格式（多供应商分发），默认 http://localhost:4000。
+LiteLLM proxy 网关统一 OpenAI 格式（多供应商分发），默认 https://localhost:4000。
 作为 L3 主供应商与 L1/L2 的 fallback 备份（与 DeepSeek 互备）。
 
 为什么用 LiteLLM 网关而非 openai SDK 直连：
@@ -11,8 +11,11 @@ LiteLLM proxy 网关统一 OpenAI 格式（多供应商分发），默认 http:/
 
 宪法 X3：LITELLM_MASTER_KEY 从环境变量读取，不硬编码。
 宪法 A5：本包不 import 学科包/学段包。
+生产环境必须设置 LITELLM_BASE_URL 为 https 网关地址（避免自签证书问题）。
 """
 from __future__ import annotations
+
+import os
 
 from src.core.ai.adapter._openai_compat import OpenAICompatibleClient
 
@@ -21,8 +24,8 @@ class LiteLLMClient(OpenAICompatibleClient):
     """LiteLLM 网关客户端（OpenAI 兼容格式）.
 
     生产配置：部署 LiteLLM proxy，在 .env 设置 LITELLM_MASTER_KEY 与
-    LITELLM_BASE_URL（可选，默认 http://localhost:4000）。
+    LITELLM_BASE_URL（默认 https://localhost:4000；生产必须设 HTTPS）。
     """
 
-    BASE_URL = "http://localhost:4000"
+    BASE_URL: str = os.environ.get("LITELLM_BASE_URL", "https://localhost:4000")
     ENV_KEY_NAME = "LITELLM_MASTER_KEY"
