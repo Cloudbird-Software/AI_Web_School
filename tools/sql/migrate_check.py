@@ -8,8 +8,8 @@
    0012 review_policy 种子行两侧一致（schema-only dump 不含数据，单独探针）。
 2. cycle：库 B down 全量→0 → up→head（E2E-9 的 Go 侧事实源）。
 3. append-only：全部挂触发器的账表 UPDATE/DELETE 必须抛 'append-only' 异常
-   （语句级触发器空谓词亦触发；0003 分区表改 FOR EACH ROW 后空谓词不触发，
-   由目录校验兜底，见 3/3 注释）；
+   （语句级触发器空谓词亦触发；若未来引入 FOR EACH ROW 触发器，空谓词
+   不触发的表由目录校验兜底，见 3/3 注释）；
    D1 四张核心账表（response_event/gate_certificate/gate_run/gate_verdict）
    必须在清单内。
 
@@ -362,11 +362,11 @@ def main() -> None:
                 (f"DELETE FROM {t} WHERE false;", 1 << 4),  # TRIGGER_TYPE_DELETE
             )
             for op_sql, event_bit in probes:
-                # #43 后 response_event（分区表）为 FOR EACH ROW：空谓词零行命中
-                # 不触发行级触发器，行为探针天然打不响——先跑行为探针，未抛
-                # 异常再回退目录校验（触发器存在 + 事件位匹配 + 函数为
-                # raise_append_only_error + BEFORE + ROW），函数的物理阻断
-                # 能力已由其余语句级表的 behavioral 实证背书。
+                # 行为探针先跑（语句级触发器空谓词亦触发）；未抛异常再回退
+                # 目录校验（触发器存在 + 事件位匹配 + 函数为
+                # raise_append_only_error + BEFORE + ROW）——为未来引入
+                # FOR EACH ROW 触发器（空谓词零行命中不打响）预置兜底，
+                # 当前全部触发器为语句级，回退分支不触发。
                 try:
                     conn.execute(op_sql)
                 except psycopg.errors.RaiseException as e:

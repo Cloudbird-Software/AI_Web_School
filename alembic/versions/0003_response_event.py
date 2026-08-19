@@ -46,12 +46,14 @@ END;
 $$ LANGUAGE plpgsql;
 """
 
-# #43：FOR EACH ROW——分区表上语句级触发器只覆盖父表语句级操作，行级路径
-# （含经子表/分区的操作）不被保护；行级触发器对父表与全部分区生效。
+# 治理裁决（#43 Minor 项）：CodeRabbit 建议 FOR EACH ROW，但语句级语义是
+# 早期验收钉死的行为（tests/unit/test_response_event_writer.py 断言），且
+# X1 反测试削弱门禁止 agent 改动既有断言——升级到行级需人类裁决后同步改
+# 契约测试，本仓不做 agent 单方面翻转。
 _TRIGGER_SQL = """
 CREATE TRIGGER trg_response_event_append_only
     BEFORE UPDATE OR DELETE ON response_event
-    FOR EACH ROW
+    FOR EACH STATEMENT
     EXECUTE FUNCTION raise_append_only_error();
 """
 

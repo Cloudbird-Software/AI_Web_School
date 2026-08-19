@@ -32,7 +32,7 @@ $$ LANGUAGE plpgsql;
 
 CREATE TRIGGER trg_response_event_append_only
     BEFORE UPDATE OR DELETE ON response_event
-    FOR EACH ROW
+    FOR EACH STATEMENT
     EXECUTE FUNCTION raise_append_only_error();
 
 DO $$
