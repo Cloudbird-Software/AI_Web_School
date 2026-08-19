@@ -28,6 +28,7 @@
 | T-W5-031 | Go 模块化单体骨架 + healthz + 原生 fuzz | T1 | T-W5-030 |
 | T-W5-032 | 迁移移植：alembic→纯 SQL up/down + migrate-check | T1 | — |
 | T-W5-033 | gate 切 Go 工具链（GO-1..5/BAML-1/SQL-1/2） | T1 | T-W5-030/031/032 |
+| T-W5-034 | 修复 API v1 冻结契约 /next 响应 schema 定义缺失 | T0 | — |
 | **批次 A（可并行 8 条，重锚定 Go）** | | | |
 | T-W5-001 | 内容版本账 append-only 物理强制补齐 | T0 | — |
 | T-W5-005 | 认证与主体绑定框架 | T0 | — |

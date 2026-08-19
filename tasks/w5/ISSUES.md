@@ -50,6 +50,7 @@
 | 27 | T-W5-027 | 强制实证矩阵（宪法条款 ↔ 可执行实证） | S7 | specs/contracts | 003,006,014,017 | T0 | 系统性 | A8 P9 |
 | 28 | T-W5-028 | API v1.1 契约变更申请（认证引入） | S7 | specs/adr | 006 | T0 | R-P0-6 | P5 D9 A4 |
 | 29 | T-W5-029 | W5 出口脚本与不退化基线 | S7 | scripts/wave-exit | 024,025,027,028 | T0 | — | P4 P9 |
+| 34 | T-W5-034 | 修复 API v1 冻结契约 /next 响应 schema 定义缺失 | S7 | specs/contracts/api | — | T0 | T-W4-042 契约质量缺口 | P5 |
 | V1 | T-W5-T01 | 验证卡 · 门与账的物理强制 | 验证 | tasks/w5/verify | S1+S5 完成后 | T0 | — | P2 |
 | V2 | T-W5-T02 | 验证卡 · 认证、合规与事务并发 | 验证 | tasks/w5/verify | S2+S3+S4 完成后 | T0 | — | P2 |
 | V3 | T-W5-T03 | 验证卡 · W5 出口与实证矩阵 | 验证 | tasks/w5/verify | 029 | T0 | — | P2 P9 |
@@ -89,6 +90,7 @@
 | 027 | 矩阵中引用的实证路径全部存在且可被 pytest 收集；标"已强制"但无实证 → CI 红 |
 | 028 | v1 文件零 diff（contract-watch 绿）；v1.1 与实际路由一致；`/next` 显式返回追溯字段 |
 | 029 | 干净数据库执行 `make demo-w5`，E2E-1..E2E-11 逐条通过；W0–W4 出口全绿 |
+| 034 | `openapi-v1.yaml` 中 `/sessions/{session_id}/next` 响应 schema 使用 `oneOf` 定义；`NextItem` schema 存在于 `components/schemas`；`test_impl_schemas_match_frozen_v1` 全绿；`check_openapi_diff.py` 未豁免时修改被拦截 |
 | T01/T02/T03 | 独立 Verifier（不同模型家族）亲自复现攻击路径，输出 PASS/FAIL + 最小复现，禁止改实现代码 |
 
 ## 四、派工注意事项
