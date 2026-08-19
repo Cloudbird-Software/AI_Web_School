@@ -39,6 +39,7 @@ test: ; python -m pytest tests/ -x -q
 setup: ; pip install -r requirements-dev.txt -r requirements.txt
 
 ## 组织治理基线（T-W0-009）：CI 全量检查（迁移自 pr-check.yml 的 PR 流水，本地亦可手动执行）
+## T-W5-030/031：Go 工具链进 check（GO-1/GO-4 局部：gofmt/vet/test-race + X6 边界 lint + BAML-1 golden）
 check:
 	@[ -f .env ] || cp .env.example .env
 	docker compose up -d --wait db
@@ -47,9 +48,25 @@ check:
 	if [ -d tests/unit ]; then python -m pytest tests/unit -q; fi
 	GOLDEN_PATH_QUICK=1 python -m pytest tests/golden-path -q
 	python tools/ci/check_sources.py
+	$(MAKE) check-go
 contract: ; python -m pytest tests/contract -q
 golden: ; python -m pytest tests/golden -q
 golden-path: ; python -m pytest tests/golden-path -q
+
+## ── W5-R Go 工具链（T-W5-030/031；GO-1 gofmt / GO-4 test -race / X6 边界 lint / BAML-1 golden）──
+go-fmt: ; @out=$$(gofmt -l cmd core registry baml_client tools 2>/dev/null); [ -z "$$out" ] || { echo "❌ gofmt 未通过:"; echo "$$out"; exit 1; }
+go-build: ; go build ./... && go vet ./...
+go-test: ; go test ./... -race -count=1
+go-boundary: ; go run ./tools/go-lint/import-boundary
+baml-golden-check: ; python3 tools/golden/baml_golden.py check
+baml-golden-update: ; python3 tools/golden/baml_golden.py update
+## 生成物提交入库；goimports 修复上游 codegen 边角问题（无 union 时死 import /
+## type_builder 缺 fmt import，spike 实证；升级 BAML 版本时复验）
+baml-generate:
+	npx -y @boundaryml/baml@0.226.1 generate
+	go run golang.org/x/tools/cmd/goimports@latest -w baml_client
+	$(MAKE) go-fmt
+check-go: go-fmt go-build go-test go-boundary baml-golden-check
 
 ## 任务验收：唯一完成标准
 accept: ## make accept TASK=T-W0-001
