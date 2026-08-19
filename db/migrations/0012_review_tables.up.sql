@@ -42,3 +42,4 @@ CREATE TRIGGER trg_review_policy_append_only
     BEFORE UPDATE OR DELETE ON review_policy
     FOR EACH STATEMENT
     EXECUTE FUNCTION raise_review_policy_append_only_error();
+INSERT INTO review_policy (policy_id, policy_version, intervals_days, description) VALUES ('fixed-interval'::VARCHAR, '1.0.0'::VARCHAR, CAST('[1, 3, 7, 21]'::VARCHAR AS jsonb), 'W3 S6 复习排程 v1：固定间隔表 1/3/7/21 天（架构 §4.4）'::VARCHAR);

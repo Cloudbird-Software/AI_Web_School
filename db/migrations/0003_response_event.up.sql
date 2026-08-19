@@ -47,7 +47,7 @@ BEGIN
         next_m := date_trunc('month', CURRENT_DATE + ((i+1) || ' month')::interval)::date;
         part_name := 'response_event_' || to_char(m, 'YYYYMM');
         EXECUTE format(
-            'CREATE TABLE IF NOT EXISTS %%I PARTITION OF response_event FOR VALUES FROM (%%L) TO (%%L)',
+            'CREATE TABLE IF NOT EXISTS %I PARTITION OF response_event FOR VALUES FROM (%L) TO (%L)',
             part_name, m, next_m
         );
     END LOOP;

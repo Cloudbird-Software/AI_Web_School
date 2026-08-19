@@ -6,51 +6,81 @@
    动态决策：如枚举已存在则跳过 CREATE TYPE，与逐版本重放的顺序完全一致）；
 2. 离线 --sql 在 checkfirst 探测（op.get_bind().execute().scalar()）处崩溃，
    且 bind param 渲染为 NULL，产物不可信；
-3. 唯一被排除的语句是 alembic_version 账本维护与 SELECT 探测——golang-migrate
-   用自己的 schema_migrations 账本，语义由"同样的 DDL 作用于同样的空库序列"保证。
+3. 唯一被排除的语句是 alembic_version 账本维护与 checkfirst SELECT 探测——
+   golang-migrate 用自己的 schema_migrations 账本，语义由"同样的 DDL 作用于
+   同样的空库序列"保证。
+
+捕获文本两次归一化（还原为服务器实际收到的语句）：
+- SQLAlchemy 对 psycopg（pyformat 参数风格）会把语句中的字面 `%` 转义成
+  `%%`（psycopg 执行时再还原）；捕获点在转义之后、psycopg 还原之前，因此
+  落盘前必须 `%%`→`%` 反转义，否则 golang-migrate 原样回放会改变语义
+  （如 0003 分区 DO 块的 format('%I') 会被当成字面量）。
+- 带 bind param 的语句（如 0012 review_policy 种子 INSERT）用 literal_binds
+  重新编译成字面量 SQL。
 
 实现：monkeypatch sqlalchemy.engine_from_config（alembic env.py 以
 `from sqlalchemy import engine_from_config` 引用，加载时取的是本模块已替换的
 命名空间属性），在引擎上挂 before_cursor_execute 事件，按执行顺序记录语句。
 
 用法（本地生成，产物入库，CI 只校验不重生成）：
-    python tools/sql/gen_migrations_from_alembic.py --out db/migrations
-
-依赖：pip install pgserver（开发机工具，不进 requirements）。
+    python tools/sql/gen_migrations_from_alembic.py \
+        --admin-dsn "postgresql://postgres:pass@localhost:5432/postgres" \
+        --out db/migrations
 """
 from __future__ import annotations
 
 import argparse
-import os
 import re
+import sys
 from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
-# 只保留 DDL；排除 alembic 自身账本与 checkfirst 探测
-DDL_PREFIXES = ("CREATE", "DROP", "ALTER", "DO", "COMMENT", "GRANT", "REVOKE")
+# 只保留 DDL + 迁移内数据语句（0012 review_policy 种子 INSERT）；排除 alembic
+# 自身账本与 checkfirst 探测
+KEEP_PREFIXES = ("CREATE", "DROP", "ALTER", "DO", "COMMENT", "GRANT", "REVOKE", "INSERT")
 EXCLUDE_SUBSTR = ("alembic_version",)
+# 已知无害的会话/探测语句：静默丢弃；其余被丢弃的语句打印告警，防止语义
+# 静默丢失（教训：0012 的种子 INSERT 曾被 DDL 前缀过滤默默吞掉）
+BENIGN_PREFIXES = ("SELECT", "BEGIN", "COMMIT", "ROLLBACK", "SAVEPOINT", "RELEASE", "SET", "SHOW", "DEALLOCATE")
 
 N_STEPS = 22
 
 _CAPTURED: list[tuple[str, tuple | dict]] = []
 
 
+def _render_literal(statement: str, params: tuple | dict) -> str:
+    """把带 bind param 的语句重编译为字面量 SQL（如 0012 的种子 INSERT）。
+
+    捕获到的语句是 psycopg pyformat 形态（`%(name)s`），参数在独立 dict 里。
+    不能走 SQLAlchemy text() 重编译：占位符后跟 `::VARCHAR` 强转时 text()
+    的参数解析会跳过该占位符（负向断言把 `::` 当 cast），导致 bindparams
+    报"未定义参数"。改用 psycopg.sql.Literal 逐值做字面量替换，引用/转义
+    由 psycopg 自己保证。位置参数（`%s` + tuple）当前 22 个迁移中不存在，
+    告警放弃渲染。
+    """
+    if not params:
+        return statement
+    if not isinstance(params, dict):
+        print(f"⚠️ 位置参数语句未做字面量渲染，请人工核验：{statement[:80]}", file=sys.stderr)
+        return statement
+    import psycopg.sql
+
+    return re.sub(
+        r"%\((\w+)\)s",
+        lambda m: psycopg.sql.Literal(params[m.group(1)]).as_string(None),
+        statement,
+    )
+
+
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--out", default="db/migrations")
+    ap.add_argument("--admin-dsn", required=True, help="管理员库 DSN（postgres 库，用于建删 scratch 库）")
     args = ap.parse_args()
     out_dir = PROJECT_ROOT / args.out
     out_dir.mkdir(parents=True, exist_ok=True)
 
-    import pgserver
-
-    server = pgserver.get_server(str(PROJECT_ROOT / ".pytest_tmp/pgserver_gen"), cleanup_mode=None)
-    uri = server.get_uri()  # postgresql://postgres:@/postgres?host=<sock>
-    socket_dir = uri.split("host=")[1].split("&")[0]
-    port = uri.split("port=")[1].split("&")[0] if "port=" in uri else "5432"
-    # psycopg：host 以 / 开头 = socket 目录。SQLAlchemy URL 语法要求把路径里的
-    # "/" 编码为 %2F，解析后再传给 psycopg 即还原为 socket 目录。
-    host = socket_dir.replace("/", "%2F")
+    import psycopg
 
     # 安装捕获（必须在 alembic/env.py 被加载之前）
     import sqlalchemy
@@ -75,36 +105,34 @@ def main() -> None:
         num, _, slug = f.stem.partition("_")
         slugs[num] = slug
 
+    import os
+
     from alembic import command
     from alembic.config import Config
 
-    # socket 连接：env.py 拼出的 URL 语法装不下路径型 host。这里把
-    # ...@%2Fsock%2Fdir:5432/db 重写为 SQLAlchemy 支持的 query 形式
-    # ...@/db?host=/sock/dir&port=5432（query 参数原样传给 psycopg，
-    # psycopg 的 host 以 / 开头即 socket 目录）。仅影响本进程。
-    _orig_set_main = Config.set_main_option
-
-    def _safe_set_main(self, name, value):  # type: ignore[no-untyped-def]
-        if name == "sqlalchemy.url" and isinstance(value, str) and "%2F" in value:
-            m = re.match(r"^(.*)@%2F([^:]*):(\d+)/(.*)$", value)
-            if m:
-                value = f"{m.group(1)}@/{m.group(4)}?host=/{m.group(2)}&port={m.group(3)}"
-            # configparser 插值把 % 当特殊字符（URL 归一化后 host 仍带 %2F）
-            value = value.replace("%", "%%")
-        return _orig_set_main(self, name, value)
-
-    Config.set_main_option = _safe_set_main  # type: ignore[method-assign]
-
     cfg = Config(str(PROJECT_ROOT / "alembic.ini"))
 
+    def drop_create(db: str) -> None:
+        with psycopg.connect(args.admin_dsn, autocommit=True) as conn:
+            conn.execute(f'DROP DATABASE IF EXISTS "{db}"')
+            conn.execute(f'CREATE DATABASE "{db}"')
+
+    def drop(db: str) -> None:
+        with psycopg.connect(args.admin_dsn, autocommit=True) as conn:
+            conn.execute(f'DROP DATABASE IF EXISTS "{db}"')
+
     def alembic(db: str, op: str, rev: str) -> list[str]:
+        base = re.match(r"^postgresql://([^@]+)@([^/:]+):(\d+)/", args.admin_dsn)
+        if not base:
+            raise SystemExit(f"❌ --admin-dsn 须为 TCP 形态 postgresql://user:pass@host:port/db：{args.admin_dsn}")
+        user, password = base.group(1).split(":", 1)
         os.environ.update(
             {
-                "POSTGRES_USER": "postgres",
-                "POSTGRES_PASSWORD": "pgserver-trust-auth",  # trust 认证占位，永不入库
+                "POSTGRES_USER": user,
+                "POSTGRES_PASSWORD": password,
                 "POSTGRES_DB": db,
-                "POSTGRES_HOST": host,  # %2F 编码的 socket 目录
-                "POSTGRES_PORT": port,
+                "POSTGRES_HOST": base.group(2),
+                "POSTGRES_PORT": base.group(3),
             }
         )
         before = len(_CAPTURED)
@@ -113,14 +141,19 @@ def main() -> None:
         else:
             command.downgrade(cfg, rev)
         out: list[str] = []
-        for stmt, _p in _CAPTURED[before:]:
+        for stmt, params in _CAPTURED[before:]:
             s = stmt.rstrip()
             if s.endswith(";"):
                 s = s[:-1]
-            if not s.lstrip().upper().startswith(DDL_PREFIXES):
-                continue
             if any(x in s for x in EXCLUDE_SUBSTR):
                 continue
+            if not s.lstrip().upper().startswith(KEEP_PREFIXES):
+                if not s.lstrip().upper().startswith(BENIGN_PREFIXES):
+                    print(f"⚠️ 语句被过滤，请人工核验语义是否丢失：{s[:120]}", file=sys.stderr)
+                continue
+            s = _render_literal(s, params)
+            # SQLAlchemy→psycopg 的字面 % 转义在捕获文本里是 %%，落盘前还原
+            s = s.replace("%%", "%")
             out.append(s + ";")
         return out
 
@@ -128,8 +161,7 @@ def main() -> None:
         rev = f"{n:04d}"
         prev = "base" if n == 1 else f"{n-1:04d}"
         db = f"gen_{n}"
-        server.psql(f"DROP DATABASE IF EXISTS {db};")
-        server.psql(f"CREATE DATABASE {db};")
+        drop_create(db)
         try:
             # UP：先升到 prev 打底（golang-migrate 逐步重放，本文件只需增量）
             alembic(db, "upgrade", prev)
@@ -137,7 +169,7 @@ def main() -> None:
             # DOWN：n→prev（同库已到 n，直接降）
             downs = alembic(db, "downgrade", prev)
         finally:
-            server.psql(f"DROP DATABASE IF EXISTS {db};")
+            drop(db)
 
         slug = slugs.get(rev, "step")
         header = (
