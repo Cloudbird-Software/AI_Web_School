@@ -383,8 +383,10 @@ async def serving_reader_engine(async_engine: AsyncEngine) -> AsyncEngine:
     user = f"serving_reader_login_{secrets.token_hex(4)}"
     pwd = secrets.token_urlsafe(24)
     async with async_engine.connect() as admin:
+        # CREATE ROLE 不接受绑定参数（asyncpg 会把 :pwd 渲染成 $1 导致语法
+        # 错误）——token_urlsafe 字符集为 [A-Za-z0-9_-]，无引号转义面，内联安全
         await admin.execute(
-            text(f'CREATE ROLE "{user}" LOGIN PASSWORD :pwd'), {"pwd": pwd}
+            text(f"CREATE ROLE \"{user}\" LOGIN PASSWORD '{pwd}'")
         )
         await admin.execute(text(f'GRANT serving_reader TO "{user}"'))
         await admin.commit()
