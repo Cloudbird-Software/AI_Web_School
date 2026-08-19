@@ -4,7 +4,8 @@
 - 创建 v_serving_item_version / v_serving_material_version / v_serving_corpus_version
   三个 serving 视图，过滤 status='published' AND retired_at IS NULL（素材/语料
   额外过滤许可未过期）。
-- 创建 serving_reader LOGIN 角色，仅授予三个视图的 SELECT 权限——
+- 创建 serving_reader NOLOGIN 组角色（#43 Security：迁移不携带固定口令），
+  仅授予三个视图的 SELECT 权限——
   无底层表 INSERT/UPDATE/DELETE 权限。
 - 绕过写入服务直写 serving 表 → serving_reader 无权限 → DB 层失败
   （D2 物理强制的角色层兜底，与 CHECK 约束、append-only 触发器三层共同防护）。

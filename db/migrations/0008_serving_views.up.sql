@@ -2,7 +2,7 @@
 DO $$
 BEGIN
     IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'serving_reader') THEN
-        CREATE ROLE serving_reader LOGIN PASSWORD 'serving_reader_pwd';
+        CREATE ROLE serving_reader NOLOGIN;
     END IF;
 END $$;
 CREATE OR REPLACE VIEW v_serving_item_version AS

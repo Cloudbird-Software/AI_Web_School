@@ -25,9 +25,6 @@ CREATE INDEX ix_score_run_event ON score_run (event_id, event_created_at);
 CREATE INDEX ix_score_run_purpose_scope ON score_run (purpose_scope);
 CREATE INDEX ix_score_run_scorer_version ON score_run (scorer_version);
 CREATE INDEX ix_score_run_rerun_of ON score_run (rerun_of);
-CREATE UNIQUE INDEX uq_score_run_identity_nonnull_label ON score_run (event_id, event_created_at, run_label) WHERE run_label IS NOT NULL;
-CREATE OR REPLACE FUNCTION raise_append_only_error() RETURNS TRIGGER AS $$ BEGIN   RAISE EXCEPTION 'append-only table (D1): UPDATE/DELETE forbidden'; END; $$ LANGUAGE plpgsql;
-
 CREATE TRIGGER trg_score_run_append_only
     BEFORE UPDATE OR DELETE ON score_run
     FOR EACH STATEMENT

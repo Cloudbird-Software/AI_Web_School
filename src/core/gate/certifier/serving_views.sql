@@ -23,15 +23,14 @@
 -- ────────────────────────────────────────────────────────────────────
 -- 1. serving_reader 角色（低权限，只读 serving 视图）
 -- ────────────────────────────────────────────────────────────────────
--- 为什么 LOGIN 角色：测试需要用此角色独立连接数据库，实证权限不足导致 INSERT
--- 失败（验收 #3）。生产中组装服务 / API 网关用此角色连接。
--- 密码硬编码：本地开发角色（与 .env 中其他本地默认密码同语义），生产环境
--- 由部署脚本 ALTER ROLE 改密（本文件不感知生产密钥）。
+-- NOLOGIN 组角色（#43 Security 修复）：固定口令不再进代码库与迁移记录。
+-- 测试/部署侧按需创建自己的 LOGIN 角色并 GRANT serving_reader（继承只读
+-- 视图权限）；gate-bypass 实证（验收 #3）由测试 fixture 动态建临时登录角色。
 
 DO $$
 BEGIN
     IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'serving_reader') THEN
-        CREATE ROLE serving_reader LOGIN PASSWORD 'serving_reader_pwd';
+        CREATE ROLE serving_reader NOLOGIN;
     END IF;
 END $$;
 

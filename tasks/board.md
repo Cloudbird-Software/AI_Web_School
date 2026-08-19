@@ -8,11 +8,12 @@
 ## 进行中
 | 任务卡 | owner_module | 模型 | 开始日期 |
 |---|---|---|---|
-| T-W5-031 | cmd/ · core/ · api/ · packs/ · registry/ | GLM-5.3 | 2026-08-19 |
 
 ## 待验
 | 任务卡 | PR | Verifier |
 |---|---|---|
+| T-W5-031 | #42（已合并） | Go 骨架：t_w5_031.sh 全绿（gofmt/build/vet/test-race + fuzz + X6 红绿双向 + healthz 脱敏）；遗留缺陷清单见 issue #43/#45，随修复 PR 关闭 |
+| T-W5-032 | #42（已合并） | 22 对 up/down + migrate-go-check 全绿；CodeRabbit 遗留缺陷见 issue #43/#45（负数步/固定口令/重定义/parity 切分），随修复 PR 关闭 |
 | T-W0-010 | #35（已合并） | 警报处置完毕：15 闭 + 3 dismiss（issue #41）+ 3 窗口自愈 |
 | T-W0-011 | #40（已合并） | CodeQL #25/#26 已自动关闭 ✅ |
 | T-W5-030 | #37（已合并） | 任务卡 spike 结论 |
@@ -25,8 +26,6 @@
 | 任务卡 | 标题 | model_floor | 依赖 |
 |---|---|---|---|
 | **批次 R（W5-R 基建，先行）** | | | |
-| T-W5-031 | Go 模块化单体骨架 + healthz + 原生 fuzz | T1 | T-W5-030 |
-| T-W5-032 | 迁移移植：alembic→纯 SQL up/down + migrate-check | T1 | — |
 | T-W5-033 | gate 切 Go 工具链（GO-1..5/BAML-1/SQL-1/2） | T1 | T-W5-030/031/032 |
 | **批次 A（可并行 8 条，重锚定 Go）** | | | |
 | T-W5-001 | 内容版本账 append-only 物理强制补齐 | T0 | — |

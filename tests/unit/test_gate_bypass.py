@@ -18,6 +18,7 @@
 from __future__ import annotations
 
 import os
+import secrets
 from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 from pathlib import Path
@@ -355,14 +356,12 @@ async def test_issue_certificate_retire_type(
 # ════════════════════════════════════════════════════════════════════
 
 
-def _serving_reader_dsn() -> str:
-    """serving_reader 角色的 DSN（与 conftest 同 host/port/db，仅 user/pwd 不同）.
+def _serving_reader_dsn(user: str, pwd: str) -> str:
+    """serving_reader 登录角色的 DSN（与 conftest 同 host/port/db，仅 user/pwd 不同）.
 
     为什么单独 DSN：用 serving_reader 独立连接数据库，实证「绕过写入服务直写 serving
     表在 DB 层失败」——这是 D2 物理强制的角色层兜底（验收 #2/#3）。
     """
-    user = "serving_reader"
-    pwd = "serving_reader_pwd"
     host = os.environ.get("POSTGRES_HOST", "localhost")
     port = os.environ.get("POSTGRES_PORT", "5432")
     db = os.environ.get("POSTGRES_DB", "muti_dev")
@@ -370,17 +369,33 @@ def _serving_reader_dsn() -> str:
 
 
 @pytest_asyncio.fixture
-async def serving_reader_engine() -> AsyncEngine:
-    """serving_reader 角色的独立 AsyncEngine.
+async def serving_reader_engine(async_engine: AsyncEngine) -> AsyncEngine:
+    """serving_reader 权限的独立 AsyncEngine（动态临时登录角色）.
 
     为什么不复用 async_engine fixture：async_engine 用 muti 用户（特权）；
     serving_reader 是低权限角色，必须独立连接才能真实反映「绕过写入服务」的视图。
+
+    #43 Security 修复后 serving_reader 本体是 NOLOGIN 组角色（迁移不再携带
+    固定口令）。本 fixture 用管理员连接动态创建一次性 LOGIN 角色（随机名 +
+    随机口令，GRANT serving_reader 继承其全部权限），测试结束即 DROP——
+    实证语义不变（连接身份的权限集 = serving_reader 的权限集），凭据零落盘。
     """
-    engine = create_async_engine(_serving_reader_dsn(), echo=False, pool_pre_ping=True)
+    user = f"serving_reader_login_{secrets.token_hex(4)}"
+    pwd = secrets.token_urlsafe(24)
+    async with async_engine.connect() as admin:
+        await admin.execute(
+            text(f'CREATE ROLE "{user}" LOGIN PASSWORD :pwd'), {"pwd": pwd}
+        )
+        await admin.execute(text(f'GRANT serving_reader TO "{user}"'))
+        await admin.commit()
+    engine = create_async_engine(_serving_reader_dsn(user, pwd), echo=False, pool_pre_ping=True)
     try:
         yield engine
     finally:
         await engine.dispose()
+        async with async_engine.connect() as admin:
+            await admin.execute(text(f'DROP ROLE IF EXISTS "{user}"'))
+            await admin.commit()
 
 
 async def test_serving_reader_cannot_insert_item_version(

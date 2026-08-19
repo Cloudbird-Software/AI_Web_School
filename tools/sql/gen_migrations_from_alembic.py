@@ -43,7 +43,9 @@ EXCLUDE_SUBSTR = ("alembic_version",)
 # 静默丢失（教训：0012 的种子 INSERT 曾被 DDL 前缀过滤默默吞掉）
 BENIGN_PREFIXES = ("SELECT", "BEGIN", "COMMIT", "ROLLBACK", "SAVEPOINT", "RELEASE", "SET", "SHOW", "DEALLOCATE")
 
-N_STEPS = 22
+# 迁移数以 alembic 版本目录为准（与 migrate_check.py 同一事实源；#43：硬编码 22
+# 会在新增迁移后静默漏生成）
+N_STEPS = len(list((PROJECT_ROOT / "alembic" / "versions").glob("*.py")))
 
 _CAPTURED: list[tuple[str, tuple | dict]] = []
 

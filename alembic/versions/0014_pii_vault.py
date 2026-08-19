@@ -39,7 +39,10 @@ EXCEPTION WHEN duplicate_object THEN NULL;
 END $$;
 """
 
-_DROP_ROLE_SQL = "DROP ROLE IF EXISTS pii_vault_reader"
+# #43 Major 修复：down 不再 DROP 集群级角色——角色可能被同集群其他库的 ACL
+# 依赖引用，DROP 会使全量 down 在共享集群上失败。角色生命周期归部署/DBA；
+# 迁移只管本库 schema 与权限（up 的幂等 CREATE NOLOGIN 保留，供全新实例）。
+_DROP_ROLE_SQL = None  # 保留常量位防误用：down 不 DROP ROLE
 
 
 # ────────────────────────────────────────────────────────────────────
@@ -119,8 +122,8 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    """删 PII 保险库 schema（CASCADE 删表）+ 角色."""
+    """删 PII 保险库 schema（CASCADE 删表）；集群级角色不 DROP."""
     # CASCADE：删 schema 自动删内部所有表
     op.execute("DROP SCHEMA IF EXISTS pii_vault CASCADE")
-    # 角色须在 schema 删除后才能 DROP（角色可能仍被 schema 权限引用）
-    op.execute(_DROP_ROLE_SQL)
+    # #43 Major：不 DROP 集群级角色——角色可能被同集群其他库的 ACL 依赖引用，
+    # DROP 会使全量 down 在共享集群上失败。角色生命周期归部署/DBA。

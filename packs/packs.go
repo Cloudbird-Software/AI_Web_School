@@ -52,13 +52,27 @@ type GradeBandPack interface {
 	AppliesTo() (minGrade, maxGrade int)
 }
 
-// ResolveInteractions 把交互引用解析为注册表条目——pack 装配进 core 的
-// 唯一通道（D4）。未注册 id → 装配失败：学科包引用了平台未登记的私造实现。
+// InteractionBinding 是解析后的交互绑定：注册表条目 + 引用携带的参数
+// （D4 参数化复用——参数随绑定进入装配，不再在解析时丢弃，#43 Minor 修复）。
+type InteractionBinding struct {
+	Interaction registry.Interaction
+	Params      map[string]any
+}
+
+// ScorerBinding 是解析后的评分器绑定（同 InteractionBinding）。
+type ScorerBinding struct {
+	Scorer registry.Scorer
+	Params map[string]any
+}
+
+// ResolveInteractions 把交互引用解析为「注册表条目 + 参数」绑定——pack
+// 装配进 core 的唯一通道（D4）。未注册 id → 装配失败：学科包引用了平台
+// 未登记的私造实现。
 func ResolveInteractions(
 	reg *registry.Registry[registry.Interaction],
 	refs []InteractionRef,
-) ([]registry.Interaction, error) {
-	out := make([]registry.Interaction, 0, len(refs))
+) ([]InteractionBinding, error) {
+	out := make([]InteractionBinding, 0, len(refs))
 	for _, ref := range refs {
 		v, ok := reg.Get(ref.ID)
 		if !ok {
@@ -67,7 +81,7 @@ func ResolveInteractions(
 				ref.ID,
 			)
 		}
-		out = append(out, v)
+		out = append(out, InteractionBinding{Interaction: v, Params: ref.Params})
 	}
 	return out, nil
 }
@@ -76,8 +90,8 @@ func ResolveInteractions(
 func ResolveScorers(
 	reg *registry.Registry[registry.Scorer],
 	refs []ScorerRef,
-) ([]registry.Scorer, error) {
-	out := make([]registry.Scorer, 0, len(refs))
+) ([]ScorerBinding, error) {
+	out := make([]ScorerBinding, 0, len(refs))
 	for _, ref := range refs {
 		v, ok := reg.Get(ref.ID)
 		if !ok {
@@ -86,7 +100,7 @@ func ResolveScorers(
 				ref.ID,
 			)
 		}
-		out = append(out, v)
+		out = append(out, ScorerBinding{Scorer: v, Params: ref.Params})
 	}
 	return out, nil
 }

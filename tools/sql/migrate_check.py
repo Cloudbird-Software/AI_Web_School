@@ -8,7 +8,8 @@
    0012 review_policy 种子行两侧一致（schema-only dump 不含数据，单独探针）。
 2. cycle：库 B down 全量→0 → up→head（E2E-9 的 Go 侧事实源）。
 3. append-only：全部挂触发器的账表 UPDATE/DELETE 必须抛 'append-only' 异常
-   （触发器为 FOR EACH STATEMENT，空谓词亦触发，无需种子数据）；
+   （语句级触发器空谓词亦触发；0003 分区表改 FOR EACH ROW 后空谓词不触发，
+   由目录校验兜底，见 3/3 注释）；
    D1 四张核心账表（response_event/gate_certificate/gate_run/gate_verdict）
    必须在清单内。
 
@@ -153,13 +154,79 @@ def go_migrate(dsn: str, *args: str) -> str:
     return r.stdout
 
 
+def _split_sql_statements(body: str) -> list[str]:
+    """dollar-quote 感知的语句切分（#43 Major 修复）。
+
+    原来 `body.split(";")` 会把 plpgsql 函数体（如 raise_append_only_error、
+    fn_item_version_on_publish）内部的 `;` 当语句边界——一个 CREATE FUNCTION
+    被拆成多个碎片，parity 检出能力被削弱（碎片集合相同但语句顺序不同也误判
+    通过）。本切分器跳过：
+    - dollar-quoted 块（$$...$$ 与 $tag$...$tag$，标签字母数字下划线）
+    - 单引号字符串（'' 转义）与双引号标识符
+    - 行注释 -- 与块注释 /* */（pg_dump 不产出，防御性处理）
+    """
+    stmts: list[str] = []
+    buf: list[str] = []
+    i, n = 0, len(body)
+    while i < n:
+        ch = body[i]
+        # dollar-quoted 块：$tag$...$tag$
+        if ch == "$":
+            m = re.match(r"\$[A-Za-z0-9_]*\$", body[i:])
+            if m:
+                tag = m.group(0)
+                end = body.find(tag, i + len(tag))
+                end = n if end == -1 else end + len(tag)
+                buf.append(body[i:end])
+                i = end
+                continue
+        if ch == "'":
+            j = i + 1
+            while j < n:
+                if body[j] == "'":
+                    if j + 1 < n and body[j + 1] == "'":  # '' 转义
+                        j += 2
+                        continue
+                    break
+                j += 1
+            buf.append(body[i : j + 1])
+            i = j + 1
+            continue
+        if ch == '"':
+            j = body.find('"', i + 1)
+            j = n - 1 if j == -1 else j
+            buf.append(body[i : j + 1])
+            i = j + 1
+            continue
+        if ch == "-" and body[i : i + 2] == "--":
+            j = body.find("\n", i)
+            j = n if j == -1 else j
+            i = j
+            continue
+        if ch == "/" and body[i : i + 2] == "/*":
+            j = body.find("*/", i)
+            j = n - 2 if j == -1 else j
+            i = j + 2
+            continue
+        if ch == ";":
+            stmts.append("".join(buf))
+            buf = []
+            i += 1
+            continue
+        buf.append(ch)
+        i += 1
+    if buf:
+        stmts.append("".join(buf))
+    return stmts
+
+
 def _normalize_dump(text: str) -> list[str]:
     """归一化 pg_dump 输出为可比较的语句多重集（排序后比较）。
 
     - 丢弃 -- 注释行与 \\restrict/\\unrestrict 行（PG16.x 尾部随机 token，
       每次导出都不同，非 schema 语义）
-    - 按分号切分后丢弃会话级 SET/set_config 与迁移工具自带账本表
-      （alembic_version / schema_migrations）
+    - dollar-quote 感知切分（见 _split_sql_statements）后丢弃会话级
+      SET/set_config 与迁移工具自带账本表（alembic_version / schema_migrations）
     - 排序比较：pg_dump 的对象输出顺序是工具实现细节，schema 等价的判定
       标准是语句多重集相等（每条语句自含对象全名，逐语句可定位）
     """
@@ -167,7 +234,7 @@ def _normalize_dump(text: str) -> list[str]:
         ln for ln in text.splitlines() if not ln.startswith("--") and not ln.startswith("\\")
     )
     stmts: list[str] = []
-    for raw in body.split(";"):
+    for raw in _split_sql_statements(body):
         s = re.sub(r"\s+", " ", raw).strip()
         if not s:
             continue
@@ -211,7 +278,8 @@ def discover_append_only_tables() -> list[str]:
     """从 SQL 产物发现全部 append-only 触发器表（探针清单随迁移自动扩张）。"""
     tables: set[str] = set()
     for f in sorted(MIGRATIONS_DIR.glob("*.up.sql")):
-        for m in re.finditer(r"BEFORE UPDATE OR DELETE ON ([a-z_]+)", f.read_text(encoding="utf-8")):
+        # #43：两种事件顺序都要发现（BEFORE UPDATE OR DELETE / BEFORE DELETE OR UPDATE）
+        for m in re.finditer(r"BEFORE (?:UPDATE OR DELETE|DELETE OR UPDATE) ON ([a-z_]+)", f.read_text(encoding="utf-8")):
             tables.add(m.group(1))
     missing = set(CORE_LEDGER_TABLES) - tables
     if missing:
@@ -278,8 +346,7 @@ def main() -> None:
         for t in tables:
             # UPDATE 探针的 SET 列不能假设 created_at 存在（review_policy 等
             # 无该列），且 GENERATED ALWAYS 身份列/生成列 SET 自身会先于触发
-            # 器报错——优先 created_at，否则取首个普通列；触发器是 FOR EACH
-            # STATEMENT，空谓词亦触发，不依赖行数据
+            # 器报错——优先 created_at，否则取首个普通列
             col = conn.execute(
                 "SELECT column_name FROM information_schema.columns "
                 "WHERE table_schema = 'public' AND table_name = %s "
@@ -290,15 +357,32 @@ def main() -> None:
             ).fetchone()
             if col is None:
                 raise SystemExit(f"❌ 表 {t} 不存在或无普通列可作探针（触发器清单与 schema 脱节）")
-            probes = (f"UPDATE {t} SET {col[0]} = {col[0]} WHERE false;", f"DELETE FROM {t} WHERE false;")
-            for op_sql in probes:
+            probes = (
+                (f"UPDATE {t} SET {col[0]} = {col[0]} WHERE false;", 1 << 5),  # TRIGGER_TYPE_UPDATE
+                (f"DELETE FROM {t} WHERE false;", 1 << 4),  # TRIGGER_TYPE_DELETE
+            )
+            for op_sql, event_bit in probes:
+                # #43 后 response_event（分区表）为 FOR EACH ROW：空谓词零行命中
+                # 不触发行级触发器，行为探针天然打不响——先跑行为探针，未抛
+                # 异常再回退目录校验（触发器存在 + 事件位匹配 + 函数为
+                # raise_append_only_error + BEFORE + ROW），函数的物理阻断
+                # 能力已由其余语句级表的 behavioral 实证背书。
                 try:
                     conn.execute(op_sql)
                 except psycopg.errors.RaiseException as e:
                     if "append-only" not in str(e):
                         raise SystemExit(f"❌ {t} 拒绝了但消息不符: {e}")
                     continue
-                raise SystemExit(f"❌ {op_sql} 未被 append-only 触发器拦截")
+                verified = conn.execute(
+                    "SELECT count(*) FROM pg_trigger tg "
+                    "JOIN pg_proc p ON p.oid = tg.tgfoid "
+                    "WHERE tg.tgrelid = %s::regclass AND p.proname = 'raise_append_only_error' "
+                    "AND tg.tgenabled = 'O' AND (tg.tgtype & 2) <> 0 "  # TRIGGER_TYPE_ROW
+                    "AND (tg.tgtype & 4) <> 0 AND (tg.tgtype & %s) <> 0",  # BEFORE + 事件位
+                    (t, event_bit),
+                ).fetchone()[0]
+                if verified < 1:
+                    raise SystemExit(f"❌ {op_sql} 未被 append-only 触发器拦截（行为与目录双重校验均失败）")
     print(f"✅ {len(tables)} 张 append-only 表 × UPDATE/DELETE 全部被拒（含 D1 四核心账表）")
 
     for db in (go_db, py_db):

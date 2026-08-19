@@ -150,18 +150,8 @@ def _create_indexes() -> None:
 def _create_triggers() -> None:
     """两表 append-only 物理强制：BEFORE UPDATE OR DELETE FOR EACH STATEMENT."""
     binding = op.get_bind()
-    # raise_append_only_error() 由 0003 创建，0017 等多表复用；
-    # CREATE OR REPLACE 保证幂等（与既有迁移一致）。
-    binding.execute(
-        sa.text(
-            "CREATE OR REPLACE FUNCTION raise_append_only_error() "
-            "RETURNS TRIGGER AS $$ "
-            "BEGIN "
-            "  RAISE EXCEPTION 'append-only table (D1): UPDATE/DELETE forbidden'; "
-            "END; "
-            "$$ LANGUAGE plpgsql;"
-        )
-    )
+    # #43 Major 修复：不重定义 0005 已统一的 raise_append_only_error（同 0017），
+    # 只挂触发器——重定义破坏 down 后 schema 与目标版本的等价性。
     binding.execute(sa.text(_RUBRIC_TRIGGER_SQL))
     binding.execute(sa.text(_BLUEPRINT_TRIGGER_SQL))
 

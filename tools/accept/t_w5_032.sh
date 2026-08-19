@@ -19,8 +19,10 @@ else
 fi
 
 echo "== 验收 #5：migrate-go-check 已接入 make check（PR 阶段拦截）=="
-grep -q '\$(MAKE) migrate-go-check' Makefile || {
-  echo "❌ make check 未调用 migrate-go-check"; exit 1; }
+# #43：目标级解析——只认 check: 的 recipe 块，注释/其他目标里的同形文本不再放行
+CHECK_RECIPE=$(awk '/^check:/{f=1;next} /^[a-zA-Z_-]+:/{f=0} f' Makefile)
+echo "$CHECK_RECIPE" | grep -q 'migrate-go-check' || {
+  echo "❌ make check 的 recipe 未调用 migrate-go-check"; exit 1; }
 
 echo "== 迁移执行器可构建（golang-migrate 锁版本接入）=="
 go build ./tools/migrate && go vet ./tools/migrate

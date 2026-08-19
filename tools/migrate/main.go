@@ -20,12 +20,23 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strconv"
 	"strings"
 
 	"github.com/golang-migrate/migrate/v4"
 	_ "github.com/golang-migrate/migrate/v4/database/pgx/v5"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
 )
+
+// parseSteps 严格解析步数：整个参数必须是正整数。负数/0/尾随输入一律
+// 报错——`up -3` 若被放过会在 m.Steps() 里静默反转成向下迁移（#43 High）。
+func parseSteps(s string) (int, error) {
+	n, err := strconv.Atoi(s)
+	if err != nil || n <= 0 {
+		return 0, fmt.Errorf("步数须为正整数，得到 %q（负数/0/尾随输入均拒绝）", s)
+	}
+	return n, nil
+}
 
 // normalizeScheme 把标准 postgres DSN scheme 换成 pgx/v5 驱动注册的 pgx5。
 func normalizeScheme(dsn string) string {
@@ -53,16 +64,14 @@ func main() {
 	}
 	defer m.Close()
 
-	step := func(n int) int { return n }
-
 	switch args[0] {
 	case "up":
 		if len(args) > 1 {
-			var n int
-			if _, err := fmt.Sscanf(args[1], "%d", &n); err != nil {
-				log.Fatalf("up 参数须为整数: %v", err)
+			n, err := parseSteps(args[1])
+			if err != nil {
+				log.Fatalf("up: %v", err)
 			}
-			if err := m.Steps(step(n)); err != nil && !errors.Is(err, migrate.ErrNoChange) {
+			if err := m.Steps(n); err != nil && !errors.Is(err, migrate.ErrNoChange) {
 				log.Fatalf("up %d 步失败: %v", n, err)
 			}
 		} else if err := m.Up(); err != nil && !errors.Is(err, migrate.ErrNoChange) {
@@ -72,9 +81,9 @@ func main() {
 		if len(args) < 2 {
 			log.Fatal("down 必须显式给步数 N（防误降全库；全量演练走 make migrate-go-check）")
 		}
-		var n int
-		if _, err := fmt.Sscanf(args[1], "%d", &n); err != nil {
-			log.Fatalf("down 参数须为整数: %v", err)
+		n, err := parseSteps(args[1])
+		if err != nil {
+			log.Fatalf("down: %v", err)
 		}
 		if err := m.Steps(-n); err != nil && !errors.Is(err, migrate.ErrNoChange) {
 			log.Fatalf("down %d 步失败: %v", n, err)

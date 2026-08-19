@@ -17,6 +17,21 @@ die(){
   echo "摘要：通过 ${PASS} 项 / 失败 1 项（$1）/ 耗时 ${SECONDS}s"
   exit 1
 }
+# #38 可诊断性：此前的静默检查（>/dev/null 2>&1）让 nightly 红灯只有结论
+# 没有证据（连续 18 天 scheduled 失败无一处失败细节）。cap 把输出落临时
+# 文件，成功即弃，失败时打印尾部——红灯必须可诊断（宪法 P4 配套义务）。
+CHECK_LOG=$(mktemp /tmp/w2-check.XXXXXX.log)
+trap 'rm -f "$CHECK_LOG"' EXIT
+cap(){ # cap <成功描述> <失败描述> <命令...>
+  local okmsg=$1 failmsg=$2; shift 2
+  if "$@" > "$CHECK_LOG" 2>&1; then
+    ok "$okmsg"
+  else
+    echo "── 失败输出（尾部 120 行）：$* ──"
+    tail -n 120 "$CHECK_LOG"
+    die "$failmsg"
+  fi
+}
 
 echo "== W2 出口验收（T-W2-044 · E2E-9）=="
 
@@ -35,14 +50,14 @@ done
 # ────────────────────────────────────────────────────────────────────
 # ② 迁移可逆演练（upgrade→downgrade→upgrade）
 # ────────────────────────────────────────────────────────────────────
-make migrate-check >/dev/null 2>&1 && ok "迁移可逆演练（migrate-check）" \
-  || die "迁移演练失败（alembic upgrade→downgrade→upgrade 不闭环）"
+cap "迁移可逆演练（migrate-check）" \
+  "迁移演练失败（alembic upgrade→downgrade→upgrade 不闭环）" make migrate-check
 
 # ────────────────────────────────────────────────────────────────────
 # ③ 全量测试套件绿（含 contract/golden/golden-path/unit，E2E-10）
 # ────────────────────────────────────────────────────────────────────
-python -m pytest tests/ -q >/dev/null 2>&1 && ok "全量测试套件绿（pytest tests/）" \
-  || die "全量测试套件红（python -m pytest tests/ -q 失败）"
+cap "全量测试套件绿（pytest tests/）" \
+  "全量测试套件红（python -m pytest tests/ -q 失败）" python -m pytest tests/ -q
 
 # ────────────────────────────────────────────────────────────────────
 # ④ 学科边界：核心域/注册表无学科包 import（X6 宪法铁律）
@@ -67,23 +82,23 @@ fi
 # ────────────────────────────────────────────────────────────────────
 # ⑥ 黄金数据集回归（E2E-3：50 母题实例化期望输出逐字节一致）
 # ────────────────────────────────────────────────────────────────────
-python -m pytest tests/golden -q >/dev/null 2>&1 && ok "黄金数据集回归绿（tests/golden，E2E-3）" \
-  || die "黄金回归红（tests/golden 失败）"
+cap "黄金数据集回归绿（tests/golden，E2E-3）" \
+  "黄金回归红（tests/golden 失败）" python -m pytest tests/golden -q
 
 # ────────────────────────────────────────────────────────────────────
 # ⑦ W0/W1 出口不退化（E2E-10）
 # ────────────────────────────────────────────────────────────────────
-bash scripts/wave-exit/w0.sh >/dev/null 2>&1 && ok "W0 出口脚本不退化（w0.sh）" \
-  || die "W0 出口脚本退化（w0.sh 失败）"
-bash scripts/wave-exit/w1.sh >/dev/null 2>&1 && ok "W1 出口脚本不退化（w1.sh）" \
-  || die "W1 出口脚本退化（w1.sh 失败）"
+cap "W0 出口脚本不退化（w0.sh）" \
+  "W0 出口脚本退化（w0.sh 失败）" bash scripts/wave-exit/w0.sh
+cap "W1 出口脚本不退化（w1.sh）" \
+  "W1 出口脚本退化（w1.sh 失败）" bash scripts/wave-exit/w1.sh
 
 # ────────────────────────────────────────────────────────────────────
 # ⑧ 门物理阻断实证（E2E-5：绕过写入服务直写 serving 区在 DB 层失败）
 # ────────────────────────────────────────────────────────────────────
-python -m pytest tests/unit/test_gate_bypass.py -q >/dev/null 2>&1 \
-  && ok "门物理阻断实证绿（test_gate_bypass.py，E2E-5）" \
-  || die "门物理阻断实证红（直写 serving 区未被 DB 层拒绝）"
+cap "门物理阻断实证绿（test_gate_bypass.py，E2E-5）" \
+  "门物理阻断实证红（直写 serving 区未被 DB 层拒绝）" \
+  python -m pytest tests/unit/test_gate_bypass.py -q
 
 # ────────────────────────────────────────────────────────────────────
 # ⑨ E2E-1 业务端到端演示（生成真实 PDF 试卷 + 解析册）

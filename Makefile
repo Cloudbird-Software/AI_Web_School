@@ -45,7 +45,7 @@ migrate-go-check:
 	@command -v docker >/dev/null || { echo "❌ migrate-go-check 需要 Docker"; exit 1; }
 	@trap 'docker rm -f $(MIGCHECK_CONTAINER) >/dev/null 2>&1 || true' EXIT; \
 	docker run -d --rm --name $(MIGCHECK_CONTAINER) -e POSTGRES_PASSWORD=migrate-check \
-	  -p $(MIGCHECK_PORT):5432 \
+	  -p 127.0.0.1:$(MIGCHECK_PORT):5432 \
 	  postgres:16-alpine@sha256:57c72fd2a128e416c7fcc499958864df5301e940bca0a56f58fddf30ffc07777 >/dev/null; \
 	docker inspect -f '{{.State.Running}}' $(MIGCHECK_CONTAINER) 2>/dev/null | grep -q true \
 	  || { echo "❌ 临时 PG 容器未启动"; exit 1; }; \
@@ -81,7 +81,7 @@ golden: ; python -m pytest tests/golden -q
 golden-path: ; python -m pytest tests/golden-path -q
 
 ## ── W5-R Go 工具链（T-W5-030/031；GO-1 gofmt / GO-4 test -race / X6 边界 lint / BAML-1 golden）──
-go-fmt: ; @out=$$(gofmt -l cmd core registry baml_client tools 2>/dev/null); [ -z "$$out" ] || { echo "❌ gofmt 未通过:"; echo "$$out"; exit 1; }
+go-fmt: ; @out=$$(gofmt -l cmd core api packs registry baml_client tools 2>/dev/null); [ -z "$$out" ] || { echo "❌ gofmt 未通过:"; echo "$$out"; exit 1; }
 go-build: ; go build ./... && go vet ./...
 go-test: ; go test ./... -race -count=1
 go-boundary: ; go run ./tools/go-lint/import-boundary
