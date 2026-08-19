@@ -8,12 +8,13 @@
 ## 进行中
 | 任务卡 | owner_module | 模型 | 开始日期 |
 |---|---|---|---|
-| T-W0-010 | src/workbench/ · src/core/monitoring/ · .github/ · tools/fuzz/ · requirements*.txt | GLM-5.3 | 2026-08-19 |
+| T-W0-011 | src/workbench/ · tests/unit/ | GLM-5.3 | 2026-08-19 |
 
 ## 待验
 | 任务卡 | PR | Verifier |
 |---|---|---|
-| T-W0-010 | #35 | CI gate + 下一次 scorecard 扫描 |
+| T-W0-010 | #35（已合并） | CodeQL/scorecard 残留警报状态（#25/#26 由 T-W0-011 收口） |
+| T-W5-030 | #37（已合并） | 任务卡 spike 结论 |
 
 ## 就绪（按优先级）
 > 当前就绪波次：**W5-R Go+BAML 重建波**（2026-08-19 重排，ADR-0004 / issue #34；详见 tasks/w5/BRIEF.md、tasks/w5/REANCHORING.md）。W2–W4 已全部完成，历史就绪清单见 git 历史。
@@ -23,7 +24,6 @@
 | 任务卡 | 标题 | model_floor | 依赖 |
 |---|---|---|---|
 | **批次 R（W5-R 基建，先行）** | | | |
-| T-W5-030 | 技术验证 spike：baml-go + sqlc + .baml→golden→gate | T1 | — |
 | T-W5-031 | Go 模块化单体骨架 + healthz + 原生 fuzz | T1 | T-W5-030 |
 | T-W5-032 | 迁移移植：alembic→纯 SQL up/down + migrate-check | T1 | — |
 | T-W5-033 | gate 切 Go 工具链（GO-1..5/BAML-1/SQL-1/2） | T1 | T-W5-030/031/032 |

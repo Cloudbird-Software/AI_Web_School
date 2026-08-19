@@ -44,6 +44,20 @@ def test_safe_next_rejects_external_and_protocol_relative() -> None:
     assert _safe_next("\\\\evil.example") == "/items"
 
 
+def test_safe_next_structured_urlparse_guard() -> None:
+    """T-W0-011：urlparse 结构防线（CodeQL #25/#26 认可的 sanitizer 形态）."""
+    # WHATWG 归一化伪形：浏览器把权威段位置的 \ 归一化为 /，
+    # /\evil.com 等价于 //evil.com（跨域）——前缀防线必须拦
+    assert _safe_next("/\\evil.com") == "/items"
+    assert _safe_next("//user:pass@evil.example") == "/items"
+    # 以下均以单个 / 开头且无 scheme/netloc：站内路径，原样通过
+    # （/https://... 与 /javascript:... 中的冒号在路径段，不构成 scheme）
+    assert _safe_next("/https://evil.example") == "/https://evil.example"
+    assert _safe_next("/javascript:alert(1)") == "/javascript:alert(1)"
+    assert _safe_next("/redirect?to=//evil.example") == "/redirect?to=//evil.example"
+    assert _safe_next("/items?page=1&q=/x") == "/items?page=1&q=/x"
+
+
 # ────────────────────────────────────────────────────────────────────
 # 会话 cookie：服务端派生，非用户输入
 # ────────────────────────────────────────────────────────────────────
