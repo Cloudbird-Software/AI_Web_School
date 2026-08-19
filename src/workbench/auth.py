@@ -14,6 +14,8 @@ cookie 由浏览器自动携带，无需 JS 手动管理 header；W2 不引入�
 """
 from __future__ import annotations
 
+import hashlib
+import hmac
 import os
 import secrets
 from typing import Optional
@@ -39,6 +41,29 @@ def get_workbench_token() -> str:
 
 # cookie 名：workbench_session
 SESSION_COOKIE_NAME: str = "workbench_session"
+
+# 会话 cookie 值的域分离常量：防止派生值与 token 本身用途混淆
+_SESSION_PURPOSE: bytes = b"workbench-session-v1"
+
+
+def session_cookie_value() -> str:
+    """派生会话 cookie 值 = HMAC-SHA256(WORKBENCH_TOKEN, purpose 常量).
+
+    为什么不让 cookie 直接存用户提交的 token（CodeQL py/cookie-injection）：
+    cookie 值若原样携带用户输入，攻击面包括 header 注入与回显存储；
+    由服务端密钥派生的固定值与用户输入完全解耦，且校验仍是常量时间比较。
+    token 本身只出现在表单校验路径，不再进入任何响应。
+    """
+    key = get_workbench_token().encode("utf-8")
+    return hmac.new(key, _SESSION_PURPOSE, hashlib.sha256).hexdigest()
+
+
+def verify_session_cookie(value: str) -> bool:
+    """常量时间校验会话 cookie 值是否为服务端派生值."""
+    expected = session_cookie_value()
+    if not expected:
+        return False
+    return secrets.compare_digest(value, expected)
 
 
 def verify_token(token: str) -> bool:
@@ -72,7 +97,7 @@ async def require_session(
         本依赖改为抛 HTTPException(302) 而非直接返回 RedirectResponse，
         以便 FastAPI 路由层统一处理（避免双重响应）。
     """
-    if session and verify_token(session):
+    if session and verify_session_cookie(session):
         return session
     # 重定向到登录页，携带 next 参数
     next_path = request.url.path
@@ -89,7 +114,7 @@ async def optional_session(
 
     用于登录页本身：已登录用户访问 /login 时可重定向到首页。
     """
-    if session and verify_token(session):
+    if session and verify_session_cookie(session):
         return session
     return None
 
@@ -99,5 +124,7 @@ __all__ = [
     "get_workbench_token",
     "require_session",
     "optional_session",
+    "session_cookie_value",
+    "verify_session_cookie",
     "verify_token",
 ]

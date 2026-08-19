@@ -1,10 +1,7 @@
 # zizmor 审计配置（CI-4）：有意的工程决策在此集中豁免，附原因。
 rules:
   unpinned-uses:
-    ignore:
-      # 跨仓 reusable workflow 采用 @v1 大版本指针策略，由 CI-Workflows 仓集中维护移动，
-      # 不 pin SHA 是有意为之（类似 Dependabot 的 major-version 引用习惯）。
-      - ci.yml
+    ignore: []
   dangerous-triggers:
     ignore:
       # 标准依赖自动合并模式（GitHub 官方文档写法）：不 checkout PR 代码，

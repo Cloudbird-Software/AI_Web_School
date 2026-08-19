@@ -8,6 +8,7 @@
 ## 进行中
 | 任务卡 | owner_module | 模型 | 开始日期 |
 |---|---|---|---|
+| T-W0-010 | src/workbench/ · src/core/monitoring/ · .github/ · tools/fuzz/ · requirements*.txt | GLM-5.3 | 2026-08-19 |
 
 ## 待验
 | 任务卡 | PR | Verifier |

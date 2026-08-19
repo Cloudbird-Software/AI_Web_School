@@ -36,7 +36,8 @@ migrate-check: ; alembic upgrade head && alembic downgrade -1 && alembic upgrade
 test: ; python -m pytest tests/ -x -q
 
 ## 组织治理基线（T-W0-009）：CI-Workflows check.yml 调用——依赖安装
-setup: ; pip install -r requirements-dev.txt -r requirements.txt
+## T-W0-010：--require-hashes 哈希锁定安装（Scorecard Pinned-Dependencies）
+setup: ; pip install --require-hashes -r requirements-dev.txt -r requirements.txt
 
 ## 组织治理基线（T-W0-009）：CI 全量检查（迁移自 pr-check.yml 的 PR 流水，本地亦可手动执行）
 check:

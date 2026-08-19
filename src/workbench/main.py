@@ -28,6 +28,7 @@ from src.workbench.auth import (
     SESSION_COOKIE_NAME,
     optional_session,
     require_session,
+    session_cookie_value,
     verify_token,
 )
 from src.workbench.pages import items, template_form, issue
@@ -36,6 +37,21 @@ from src.workbench.pages import items, template_form, issue
 # 模板目录：src/workbench/templates/
 # ────────────────────────────────────────────────────────────────────
 _TEMPLATES_DIR: Path = Path(__file__).resolve().parent / "templates"
+
+# 登录后回跳的默认路径
+_DEFAULT_NEXT: str = "/items"
+
+
+def _safe_next(next_url: str) -> str:
+    """登录回跳地址白名单化（CodeQL py/url-redirection）.
+
+    只接受站内相对路径：以单个 ``/`` 开头（排除 ``//host`` 协议相对跳转与
+    ``http(s)://``/``\\`` 等绝对形式）；其余一律回落 ``/items``，
+    杜绝开放重定向与钓鱼跳转。
+    """
+    if next_url.startswith("/") and not next_url.startswith("//"):
+        return next_url
+    return _DEFAULT_NEXT
 
 
 def create_app() -> FastAPI:
@@ -72,12 +88,13 @@ def create_app() -> FastAPI:
         session: Optional[str] = Depends(optional_session),
     ) -> HTMLResponse:
         """GET /login：渲染登录表单；已登录则重定向到 next."""
+        safe_next = _safe_next(next)
         if session:
-            return RedirectResponse(url=next, status_code=303)
+            return RedirectResponse(url=safe_next, status_code=303)
         return templates.TemplateResponse(
             request=request,
             name="login.html",
-            context={"next": next, "error": None},
+            context={"next": safe_next, "error": None},
         )
 
     @app.post("/login", summary="登录提交")
@@ -90,12 +107,15 @@ def create_app() -> FastAPI:
 
         失败重渲染登录页，回显 'token 错误' 提示（不暴露 token 是否存在）。
         """
+        safe_next = _safe_next(next)
         if verify_token(token):
-            resp = RedirectResponse(url=next, status_code=303)
-            # httponly + samesite=lax：防 XSS 读 cookie + 防 CSRF 跨站携带
+            resp = RedirectResponse(url=safe_next, status_code=303)
+            # httponly + samesite=lax：防 XSS 读 cookie + 防 CSRF 跨站携带；
+            # value 为服务端 HMAC 派生值（CodeQL py/cookie-injection），
+            # 用户提交的 token 不再进入响应或 cookie。
             resp.set_cookie(
                 key=SESSION_COOKIE_NAME,
-                value=token,
+                value=session_cookie_value(),
                 httponly=True,
                 samesite="lax",
                 secure=False,  # W2 开发环境 HTTP；生产部署需切 HTTPS + secure=True
@@ -104,7 +124,7 @@ def create_app() -> FastAPI:
         return templates.TemplateResponse(
             request=request,
             name="login.html",
-            context={"next": next, "error": "token 错误，请重试"},
+            context={"next": safe_next, "error": "token 错误，请重试"},
             status_code=401,
         )
 
