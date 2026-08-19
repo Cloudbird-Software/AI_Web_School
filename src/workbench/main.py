@@ -46,22 +46,28 @@ _DEFAULT_NEXT: str = "/items"
 def _safe_next(next_url: str) -> str:
     """登录回跳地址白名单化（CodeQL py/url-redirection，T-W0-011）.
 
-    双防线（缺一不可，为什么：CodeQL 污点模型不认纯字符串前缀校验为
-    sanitizer——T-W0-010 合并后 #25/#26 仍重开；urlparse 的 scheme/netloc
-    显式判空是其认可的形态，且对 ``/\\host``、``/a//b`` 等边角给出结构化判定）：
+    三道防线（缺一不可，为什么：CodeQL UrlRedirect 污点模型只认两类
+    sanitizer——常量前缀拼接（用户只控制后缀）与常量比较守卫；纯前缀/
+    urlparse 负向守卫不在模型内，T-W0-010/#39 两轮实证其不足以关警报）：
 
     1. 前缀防线：仅接受以单个 ``/`` 开头，且第二个字符不得是 ``/`` 或 ``\\``
        （WHATWG URL 规范把权威段位置的 ``\\`` 归一化为 ``/``——
        ``/\\evil.com`` 在浏览器里等于 ``//evil.com``，是跨域跳转，必须拦）；
     2. 结构防线：``urlparse`` 解析后 scheme 与 netloc 必须为空——任何携带
-       协议或授权段的值一律回落 ``/items``，杜绝开放重定向与钓鱼跳转。
+       协议或授权段的值一律回落 ``/items``；
+    3. 重构防线：输出恒为 ``"/" + 用户可控后缀``——重定向目标的前缀永远
+       由常量提供（CodeQL StringConcatAsSanitizer 认可形态），用户输入
+       不可能出现在 URL 前缀位置，开放重定向在构造上不可达。
     """
     if not next_url.startswith("/") or next_url[1:2] in ("/", "\\"):
         return _DEFAULT_NEXT
     parsed = urlparse(next_url)
     if parsed.scheme or parsed.netloc:
         return _DEFAULT_NEXT
-    return next_url
+    safe = "/" + parsed.path.lstrip("/")
+    if parsed.query:
+        safe += "?" + parsed.query
+    return safe
 
 
 def create_app() -> FastAPI:
