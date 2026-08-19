@@ -6,9 +6,12 @@
 //	migrate ... down [N]   # down 必须显式给 N（防误降全库；全量演练用 make migrate-go-check）
 //	migrate ... drop       # 危险：全量回滚（仅迁移演练使用）
 //
+// DSN 的 postgres:// / postgresql:// scheme 在入口归一化为 pgx5://（pgx/v5
+// 驱动只注册 pgx5），调用方一律传标准 postgres DSN。
+//
 // 与 alembic 双轨期语义基准：db/migrations/*.sql 由 alembic 在线捕获生成
 // （tools/sql/gen_migrations_from_alembic.py），pg_dump schema diff 为空是
-// 两者等价的可执行验收（make migrate-go-parity）。
+// 两者等价的可执行验收（make migrate-go-check）。
 package main
 
 import (
@@ -17,11 +20,22 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strings"
 
 	"github.com/golang-migrate/migrate/v4"
 	_ "github.com/golang-migrate/migrate/v4/database/pgx/v5"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
 )
+
+// normalizeScheme 把标准 postgres DSN scheme 换成 pgx/v5 驱动注册的 pgx5。
+func normalizeScheme(dsn string) string {
+	for _, p := range []string{"postgres://", "postgresql://"} {
+		if strings.HasPrefix(dsn, p) {
+			return "pgx5://" + strings.TrimPrefix(dsn, p)
+		}
+	}
+	return dsn
+}
 
 func main() {
 	dsn := flag.String("dsn", os.Getenv("MIGRATE_DSN"), "目标库 DSN（默认取 MIGRATE_DSN 环境变量）")
@@ -33,7 +47,7 @@ func main() {
 		os.Exit(2)
 	}
 
-	m, err := migrate.New("file://"+*dir, *dsn)
+	m, err := migrate.New("file://"+*dir, normalizeScheme(*dsn))
 	if err != nil {
 		log.Fatalf("初始化迁移器失败: %v", err)
 	}
