@@ -53,6 +53,30 @@ def must(cmd: list[str], what: str, env: dict[str, str] | None = None) -> None:
         raise SystemExit(f"❌ {what} 失败")
 
 
+def wait_for_server(admin_dsn: str, timeout_s: int = 90) -> None:
+    """等待服务器 TCP 就绪（make migrate-go-check 的容器由冷启动到可服务）。
+
+    必须走 TCP 而非容器内 socket 探测：官方 postgres 镜像 initdb 阶段会起
+    一个 listen_addresses='' 的临时服务器（仅 unix socket 可连），容器内
+    pg_isready 会误报就绪；真服务器才监听 TCP。psycopg connect 即 TCP。
+    """
+    import time
+
+    import psycopg
+
+    deadline = time.monotonic() + timeout_s
+    last_err: Exception | None = None
+    while time.monotonic() < deadline:
+        try:
+            with psycopg.connect(admin_dsn, autocommit=True, connect_timeout=3) as conn:
+                conn.execute("SELECT 1")
+            return
+        except psycopg.OperationalError as e:
+            last_err = e
+            time.sleep(1)
+    raise SystemExit(f"❌ PostgreSQL {timeout_s}s 内未就绪：{last_err}")
+
+
 def psql(admin_dsn: str, sql: str) -> None:
     import psycopg
 
@@ -200,6 +224,8 @@ def main() -> None:
     ap.add_argument("--admin-dsn", required=True, help="管理员库 DSN（用于建删 scratch 库）")
     ap.add_argument("--pg-dump", default="pg_dump", help="pg_dump 命令（多 token 视为命令前缀，如 compose exec 形态）")
     args = ap.parse_args()
+
+    wait_for_server(args.admin_dsn)
 
     print("== 0/3 pairs：up/down 成对性 ==")
     check_pairs()

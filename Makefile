@@ -47,14 +47,14 @@ migrate-go-check:
 	docker run -d --rm --name $(MIGCHECK_CONTAINER) -e POSTGRES_PASSWORD=migrate-check \
 	  -p $(MIGCHECK_PORT):5432 \
 	  postgres:16-alpine@sha256:57c72fd2a128e416c7fcc499958864df5301e940bca0a56f58fddf30ffc07777 >/dev/null; \
-	for i in $$(seq 1 60); do \
-	  docker exec $(MIGCHECK_CONTAINER) pg_isready -U postgres >/dev/null 2>&1 && break; sleep 1; \
-	done; \
-	docker exec $(MIGCHECK_CONTAINER) pg_isready -U postgres >/dev/null \
-	  || { echo "❌ 临时 PG 未就绪"; exit 1; }; \
+	docker inspect -f '{{.State.Running}}' $(MIGCHECK_CONTAINER) 2>/dev/null | grep -q true \
+	  || { echo "❌ 临时 PG 容器未启动"; exit 1; }; \
 	python tools/sql/migrate_check.py \
 	  --admin-dsn "postgresql://postgres:migrate-check@localhost:$(MIGCHECK_PORT)/postgres" \
 	  --pg-dump "docker exec -i $(MIGCHECK_CONTAINER) pg_dump -U postgres"
+# 注：就绪等待在 migrate_check.py 的 wait_for_server（TCP 层）。不能用容器内
+# pg_isready（unix socket）探测——官方镜像 initdb 阶段的临时服务器仅监听
+# socket，会误报就绪（CI 实证：竞态导致 check 挂在"临时 PG 未就绪"）。
 
 ## 测试与验收
 test: ; python -m pytest tests/ -x -q
