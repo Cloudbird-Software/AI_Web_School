@@ -46,9 +46,9 @@ END;
 $$ LANGUAGE plpgsql;
 """
 
-_TRIGGER_SQL = """
 # #43：FOR EACH ROW——分区表上语句级触发器只覆盖父表语句级操作，行级路径
 # （含经子表/分区的操作）不被保护；行级触发器对父表与全部分区生效。
+_TRIGGER_SQL = """
 CREATE TRIGGER trg_response_event_append_only
     BEFORE UPDATE OR DELETE ON response_event
     FOR EACH ROW
