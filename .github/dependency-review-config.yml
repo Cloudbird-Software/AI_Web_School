@@ -1,0 +1,11 @@
+# dependency-review 配置（T-W0-010）：
+# 工作流输入（deny-licenses 等，见 CI-Workflows dep-review.yml）逐字段优先于本文件；
+# 本文件只补充 allow-dependencies 豁免清单。
+#
+# psycopg-binary：PyPI 元数据为 LGPL-3.0-only（组织 deny 清单为
+# AGPL-3.0/GPL-3.0/SSPL-1.0，LGPL 不在列）。dependency-review 的许可证归一化
+# 将其误判为 GPL-3.0-or-later（LGPL 前缀归一化伪影）。psycopg[binary] extras
+# 拆分独立行（--require-hashes 模式要求，见 requirements.txt 头部说明）后
+# 触发该误报，实证：PR #35 deps/review 失败日志。此处按包名精确豁免。
+allow-dependencies:
+  - pip://psycopg-binary
