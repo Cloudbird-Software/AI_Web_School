@@ -11,7 +11,7 @@ ifneq (,$(wildcard .env))
 export POSTGRES_USER POSTGRES_PASSWORD POSTGRES_DB MINIO_ROOT_USER MINIO_ROOT_PASSWORD
 endif
 
-.PHONY: bootstrap up down migrate test accept contract golden golden-path nightly dashboard sync-rules model-bench demo-w0 demo-w2 demo-w3 setup check
+.PHONY: bootstrap up down migrate migrate-go migrate-go-check test accept contract golden golden-path nightly dashboard sync-rules model-bench demo-w0 demo-w2 demo-w3 setup check
 
 ## 环境一键搭建与自检（新机器第一步）
 bootstrap:
@@ -32,6 +32,30 @@ down: ; docker compose down
 migrate: ; alembic upgrade head
 migrate-check: ; alembic upgrade head && alembic downgrade -1 && alembic upgrade head && echo "✅ 迁移可逆"
 
+## T-W5-032 Go 侧迁移执行器（golang-migrate 双轨期与 alembic 并行，ADR-0004 §四）
+migrate-go: ; go run ./tools/migrate -dsn "postgresql://$(POSTGRES_USER):$(POSTGRES_PASSWORD)@localhost:5432/$(POSTGRES_DB)" up
+
+## T-W5-032 全链校验（验收 #1–#4）：成对性 + alembic/go parity + down/up 全量
+## + append-only 探针。用独立临时 PG16 实例：0014 的 pii_vault_reader 是集群
+## 级角色，若与别库（如 make check 已 upgrade 的 $(POSTGRES_DB)）的 ACL 依赖
+## 共存，down 0014 的 DROP ROLE 会因跨库共享依赖失败
+MIGCHECK_CONTAINER := mig-check-pg
+MIGCHECK_PORT := 55432
+migrate-go-check:
+	@command -v docker >/dev/null || { echo "❌ migrate-go-check 需要 Docker"; exit 1; }
+	@trap 'docker rm -f $(MIGCHECK_CONTAINER) >/dev/null 2>&1 || true' EXIT; \
+	docker run -d --rm --name $(MIGCHECK_CONTAINER) -e POSTGRES_PASSWORD=migrate-check \
+	  -p $(MIGCHECK_PORT):5432 \
+	  postgres:16-alpine@sha256:57c72fd2a128e416c7fcc499958864df5301e940bca0a56f58fddf30ffc07777 >/dev/null; \
+	docker inspect -f '{{.State.Running}}' $(MIGCHECK_CONTAINER) 2>/dev/null | grep -q true \
+	  || { echo "❌ 临时 PG 容器未启动"; exit 1; }; \
+	python tools/sql/migrate_check.py \
+	  --admin-dsn "postgresql://postgres:migrate-check@localhost:$(MIGCHECK_PORT)/postgres" \
+	  --pg-dump "docker exec -i $(MIGCHECK_CONTAINER) pg_dump -U postgres"
+# 注：就绪等待在 migrate_check.py 的 wait_for_server（TCP 层）。不能用容器内
+# pg_isready（unix socket）探测——官方镜像 initdb 阶段的临时服务器仅监听
+# socket，会误报就绪（CI 实证：竞态导致 check 挂在"临时 PG 未就绪"）。
+
 ## 测试与验收
 test: ; python -m pytest tests/ -x -q
 
@@ -41,6 +65,7 @@ setup: ; pip install --require-hashes -r requirements-dev.txt -r requirements.tx
 
 ## 组织治理基线（T-W0-009）：CI 全量检查（迁移自 pr-check.yml 的 PR 流水，本地亦可手动执行）
 ## T-W5-030/031：Go 工具链进 check（GO-1/GO-4 局部：gofmt/vet/test-race + X6 边界 lint + BAML-1 golden）
+## T-W5-032：migrate-go-check 进 check（验收 #5：SQL 迁移 parity/可逆/append-only 在 PR 阶段拦截）
 check:
 	@[ -f .env ] || cp .env.example .env
 	docker compose up -d --wait db
@@ -50,6 +75,7 @@ check:
 	GOLDEN_PATH_QUICK=1 python -m pytest tests/golden-path -q
 	python tools/ci/check_sources.py
 	$(MAKE) check-go
+	$(MAKE) migrate-go-check
 contract: ; python -m pytest tests/contract -q
 golden: ; python -m pytest tests/golden -q
 golden-path: ; python -m pytest tests/golden-path -q
