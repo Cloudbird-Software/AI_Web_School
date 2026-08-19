@@ -77,7 +77,10 @@ async def _truncate_response_event(async_session: AsyncSession):
 # 已发布题目构造（publish_item_version 是入库唯一路径）
 # ────────────────────────────────────────────────────────────────────
 
-_T0 = datetime(2026, 7, 27, 8, 0, 0, tzinfo=timezone.utc)
+# 时间锚点必须动态：response_event 按月分区（0003 迁移只建当月+未来 3 个月），
+# 固定历史日期在跨月后的新库中无对应分区（no partition found，2026-08-19 CI 实证）。
+# 全部用例仅使用 _T0 的相对偏移，锚定当前时刻不改变任何断言语义。
+_T0 = datetime.now(timezone.utc).replace(microsecond=0)
 
 
 def _version_data(
