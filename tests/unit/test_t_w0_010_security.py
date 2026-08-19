@@ -51,11 +51,11 @@ def test_safe_next_rejects_external_and_protocol_relative() -> None:
 
 def test_session_cookie_value_derived_not_token() -> None:
     value = session_cookie_value()
-    token = get_workbench_token()
-    assert value != token, "cookie 值不得等于用户提交的 token"
+    token_value = get_workbench_token()
+    assert value != token_value, "cookie 值不得等于用户提交的 token"
     assert re.fullmatch(r"[0-9a-f]{64}", value), "HMAC-SHA256 十六进制输出"
     assert verify_session_cookie(value) is True
-    assert verify_session_cookie(token) is False, "token 本身不是合法会话值"
+    assert verify_session_cookie(token_value) is False, "token 本身不是合法会话值"
     assert verify_session_cookie("garbage") is False
 
 
