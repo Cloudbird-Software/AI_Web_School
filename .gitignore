@@ -32,3 +32,6 @@ var/
 ai_runner.ps1
 .trae/documents/
 .pytest_tmp/
+
+# T-W5-032 Go 编译产物（go build ./tools/migrate 落在仓库根目录，禁止入库）
+/migrate
