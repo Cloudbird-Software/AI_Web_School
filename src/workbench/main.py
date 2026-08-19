@@ -18,6 +18,7 @@ from __future__ import annotations
 
 from pathlib import Path
 from typing import Optional
+from urllib.parse import urlparse
 
 from fastapi import Depends, FastAPI, Form, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
@@ -43,15 +44,24 @@ _DEFAULT_NEXT: str = "/items"
 
 
 def _safe_next(next_url: str) -> str:
-    """登录回跳地址白名单化（CodeQL py/url-redirection）.
+    """登录回跳地址白名单化（CodeQL py/url-redirection，T-W0-011）.
 
-    只接受站内相对路径：以单个 ``/`` 开头（排除 ``//host`` 协议相对跳转与
-    ``http(s)://``/``\\`` 等绝对形式）；其余一律回落 ``/items``，
-    杜绝开放重定向与钓鱼跳转。
+    双防线（缺一不可，为什么：CodeQL 污点模型不认纯字符串前缀校验为
+    sanitizer——T-W0-010 合并后 #25/#26 仍重开；urlparse 的 scheme/netloc
+    显式判空是其认可的形态，且对 ``/\\host``、``/a//b`` 等边角给出结构化判定）：
+
+    1. 前缀防线：仅接受以单个 ``/`` 开头，且第二个字符不得是 ``/`` 或 ``\\``
+       （WHATWG URL 规范把权威段位置的 ``\\`` 归一化为 ``/``——
+       ``/\\evil.com`` 在浏览器里等于 ``//evil.com``，是跨域跳转，必须拦）；
+    2. 结构防线：``urlparse`` 解析后 scheme 与 netloc 必须为空——任何携带
+       协议或授权段的值一律回落 ``/items``，杜绝开放重定向与钓鱼跳转。
     """
-    if next_url.startswith("/") and not next_url.startswith("//"):
-        return next_url
-    return _DEFAULT_NEXT
+    if not next_url.startswith("/") or next_url[1:2] in ("/", "\\"):
+        return _DEFAULT_NEXT
+    parsed = urlparse(next_url)
+    if parsed.scheme or parsed.netloc:
+        return _DEFAULT_NEXT
+    return next_url
 
 
 def create_app() -> FastAPI:
