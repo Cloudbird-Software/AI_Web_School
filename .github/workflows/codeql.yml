@@ -1,0 +1,33 @@
+name: codeql
+# T-W0-010：SAST 进 PR（Scorecard SASTID——CodeQL 此前只在默认分支默认配置下
+# 扫描，PR 上无 SAST）。Python 为当前主语言；W5-R Go 落地后追加 go 分析。
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  schedule:
+    - cron: "0 7 * * 1" # 每周一 15:00 北京
+
+permissions:
+  contents: read
+
+jobs:
+  analyze:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      # CodeQL 结果上传（security-events: write 仅此 job 授予）
+      security-events: write
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: github/codeql-action/init@c16c0f3f2812ec4bb3750a5ed64873fe2ce0fbef # codeql-bundle-v2.26.3
+        with:
+          languages: python
+          build-mode: none
+      - uses: github/codeql-action/analyze@c16c0f3f2812ec4bb3750a5ed64873fe2ce0fbef # codeql-bundle-v2.26.3
+        with:
+          category: "/language:python"

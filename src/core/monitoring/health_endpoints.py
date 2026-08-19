@@ -18,6 +18,7 @@
 """
 from __future__ import annotations
 
+import logging
 import os
 from collections import deque
 from dataclasses import dataclass
@@ -32,6 +33,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.api.deps import get_async_session
 
 router = APIRouter(tags=["monitoring"])
+
+# 服务端日志：异常详情（含堆栈）只进日志，绝不进 HTTP 响应（CodeQL
+# py/stack-trace-exposure）。probe_* 返回的 reason 供单测与日志消费者使用。
+logger = logging.getLogger(__name__)
 
 
 # ────────────────────────────────────────────────────────────────────
@@ -179,7 +184,13 @@ async def probe_db(session: AsyncSession) -> dict[str, Any]:
             "reason": f"SELECT 1 返回非预期值: {scalar!r}",
         }
     except Exception as exc:  # noqa: BLE001 — 探测需捕获所有异常转 unhealthy
-        return {"status": "unhealthy", "reason": str(exc)}
+        # 堆栈只进服务端日志；对外仅暴露 error_class（见 health 端点脱敏）
+        logger.exception("DB 连通性探测失败")
+        return {
+            "status": "unhealthy",
+            "reason": str(exc),
+            "error_class": type(exc).__name__,
+        }
 
 
 def probe_redis() -> dict[str, Any]:
@@ -212,7 +223,12 @@ def probe_redis() -> dict[str, Any]:
         client.close()
         return {"status": "ok" if pong else "unhealthy"}
     except Exception as exc:  # noqa: BLE001
-        return {"status": "unhealthy", "reason": str(exc)}
+        logger.exception("Redis 连通性探测失败")
+        return {
+            "status": "unhealthy",
+            "reason": str(exc),
+            "error_class": type(exc).__name__,
+        }
 
 
 def probe_object_storage() -> dict[str, Any]:
@@ -244,7 +260,12 @@ def probe_object_storage() -> dict[str, Any]:
         probe.unlink()
         return {"status": "ok"}
     except Exception as exc:  # noqa: BLE001
-        return {"status": "unhealthy", "reason": str(exc)}
+        logger.exception("对象存储连通性探测失败")
+        return {
+            "status": "unhealthy",
+            "reason": str(exc),
+            "error_class": type(exc).__name__,
+        }
 
 
 # ────────────────────────────────────────────────────────────────────
@@ -336,6 +357,20 @@ def check_alerts(
 # ────────────────────────────────────────────────────────────────────
 
 
+def _public_component(probe: dict[str, Any]) -> dict[str, Any]:
+    """把探测结果收敛为可对外暴露的最小字段（CodeQL py/stack-trace-exposure）.
+
+    为什么不透传 reason：unhealthy 的 reason 携带异常消息（可能含 DSN 片段、
+    内部路径等），属服务端日志信息；HTTP 响应只暴露 status 与 error_class
+    （异常类名，不含堆栈与消息）。not_configured 的说明文案在响应中省略——
+    status 本身已可自解释，且不在任何路径上读取 reason 键，污点传播被彻底切断。
+    """
+    out: dict[str, Any] = {"status": probe["status"]}
+    if "error_class" in probe:
+        out["error_class"] = probe["error_class"]
+    return out
+
+
 @router.get("/health", summary="健康检查（DB/Redis/对象存储连通状态）")
 async def health(
     session: AsyncSession = Depends(get_async_session),
@@ -359,9 +394,9 @@ async def health(
     return {
         "status": overall,
         "components": {
-            "db": db_status,
-            "redis": redis_status,
-            "object_storage": storage_status,
+            "db": _public_component(db_status),
+            "redis": _public_component(redis_status),
+            "object_storage": _public_component(storage_status),
         },
     }
 

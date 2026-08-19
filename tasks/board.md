@@ -8,6 +8,7 @@
 ## 进行中
 | 任务卡 | owner_module | 模型 | 开始日期 |
 |---|---|---|---|
+| T-W0-010 | src/workbench/ · src/core/monitoring/ · .github/ · tools/fuzz/ · requirements*.txt | GLM-5.3 | 2026-08-19 |
 
 ## 就绪（按优先级）
 > 当前就绪波次：**W5 信任硬化波**（详见 tasks/w5/BRIEF.md、tasks/w5/ISSUES.md）。W2–W4 已全部完成，历史就绪清单见 git 历史。
