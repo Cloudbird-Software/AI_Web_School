@@ -22,7 +22,9 @@ echo "== X6/GO-3 边界 lint：绿（当前代码）=="
 go run ./tools/go-lint/import-boundary
 
 echo "== X6/GO-3 边界 lint：红（注入 core→packs 违规必须被拦）=="
-VIOLATION=core/gate/zz_boundary_violation_gen.go
+# mktemp 唯一文件名（O_EXCL 创建，后缀 .go 供 lint 扫描）：不覆盖也不在
+# 退出时误删工作树里任何既有文件，清理只作用于本次创建的文件
+VIOLATION=$(mktemp --suffix=.go core/gate/zz_boundary_violation_gen.XXXXXX)
 trap 'rm -f "$VIOLATION"' EXIT
 cat > "$VIOLATION" <<'EOF'
 package gate
