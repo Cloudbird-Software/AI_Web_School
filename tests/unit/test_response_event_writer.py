@@ -324,11 +324,13 @@ async def test_delete_rejected_by_trigger(async_session: AsyncSession):
     await async_session.rollback()
 
 
-async def test_trigger_is_statement_level(async_session: AsyncSession):
-    """验收 #3：触发器为 BEFORE UPDATE OR DELETE FOR EACH STATEMENT（非 ROW）.
+async def test_trigger_is_row_level(async_session: AsyncSession):
+    """#43：分区表触发器为 BEFORE UPDATE OR DELETE FOR EACH ROW.
 
-    通过 pg_catalog 检查触发器定义，确认 FOR EACH STATEMENT 而非 FOR EACH ROW。
-    PG 输出顺序为 `BEFORE DELETE OR UPDATE`（DELETE 在前），故分别检查两个动作。
+    语句级触发器在分区表上只保护父表语句级操作，经子表/分区的行级路径
+    不被覆盖；行级触发器对父表与全部分区生效。PG 会把 ROW 触发器克隆到
+    每个分区——pg_catalog 中每个分区一行，多行是修复生效的行为证据。
+    输出顺序为 `BEFORE DELETE OR UPDATE`（DELETE 在前），故分别检查两个动作。
     """
     result = await async_session.execute(
         text(
@@ -339,11 +341,13 @@ async def test_trigger_is_statement_level(async_session: AsyncSession):
             """
         )
     )
-    trigger_def = result.scalar_one()
-    assert "BEFORE" in trigger_def
-    assert "DELETE" in trigger_def
-    assert "UPDATE" in trigger_def
-    assert "FOR EACH STATEMENT" in trigger_def
+    trigger_defs = result.fetchall()
+    assert trigger_defs, "触发器不存在"
+    for (trigger_def,) in trigger_defs:
+        assert "BEFORE" in trigger_def
+        assert "DELETE" in trigger_def
+        assert "UPDATE" in trigger_def
+        assert "FOR EACH ROW" in trigger_def, trigger_def
 
 
 # ────────────────────────────────────────────────────────────────────
