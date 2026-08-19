@@ -18,7 +18,7 @@ permissions:
 
 jobs:
   hygiene:
-    uses: Cloudbird-Software/CI-Workflows/.github/workflows/hygiene.yml@9c20d43d60e9f9d1438f171aeee8e4dbdf02c08b # v1
+    uses: Cloudbird-Software/CI-Workflows/.github/workflows/hygiene.yml@4f1b5df006c0218d95767d24d6aab1f7b9e811f5 # v1
 
   deps-audit:
     # push 面依赖审计（对齐 template-service ci.yml 同名 job；pip 侧用 pip-audit
@@ -40,7 +40,7 @@ jobs:
         run: uvx pip-audit@2.10.1 -r requirements.txt -r requirements-dev.txt
 
   check:
-    uses: Cloudbird-Software/CI-Workflows/.github/workflows/check.yml@9c20d43d60e9f9d1438f171aeee8e4dbdf02c08b # v1
+    uses: Cloudbird-Software/CI-Workflows/.github/workflows/check.yml@4f1b5df006c0218d95767d24d6aab1f7b9e811f5 # v1
     with:
       runtime: python
       python-version: "3.12"
@@ -50,7 +50,13 @@ jobs:
     permissions:
       contents: read
       pull-requests: write
-    uses: Cloudbird-Software/CI-Workflows/.github/workflows/dep-review.yml@9c20d43d60e9f9d1438f171aeee8e4dbdf02c08b # v1
+    uses: Cloudbird-Software/CI-Workflows/.github/workflows/dep-review.yml@4f1b5df006c0218d95767d24d6aab1f7b9e811f5 # v1
+    with:
+      # ADR-0026：psycopg-binary 在 GitHub 依赖图被归一化为 GPL-3.0-or-later
+      # （PyPI 实为 LGPL-3.0-only，不在 org deny 清单 AGPL-3.0/GPL-3.0/SSPL-1.0）。
+      # --require-hashes 模式要求 extras 闭包独立行（requirements.txt 头部说明），
+      # 拆行后触发该误报——按 PURL 精确豁免，deny 清单本体不变。
+      allow-dependencies-licenses: pkg:pypi/psycopg-binary
 
   repo-gate:
     # 宪法门禁（原 pr-check.yml 全量迁移）：任务卡引用 / 泄密扫描 / 反测试削弱 /
