@@ -29,8 +29,6 @@ CREATE INDEX ix_rubric_template_grade_band ON rubric_template (grade_band);
 CREATE INDEX ix_blueprint_writing_type ON blueprint (writing_type);
 CREATE INDEX ix_blueprint_pack_id ON blueprint (pack_id);
 CREATE INDEX ix_blueprint_rubric_template_id ON blueprint (rubric_template_id);
-CREATE OR REPLACE FUNCTION raise_append_only_error() RETURNS TRIGGER AS $$ BEGIN   RAISE EXCEPTION 'append-only table (D1): UPDATE/DELETE forbidden'; END; $$ LANGUAGE plpgsql;
-
 CREATE TRIGGER trg_rubric_template_append_only
     BEFORE UPDATE OR DELETE ON rubric_template
     FOR EACH STATEMENT

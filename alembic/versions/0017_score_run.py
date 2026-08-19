@@ -134,33 +134,17 @@ def _create_indexes() -> None:
         "score_run",
         ["rerun_of"],
     )
-    # run_label 非空时的严格幂等：同事件同非空标签唯一
-    # （uq_score_run_identity 已覆盖，但 PG 对 NULL 视为不相等；
-    # 此部分索引为查询便利 + 显式标注语义）
-    op.create_index(
-        "uq_score_run_identity_nonnull_label",
-        "score_run",
-        ["event_id", "event_created_at", "run_label"],
-        unique=True,
-        postgresql_where=sa.text("run_label IS NOT NULL"),
-    )
+    # #43 Minor 修复：不再另建部分唯一索引 uq_score_run_identity_nonnull_label——
+    # 对 run_label 非空的行，uq_score_run_identity 唯一约束已精确覆盖同一元组集，
+    # 部分索引纯属冗余（徒增写入维护与存储）。NULL 语义由 PG 默认保留。
 
 
 def _create_trigger() -> None:
     """D1 append-only 物理强制：BEFORE UPDATE OR DELETE FOR EACH STATEMENT."""
     binding = op.get_bind()
-    # raise_append_only_error() 由 0003 创建，0004/0005/0013 等均复用；
-    # CREATE OR REPLACE 保证幂等（与既有迁移一致）。
-    binding.execute(
-        sa.text(
-            "CREATE OR REPLACE FUNCTION raise_append_only_error() "
-            "RETURNS TRIGGER AS $$ "
-            "BEGIN "
-            "  RAISE EXCEPTION 'append-only table (D1): UPDATE/DELETE forbidden'; "
-            "END; "
-            "$$ LANGUAGE plpgsql;"
-        )
-    )
+    # #43 Major 修复：不再 CREATE OR REPLACE 重定义 0005 已统一的
+    # raise_append_only_error——重定义会使 down 后函数体 ≠ 目标版本定义，
+    # 破坏全量可逆（迁移只挂触发器，函数复用 0005 的统一版本）。
     binding.execute(sa.text(_TRIGGER_SQL))
 
 
@@ -177,7 +161,6 @@ def downgrade() -> None:
     binding.execute(
         sa.text("DROP TRIGGER IF EXISTS trg_score_run_append_only ON score_run")
     )
-    op.drop_index("uq_score_run_identity_nonnull_label", table_name="score_run")
     op.drop_index("ix_score_run_rerun_of", table_name="score_run")
     op.drop_index("ix_score_run_scorer_version", table_name="score_run")
     op.drop_index("ix_score_run_purpose_scope", table_name="score_run")

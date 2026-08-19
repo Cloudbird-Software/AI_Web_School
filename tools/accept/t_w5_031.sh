@@ -15,8 +15,10 @@ echo "== GO-4 test -race（含 fuzz 种子语料）=="
 go test ./... -race -count=1
 
 echo "== 原生 fuzz 目标存在（BRIEF 技术基线）=="
-grep -rq 'func Fuzz.*testing.F' core api cmd registry || {
-  echo "❌ 未找到任何 Fuzz 目标"; exit 1; }
+# #43：go test -list 是编译期事实源（grep 会命中注释/非测试文件的同形文本）
+FUZZ_TARGETS=$(go test -list '^Fuzz' ./... 2>/dev/null | grep -c '^Fuzz' || true)
+if [ "$FUZZ_TARGETS" -lt 1 ]; then
+  echo "❌ 未找到任何 Fuzz 目标"; exit 1; fi
 
 echo "== X6/GO-3 边界 lint：绿（当前代码）=="
 go run ./tools/go-lint/import-boundary

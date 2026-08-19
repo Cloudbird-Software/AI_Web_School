@@ -31,8 +31,12 @@ func TestResolveInteractions_RegisteredRefResolves(t *testing.T) {
 	if err != nil {
 		t.Fatalf("已注册条目解析失败: %v", err)
 	}
-	if got[0].Entry().ID != "single_choice" {
+	if got[0].Interaction.Entry().ID != "single_choice" {
 		t.Fatalf("解析结果不符: %+v", got)
+	}
+	// #43：引用参数必须随绑定保留（D4 参数化复用）
+	if got[0].Params["max"] != 4 {
+		t.Fatalf("Params 在解析中被丢弃: %+v", got[0])
 	}
 }
 

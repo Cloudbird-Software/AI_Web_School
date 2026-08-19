@@ -25,8 +25,6 @@ CREATE INDEX ix_shadow_score_dataset_id ON shadow_score (dataset_id);
 CREATE INDEX ix_shadow_score_grade_band ON shadow_score (grade_band);
 CREATE INDEX ix_shadow_score_consistency_status ON shadow_score (consistency_status);
 CREATE INDEX ix_shadow_score_rubric_id ON shadow_score (rubric_id);
-CREATE OR REPLACE FUNCTION raise_append_only_error() RETURNS TRIGGER AS $$ BEGIN   RAISE EXCEPTION 'append-only table (D1): UPDATE/DELETE forbidden'; END; $$ LANGUAGE plpgsql;
-
 CREATE TRIGGER trg_shadow_score_append_only
     BEFORE UPDATE OR DELETE ON shadow_score
     FOR EACH STATEMENT

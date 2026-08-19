@@ -46,6 +46,10 @@ END;
 $$ LANGUAGE plpgsql;
 """
 
+# 治理裁决（#43 Minor 项）：CodeRabbit 建议 FOR EACH ROW，但语句级语义是
+# 早期验收钉死的行为（tests/unit/test_response_event_writer.py 断言），且
+# X1 反测试削弱门禁止 agent 改动既有断言——升级到行级需人类裁决后同步改
+# 契约测试，本仓不做 agent 单方面翻转。
 _TRIGGER_SQL = """
 CREATE TRIGGER trg_response_event_append_only
     BEFORE UPDATE OR DELETE ON response_event
