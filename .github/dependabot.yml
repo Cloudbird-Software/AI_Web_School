@@ -1,0 +1,20 @@
+version: 2
+# SC-3（ADR-0023）：依赖周更；minor/patch 过 gate 自动合并（automerge.yml）；
+# major 留人（languages.yaml#dependency_policy：owner 审批，7 天 SLA）。
+updates:
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule: { interval: weekly }
+    groups:
+      actions:
+        patterns: ["*"]
+        cooldown-days: 7
+  - package-ecosystem: pip
+    directory: "/"
+    schedule: { interval: weekly }
+    open-pull-requests-limit: 5
+    groups:
+      minor-patch:
+        patterns: ["*"]
+        update-types: ["minor", "patch"]
+        cooldown-days: 7

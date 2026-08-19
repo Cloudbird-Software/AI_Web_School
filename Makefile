@@ -4,9 +4,14 @@ TASK ?=
 
 # 从 .env 读取基础设施变量（compose 自检需要；密钥类变量如 DEEPSEEK_API_KEY 刻意不导出）
 -include .env
+# 仅当 .env 实际存在时才导出：无条件 export 会在 .env 尚未创建时（如 CI 的
+# make check 首次运行）把空值导给子进程——空环境变量优先级高于 compose 的
+# .env 插值（postgres 空密码秒退），也会让 alembic env.py 的 setdefault 失效
+ifneq (,$(wildcard .env))
 export POSTGRES_USER POSTGRES_PASSWORD POSTGRES_DB MINIO_ROOT_USER MINIO_ROOT_PASSWORD
+endif
 
-.PHONY: bootstrap up down migrate test accept contract golden golden-path nightly dashboard sync-rules model-bench demo-w0 demo-w2 demo-w3
+.PHONY: bootstrap up down migrate test accept contract golden golden-path nightly dashboard sync-rules model-bench demo-w0 demo-w2 demo-w3 setup check
 
 ## 环境一键搭建与自检（新机器第一步）
 bootstrap:
@@ -29,6 +34,19 @@ migrate-check: ; alembic upgrade head && alembic downgrade -1 && alembic upgrade
 
 ## 测试与验收
 test: ; python -m pytest tests/ -x -q
+
+## 组织治理基线（T-W0-009）：CI-Workflows check.yml 调用——依赖安装
+setup: ; pip install -r requirements-dev.txt -r requirements.txt
+
+## 组织治理基线（T-W0-009）：CI 全量检查（迁移自 pr-check.yml 的 PR 流水，本地亦可手动执行）
+check:
+	@[ -f .env ] || cp .env.example .env
+	docker compose up -d --wait db
+	alembic upgrade head
+	python -m pytest tests/contract tests/golden -q
+	if [ -d tests/unit ]; then python -m pytest tests/unit -q; fi
+	GOLDEN_PATH_QUICK=1 python -m pytest tests/golden-path -q
+	python tools/ci/check_sources.py
 contract: ; python -m pytest tests/contract -q
 golden: ; python -m pytest tests/golden -q
 golden-path: ; python -m pytest tests/golden-path -q

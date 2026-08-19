@@ -1,0 +1,14 @@
+# gitleaks 白名单（hygiene job `gitleaks git .` 自动加载）。
+# 仅豁免经人工逐值核验的合成测试常量（非真实凭据，全历史 171 commits 扫描仅此 4 处命中）：
+# 1. PII 保险库单测主密钥（32 字节 base64，test_pii_vault.py 注释明示"测试用主密钥
+#    …固定值保证测试可复现"；2026-07-30 审查报告 txt 中的命中为对该测试的原文引用）；
+# 2. QR HMAC 签名单测密钥（字面值即 "test-secret-key-for-hmac-signing"）。
+# 新增豁免必须逐值登记来源与理由；真实凭据零豁免（X3）。
+title = "gitleaks allowlist for synthetic test constants"
+
+[allowlist]
+description = "synthetic test fixtures, not credentials"
+regexes = [
+  '''4\+H57udVMoZpDOg0U4lmmJu7JqxEhbrgBPfXNZXieXU=''',
+  '''test-secret-key-for-hmac-signing''',
+]

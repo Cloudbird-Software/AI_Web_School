@@ -26,6 +26,12 @@
 - 波内契约冻结：只增不改；要改契约，停下来升级给人类。
 - 失败 2 次即升级：输出"已完成/失败点/已尝试/建议"，禁止继续盲目重试。
 
+## 组织治理基线（Cloudbird-Software，ADR-0023）
+- PR 唯一 required check = `gate`（ci.yml 聚合 CI-Workflows@v1 复用工作流，CI-1）；main 仅经 PR+squash 进入（BP-1，org ruleset main-protection）。
+- agent 写仓唯一身份 = cloudbrid-agent App（AG-1）；automerge 仅限 dependabot 非 major 更新（SC-3）。
+- 新增依赖须 owner 批（组织 languages.yaml#dependency_policy），禁 AGPL/GPL-3.0/SSPL。
+- 治理索引（按需读）：[GOVERNANCE.yaml](https://github.com/Cloudbird-Software/.github/blob/main/governance/GOVERNANCE.yaml) · [REPOS.yaml](https://github.com/Cloudbird-Software/.github/blob/main/governance/REPOS.yaml) · [policy/](https://github.com/Cloudbird-Software/.github/tree/main/governance/policy)
+
 ## 代码与测试
 - 测试先行：实现前先确认验收脚本存在且理解其期望；新功能必须带测试。
 - 禁止删除/修改/弱化任何既有测试与断言；禁止用 skip 绕过失败。
