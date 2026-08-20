@@ -105,9 +105,12 @@ jobs:
     # 契约兼容性检测门（P2-4，ADR-0038）：OpenAPI/JSON Schema breaking + DB migration
     # destructive DDL 分类；policy = .github governance/policy/contracts.yaml（org 合入前
     # 用引擎内置 bootstrap 快照）。无事件条件：PR/push 两面都真跑，无 EXPECTED_SKIP 登记。
-    # BOOTSTRAP 钉扎：指向 CI-Workflows PR #18 分支提交；其 squash 合入并走 v1.X.Y
-    # 发布四步流程后，改钉 merge SHA（勿用可变 @main）。
-    uses: Cloudbird-Software/CI-Workflows/.github/workflows/contract.yml@a780b7c79ffe3df69e9db756d8f1fa4e47c0a90a # v1
+    # BOOTSTRAP 钉扎：uses 与 ciw-ref 均指向 CI-Workflows PR #18 分支提交（两处一致，
+    # 被调用侧无法自取自身 ref）；其 squash 合入并走 v1.X.Y 发布四步流程后，两处同改
+    # merge SHA（勿用可变 @main）。
+    uses: Cloudbird-Software/CI-Workflows/.github/workflows/contract.yml@231b825dd7e21d27775de5e10904df3892574fb3 # v1
+    with:
+      ciw-ref: 231b825dd7e21d27775de5e10904df3892574fb3
 
   gate:
     if: always()
@@ -137,4 +140,3 @@ jobs:
           if [[ -n "$BAD" ]]; then
             echo "::error::以下 job 非 success 且不属于事件 $EVENT 的结构性预期跳过：$BAD（skipped≠success——ADR-0032）"; exit 1
           fi
-
