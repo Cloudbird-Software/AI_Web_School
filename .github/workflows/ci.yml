@@ -108,9 +108,9 @@ jobs:
     # BOOTSTRAP 钉扎：uses 与 ciw-ref 均指向 CI-Workflows PR #18 分支提交（两处一致，
     # 被调用侧无法自取自身 ref）；其 squash 合入并走 v1.X.Y 发布四步流程后，两处同改
     # merge SHA（勿用可变 @main）。
-    uses: Cloudbird-Software/CI-Workflows/.github/workflows/contract.yml@231b825dd7e21d27775de5e10904df3892574fb3 # v1
+    uses: Cloudbird-Software/CI-Workflows/.github/workflows/contract.yml@1a9e38ffb9b4f504fc5d24d1e1b6feec44a826de # v1
     with:
-      ciw-ref: 231b825dd7e21d27775de5e10904df3892574fb3
+      ciw-ref: 1a9e38ffb9b4f504fc5d24d1e1b6feec44a826de
 
   gate:
     if: always()
