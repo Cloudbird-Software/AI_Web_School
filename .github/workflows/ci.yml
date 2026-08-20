@@ -101,6 +101,28 @@ jobs:
       - name: 规则文件同步一致性
         run: CI=true bash tools/sync_rules.sh
 
+  test-freeze:
+    # T-W5-034 测试冻结门禁（specs/test-freeze/）：受保护测试资产（holdout/契约/黄金/
+    # accept 脚本/出口脚本/守卫自身）哈希级冻结；清单本体变更须 [TEST-FREEZE-APPROVE]
+    # 人类标记；CODEOWNERS 已把 /tests/ /scripts/ 显式归属 owner（人审为最终防线）。
+    # 工作流变更经 owner 凭据通道提交（ADR-0045：App 无 workflows 权限，.github#102）。
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: 哈希冻结 + 覆盖完整性
+        run: python3 tools/ci/check_test_freeze.py
+      - name: 清单变更须人类批准标记（仅 PR）
+        if: github.event_name == 'pull_request'
+        run: |
+          git fetch origin main --depth=1 >/dev/null 2>&1 || true
+          python3 tools/ci/check_test_freeze.py --base origin/main
+
   contract:
     # 契约兼容性检测门（P2-4，ADR-0038）：OpenAPI/JSON Schema breaking + DB migration
     # destructive DDL 分类；policy = .github governance/policy/contracts.yaml（org 合入前
@@ -114,7 +136,7 @@ jobs:
 
   gate:
     if: always()
-    needs: [hygiene, deps-audit, check, deps, repo-gate, contract]
+    needs: [hygiene, deps-audit, check, deps, repo-gate, test-freeze, contract]
     runs-on: ubuntu-latest
     steps:
       - name: All required jobs green?
