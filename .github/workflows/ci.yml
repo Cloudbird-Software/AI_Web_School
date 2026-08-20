@@ -107,7 +107,7 @@ jobs:
     # 用引擎内置 bootstrap 快照）。无事件条件：PR/push 两面都真跑，无 EXPECTED_SKIP 登记。
     # BOOTSTRAP 钉扎：指向 CI-Workflows PR #18 分支提交；其 squash 合入并走 v1.X.Y
     # 发布四步流程后，改钉 merge SHA（勿用可变 @main）。
-    uses: Cloudbird-Software/CI-Workflows/.github/workflows/contract.yml@8519f9273f254f8a21d085711191b106363fc776 # v1
+    uses: Cloudbird-Software/CI-Workflows/.github/workflows/contract.yml@a780b7c79ffe3df69e9db756d8f1fa4e47c0a90a # v1
 
   gate:
     if: always()
