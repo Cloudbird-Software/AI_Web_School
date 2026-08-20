@@ -14,6 +14,7 @@
 |---|---|---|
 | T-W5-031 | #42（已合并） | Go 骨架：t_w5_031.sh 全绿（gofmt/build/vet/test-race + fuzz + X6 红绿双向 + healthz 脱敏）；遗留缺陷清单见 issue #43/#45，随修复 PR 关闭 |
 | T-W5-035 | #48 | org 治理 CI 变更（Cloudbird-Software/.github#84 / ADR-0032）：gate aggregator 严格化 skipped≠success + EXPECTED_SKIP 白名单；Verifier=机器门禁（本 PR CI 全绿；T1 注入负向测试 Use-up-Plan PR#30 gate 红） |
+| T-W5-036 | #49 | org 治理 CI 变更（Cloudbird-Software/.github#89 / ADR-0038）：契约兼容性检测门接线——contract job（CI-Workflows contract.yml）入 gate needs；检测面 specs/contracts/**（jsonschema breaking）+ alembic/versions/**（destructive DDL 须 ADR+downgrade 逆操作）；Verifier=机器门禁（本 PR CI 全绿，含 contract job 首跑） |
 | T-W5-032 | #42（已合并） | 22 对 up/down + migrate-go-check 全绿；CodeRabbit 遗留缺陷见 issue #43/#45（负数步/固定口令/重定义/parity 切分），随修复 PR 关闭 |
 | T-W0-010 | #35（已合并） | 警报处置完毕：15 闭 + 3 dismiss（issue #41）+ 3 窗口自愈 |
 | T-W0-011 | #40（已合并） | CodeQL #25/#26 已自动关闭 ✅ |
