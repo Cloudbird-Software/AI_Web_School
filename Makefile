@@ -11,7 +11,7 @@ ifneq (,$(wildcard .env))
 export POSTGRES_USER POSTGRES_PASSWORD POSTGRES_DB MINIO_ROOT_USER MINIO_ROOT_PASSWORD
 endif
 
-.PHONY: bootstrap up down migrate migrate-go migrate-go-check test accept contract golden golden-path nightly dashboard sync-rules model-bench demo-w0 demo-w2 demo-w3 setup check
+.PHONY: bootstrap up down migrate migrate-go migrate-go-check test accept contract golden golden-path nightly dashboard sync-rules model-bench demo-w0 demo-w2 demo-w3 setup check test-freeze-check holdout
 
 ## 环境一键搭建与自检（新机器第一步）
 bootstrap:
@@ -99,6 +99,16 @@ check-go: go-fmt go-build go-test go-boundary baml-golden-check
 accept: ## make accept TASK=T-W0-001
 	@[ -n "$(TASK)" ] || { echo "用法: make accept TASK=<id>"; exit 1; }
 	bash tools/make_accept.sh $(TASK)
+
+## T-W5-034 测试冻结校验（specs/test-freeze/；受保护测试资产被篡改/删除/未登记即红）
+test-freeze-check: ; python tools/ci/check_test_freeze.py
+
+## T-W5-034 端到端 Holdout（人类意图的效果测试；先校验冻结完整性再执行）
+WAVE ?=
+holdout: ## make holdout WAVE=w5r|w6|w7|w8|final
+	@[ -n "$(WAVE)" ] || { echo "用法: make holdout WAVE=<w5r|w6|w7|w8|final>"; exit 1; }
+	python tools/ci/check_test_freeze.py
+	python tools/ci/run_holdout.py tests/holdout/$(WAVE).md
 
 ## 仪表盘与模型基准赛
 dashboard: ; python tools/opc dashboard
