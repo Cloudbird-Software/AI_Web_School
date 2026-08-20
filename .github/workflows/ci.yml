@@ -101,9 +101,20 @@ jobs:
       - name: 规则文件同步一致性
         run: CI=true bash tools/sync_rules.sh
 
+  contract:
+    # 契约兼容性检测门（P2-4，ADR-0038）：OpenAPI/JSON Schema breaking + DB migration
+    # destructive DDL 分类；policy = .github governance/policy/contracts.yaml（org 合入前
+    # 用引擎内置 bootstrap 快照）。无事件条件：PR/push 两面都真跑，无 EXPECTED_SKIP 登记。
+    # BOOTSTRAP 钉扎：uses 与 ciw-ref 均指向 CI-Workflows PR #18 分支提交（两处一致，
+    # 被调用侧无法自取自身 ref）；其 squash 合入并走 v1.X.Y 发布四步流程后，两处同改
+    # merge SHA（勿用可变 @main）。
+    uses: Cloudbird-Software/CI-Workflows/.github/workflows/contract.yml@60c380df921ed2f18945d81f22d67b44046e602e9c65699f21d136b68c53ec65a96c0cc0 # v1
+    with:
+      ciw-ref: 60c380df921ed2f18945d81f22d67b44046e602e9c65699f21d136b68c53ec65a96c0cc0
+
   gate:
     if: always()
-    needs: [hygiene, deps-audit, check, deps, repo-gate]
+    needs: [hygiene, deps-audit, check, deps, repo-gate, contract]
     runs-on: ubuntu-latest
     steps:
       - name: All required jobs green?
