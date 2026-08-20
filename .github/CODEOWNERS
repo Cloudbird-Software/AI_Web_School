@@ -6,6 +6,10 @@
 
 * @randypanding
 
+# 测试与验收资产（T-W5-034 测试冻结：开发 agent 只能跑测试，改动必须 owner 人审）
+/tests/ @randypanding
+/scripts/ @randypanding
+
 # 基建：CI/门禁/治理与契约（变更影响全仓库，显式归属）
 /.github/ @randypanding
 /Makefile @randypanding

@@ -1,0 +1,10 @@
+# 测试冻结受保护路径清单（每行一个；目录以 / 结尾，递归生效）
+# 规则见同目录 README.md。本文件的修改受 check_test_freeze.py PR 模式拦截（需 [TEST-FREEZE-APPROVE]）。
+tests/holdout/
+tests/contract/
+tests/golden/
+tools/accept/
+scripts/wave-exit/
+tools/ci/check_test_freeze.py
+tools/ci/run_holdout.py
+specs/test-freeze/README.md
