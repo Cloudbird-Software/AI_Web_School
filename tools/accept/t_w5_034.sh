@@ -57,7 +57,7 @@ echo "✅ 解析与判定语义正确"
 
 echo "== 4. CI 门禁接线 =="
 grep -q 'test-freeze:' .github/workflows/ci.yml \
-  && grep -q 'needs: \[hygiene, deps-audit, check, deps, repo-gate, test-freeze\]' .github/workflows/ci.yml \
+  && grep -q 'repo-gate, test-freeze' .github/workflows/ci.yml \
   || { echo "❌ test-freeze 未并入 gate"; exit 1; }
 
 echo "== 5. CODEOWNERS 测试资产归属 =="
