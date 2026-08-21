@@ -18,7 +18,7 @@ permissions:
 
 jobs:
   hygiene:
-    uses: Cloudbird-Software/CI-Workflows/.github/workflows/hygiene.yml@4f1b5df006c0218d95767d24d6aab1f7b9e811f5 # v1
+    uses: Cloudbird-Software/CI-Workflows/.github/workflows/hygiene.yml@8cc9f76691276eb3f0bbfd059c2a45bdb0b75822 # v1
 
   deps-audit:
     # push 面依赖审计（对齐 template-service ci.yml 同名 job；pip 侧用 pip-audit
@@ -40,8 +40,9 @@ jobs:
         run: uvx pip-audit@2.10.1 -r requirements.txt -r requirements-dev.txt
 
   check:
-    uses: Cloudbird-Software/CI-Workflows/.github/workflows/check.yml@4f1b5df006c0218d95767d24d6aab1f7b9e811f5 # v1
+    uses: Cloudbird-Software/CI-Workflows/.github/workflows/check.yml@8cc9f76691276eb3f0bbfd059c2a45bdb0b75822 # v1
     with:
+      ciw-ref: 8cc9f76691276eb3f0bbfd059c2a45bdb0b75822
       runtime: python
       python-version: "3.12"
 
@@ -50,7 +51,7 @@ jobs:
     permissions:
       contents: read
       pull-requests: write
-    uses: Cloudbird-Software/CI-Workflows/.github/workflows/dep-review.yml@4f1b5df006c0218d95767d24d6aab1f7b9e811f5 # v1
+    uses: Cloudbird-Software/CI-Workflows/.github/workflows/dep-review.yml@8cc9f76691276eb3f0bbfd059c2a45bdb0b75822 # v1
     with:
       # ADR-0026：psycopg-binary 在 GitHub 依赖图被归一化为 GPL-3.0-or-later
       # （PyPI 实为 LGPL-3.0-only，不在 org deny 清单 AGPL-3.0/GPL-3.0/SSPL-1.0）。
@@ -130,9 +131,9 @@ jobs:
     # BOOTSTRAP 钉扎：uses 与 ciw-ref 均指向 CI-Workflows PR #18 分支提交（两处一致，
     # 被调用侧无法自取自身 ref）；其 squash 合入并走 v1.X.Y 发布四步流程后，两处同改
     # merge SHA（勿用可变 @main）。
-    uses: Cloudbird-Software/CI-Workflows/.github/workflows/contract.yml@60c380df921ed2f18945d81f22d67b44046e602e # v1
+    uses: Cloudbird-Software/CI-Workflows/.github/workflows/contract.yml@8cc9f76691276eb3f0bbfd059c2a45bdb0b75822 # v1
     with:
-      ciw-ref: 60c380df921ed2f18945d81f22d67b44046e602e
+      ciw-ref: 8cc9f76691276eb3f0bbfd059c2a45bdb0b75822
 
   gate:
     if: always()
