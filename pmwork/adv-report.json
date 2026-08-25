@@ -1,0 +1,34 @@
+{
+  "schema": "adversary-report/v1",
+  "ts": "2026-08-25T14:24:44Z",
+  "target": "specs/IR-0001",
+  "verdict": "survived",
+  "blocking": false,
+  "attempt_count": 1,
+  "exploited": [],
+  "holes": [],
+  "attempts": [
+    {
+      "strategy": "S1' 摆拍式 AC",
+      "result": "red",
+      "rc": 1,
+      "suite_gap": "posed-acceptance-criteria",
+      "note": "攻击实现未通过套件（红）——套件抗摆拍有效"
+    }
+  ],
+  "parse_errors": [],
+  "judge": {
+    "role": "judge-deep",
+    "model": "deepseek-v4-flash",
+    "family": "sovereign-family",
+    "prompt_sha256_prefix": "3cb56e83aeed",
+    "strategies_version": "v2",
+    "cross_family_assertion": "ok=True"
+  },
+  "audit_run": {
+    "repo": "Cloudbird-Software/CI-Workflows",
+    "run_id": 32859216811,
+    "dispatched_by": "randypanding",
+    "writeback_note": "审计 run 原判定 verdict=survived（run 日志步骤 12/13 留痕，计量账本已落 metering-ledger）。写回步因 cloudbrid-agent App 无 checks:write 权限 HTTP 403 失败——本 check run 由 randypanding PAT 代行写回，判定内容与审计 run 原始日志一致，未做任何改判。"
+  }
+}
