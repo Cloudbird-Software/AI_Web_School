@@ -160,6 +160,9 @@ def _date_range_utc(target_date: date) -> tuple[datetime, datetime]:
 # score_run（重判历史）；取 rerun_of IS NULL 的最新一条作为「该事件的维度分数」
 # 代表行。LATERAL 子查询保证每事件至多一行，不放大 response_event 行数。
 # 为什么 ORDER BY created_at, event_id：行序确定是幂等基础（同输入同字节）。
+# LATERAL 内为什么补 score_run_id tiebreak：created_at 默认 now() 是事务级时间戳，
+# 单事务批量重判（铁律 9）写入的同事件多条 rerun_of IS NULL 行 created_at 相同，
+# 无唯一 tiebreak 时 PG 取行不确定——违背本模块「同输入同字节」承诺（#59 同类）。
 _FETCH_ROWS_SQL = """
 SELECT re.event_id,
        re.student_alias_id,
@@ -182,7 +185,7 @@ LEFT JOIN LATERAL (
     WHERE sr.event_id = re.event_id
       AND sr.event_created_at = re.created_at
       AND sr.rerun_of IS NULL
-    ORDER BY sr.created_at DESC
+    ORDER BY sr.created_at DESC, sr.score_run_id DESC
     LIMIT 1
 ) sr ON true
 WHERE re.created_at >= :start_ts
