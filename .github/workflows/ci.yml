@@ -18,7 +18,7 @@ permissions:
 
 jobs:
   hygiene:
-    uses: Cloudbird-Software/CI-Workflows/.github/workflows/hygiene.yml@4938955db008ddab2df170ec824c2cc3acbc1551 # v1
+    uses: Cloudbird-Software/CI-Workflows/.github/workflows/hygiene.yml@ce099e5853725acb04371a6018ce0ce03696dc99 # v1
 
   deps-audit:
     # push 面依赖审计（对齐 template-service ci.yml 同名 job；pip 侧用 pip-audit
@@ -40,9 +40,9 @@ jobs:
         run: uvx pip-audit@2.10.1 -r requirements.txt -r requirements-dev.txt
 
   check:
-    uses: Cloudbird-Software/CI-Workflows/.github/workflows/check.yml@4938955db008ddab2df170ec824c2cc3acbc1551 # v1
+    uses: Cloudbird-Software/CI-Workflows/.github/workflows/check.yml@ce099e5853725acb04371a6018ce0ce03696dc99 # v1
     with:
-      ciw-ref: 4938955db008ddab2df170ec824c2cc3acbc1551
+      ciw-ref: ce099e5853725acb04371a6018ce0ce03696dc99
       runtime: python
       python-version: "3.12"
 
@@ -51,9 +51,9 @@ jobs:
     permissions:
       contents: read
       pull-requests: write
-    uses: Cloudbird-Software/CI-Workflows/.github/workflows/dep-review.yml@4938955db008ddab2df170ec824c2cc3acbc1551 # v1
+    uses: Cloudbird-Software/CI-Workflows/.github/workflows/dep-review.yml@ce099e5853725acb04371a6018ce0ce03696dc99 # v1
     with:
-      ciw-ref: 4938955db008ddab2df170ec824c2cc3acbc1551
+      ciw-ref: ce099e5853725acb04371a6018ce0ce03696dc99
       # ADR-0026：psycopg-binary 在 GitHub 依赖图被归一化为 GPL-3.0-or-later
       # （PyPI 实为 LGPL-3.0-only，不在 org deny 清单 AGPL-3.0/GPL-3.0/SSPL-1.0）。
       # --require-hashes 模式要求 extras 闭包独立行（requirements.txt 头部说明），
@@ -132,18 +132,18 @@ jobs:
     # BOOTSTRAP 钉扎：uses 与 ciw-ref 均指向 CI-Workflows PR #18 分支提交（两处一致，
     # 被调用侧无法自取自身 ref）；其 squash 合入并走 v1.X.Y 发布四步流程后，两处同改
     # merge SHA（勿用可变 @main）。
-    uses: Cloudbird-Software/CI-Workflows/.github/workflows/contract.yml@4938955db008ddab2df170ec824c2cc3acbc1551 # v1
+    uses: Cloudbird-Software/CI-Workflows/.github/workflows/contract.yml@ce099e5853725acb04371a6018ce0ce03696dc99 # v1
     with:
-      ciw-ref: 4938955db008ddab2df170ec824c2cc3acbc1551
+      ciw-ref: ce099e5853725acb04371a6018ce0ce03696dc99
 
   suppression-budget:
     # P2-2 抑制标记预算门（ADR-0036 / .github #87）：净增 ≤3/PR + 合入树总量棘轮
     # + ADR 逃生门。独立 reusable（v1.5.1 内嵌 check.yml 实测触发平台 action 解析
     # 故障，v1.5.3 起独立文件——ADR-0036 修订）。非 PR 事件 n/a-success（无需
     # EXPECTED_SKIP 登记）。
-    uses: Cloudbird-Software/CI-Workflows/.github/workflows/suppression-gate.yml@4938955db008ddab2df170ec824c2cc3acbc1551
+    uses: Cloudbird-Software/CI-Workflows/.github/workflows/suppression-gate.yml@ce099e5853725acb04371a6018ce0ce03696dc99
     with:
-      detector-ref: 4938955db008ddab2df170ec824c2cc3acbc1551
+      detector-ref: ce099e5853725acb04371a6018ce0ce03696dc99
 
   gate:
     if: always()
