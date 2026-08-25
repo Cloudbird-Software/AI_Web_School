@@ -567,3 +567,65 @@ class TestNoSubjectPackImport:
         assert "src" + chr(92) + "core" in str(path) or "src/core" in str(path)
         assert "src" + chr(92) + "packs" not in str(path)
         assert "src/packs" not in str(path)
+
+
+class TestEnrichmentTiebreak:
+    """LATERAL 最新行取行的确定性（#59 同类缺陷的 score_run 面）."""
+
+    async def test_same_created_at_tie_picks_deterministically(
+        self, async_session, tmp_path
+    ):
+        """同 created_at 的多条 rerun_of IS NULL 行：取行必须字节确定.
+
+        场景：单事务批量重判（铁律 9）对同一事件先后写两条 rerun_of IS NULL
+        行（不同 run_label，uq_score_run_identity 允许）——created_at 默认
+        now() 是事务级时间戳，两行相同。无唯一 tiebreak 时 PG 取行不确定，
+        导出违背「同输入同字节」；修复后按 score_run_id DESC 稳定取行。
+        断言：两次导出取到的代表行一致，且为 score_run_id 字典序更大者。
+        """
+        target = _today_utc().date()
+        eid = uuid4()
+        cat = _today_utc()
+        await _insert_event(
+            async_session, event_id=eid, created_at=cat, scene="practice"
+        )
+        # 受控 ID（字典序 AA < BB）：ORDER BY score_run_id DESC 稳定取 BB（second-write）
+        for srid, label, tag in [
+            ("sr-tiebreak-controlled-AA", "batch-1", "first-write"),
+            ("sr-tiebreak-controlled-BB", "batch-2", "second-write"),
+        ]:
+            await async_session.execute(
+                text(
+                    "INSERT INTO score_run ("
+                    "  score_run_id, event_id, event_created_at, rerun_of, purpose_scope,"
+                    "  scorer_id, scorer_version, original_scorer_version,"
+                    "  dimension_scores, scoring_trace, error_inferences, correct,"
+                    "  run_label, input_snapshot_id, created_at"
+                    ") VALUES ("
+                    "  :srid, :eid, :ecat, NULL, 'practice', 'exact_match',"
+                    "  'exact_match-v1', '1.0.0+platform',"
+                    "  CAST(:ds AS jsonb), CAST('{}' AS jsonb),"
+                    "  CAST('[]' AS jsonb), TRUE, :label, 'snap-tie', :cat"
+                    ")"
+                ),
+                {
+                    "srid": srid,
+                    "eid": eid,
+                    "ecat": cat,
+                    "ds": json.dumps({"correct": 1.0, "tag": tag}),
+                    "label": label,
+                    "cat": cat,  # 同 created_at（事务级时间戳的等价模拟）
+                },
+            )
+        await async_session.commit()
+
+        picked_tags = []
+        for _ in range(2):
+            results = await export_daily(
+                async_session, tmp_path, target, scenes=("practice",)
+            )
+            table = pq.read_table(results[0].path)
+            row = table.to_pylist()[0]
+            picked_tags.append(json.loads(row["dimension_scores"])["tag"])
+
+        assert picked_tags == ["second-write", "second-write"]
