@@ -16,6 +16,7 @@ from uuid import uuid4
 
 import pytest
 import pytest_asyncio
+import ulid
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -606,6 +607,41 @@ class TestRetiredAndActivePool:
         assert "RETIRED" in GATE_CERT_REQUIRED_STATES
         assert "ACTIVE" not in GATE_CERT_REQUIRED_STATES
         assert "WATCH" not in GATE_CERT_REQUIRED_STATES
+
+    async def test_latest_transition_ordering_ulid_inversion(
+        self, async_session, monkeypatch
+    ):
+        """nightly #58 复现：同事务多次 transition 时"最新行"排序不因 ULID 倒挂而取错.
+
+        根因链：now() 是事务级稳定时间戳 → 同事务内（铁律 9 的生产形态、以及本
+        fixture 的事务回滚隔离）所有 transition 的 created_at 完全相同 → 排序退化为
+        transition_id（ULID）tiebreak → ulid-py 同毫秒内随机部分与生成顺序无关，
+        ~50% 字典序倒挂 → DISTINCT ON 取到旧行，RETIRED 后仍在活跃池。
+
+        本测试确定性模拟"同毫秒 ULID 倒挂"（第二次生成的 ULID 字典序更小），
+        断言当前状态与活跃池仍以插入顺序为准——修复（created_at 改
+        clock_timestamp()，迁移 0023）前必红、修复后必绿，无随机性。
+        """
+        # 同一毫秒前缀（ULID 前 10 字符为毫秒时间戳）+ 随机部分递减：
+        # 第一次 transition 拿到字典序更大的 AV，第二次（RETIRED）拿到更小的 AU
+        ulid_seq = iter(
+            ["01ARZ3NDEKTSV4RRFFQ69G5FAV", "01ARZ3NDEKTSV4RRFFQ69G5FAU"]
+        )
+        monkeypatch.setattr(ulid, "new", lambda: next(ulid_seq))
+
+        item_id = "item-tiebreak-repro"
+        await _insert_item(async_session, item_id)
+        await transition_lifecycle(async_session, item_id, "ACTIVE")
+        await transition_lifecycle(
+            async_session, item_id, "RETIRED", gate_certificate_id="g"
+        )
+
+        monkeypatch.undo()  # 后续查询的 id 生成回到真实 ulid
+
+        assert await get_current_state(async_session, item_id) is ItemLifecycleState.RETIRED
+
+        pool = await query_active_pool_item_ids(async_session)
+        assert item_id not in pool
 
 
 # ────────────────────────────────────────────────────────────────────

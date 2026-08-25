@@ -13,7 +13,8 @@ item_lifecycle_transition 行 = 一次状态变更。append-only 账（迁移 00
 
 退役不删除（D1）：RETIRED 的 item 历史版本保留，查询活跃池时排除 RETIRED。
 
-列与 alembic/versions/0018_item_lifecycle.py 逐字对齐。
+列与 alembic/versions/0018_item_lifecycle.py 逐字对齐（created_at 默认值
+例外：0018 建表时为 now()，0023 修正为 clock_timestamp()，见列注释）。
 
 宪法 A5/X6：本 ORM 是核心域，禁止 import 任何学科包/学段包。
 """
@@ -115,10 +116,15 @@ class ItemLifecycleTransition(Base):
         Numeric(4, 3), nullable=True
     )
     anomaly_tags: Mapped[Optional[list]] = mapped_column(JSONB, nullable=True)
+    # clock_timestamp() 而非 now()（nightly #58 根因）：now() 是事务级稳定时间戳，
+    # 同一事务内多次状态变更（铁律 9：一次业务写入=一个事务）created_at 完全相同，
+    # "最新 transition" 排序退化为 ULID tiebreak——ulid-py 同毫秒内随机部分与生成
+    # 顺序无关，~50% 倒挂 → RETIRED 后仍被算进活跃池。clock_timestamp() 是语句级
+    # 真实时钟，PG 保证同事务内先后语句严格递增，排序与插入顺序恒一致（迁移 0023）。
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         nullable=False,
-        server_default=func.now(),
+        server_default=func.clock_timestamp(),
     )
 
     __table_args__ = (
