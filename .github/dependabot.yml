@@ -18,3 +18,13 @@ updates:
         patterns: ["*"]
         update-types: ["minor", "patch"]
         cooldown-days: 7
+  # Go 工具链面（T-W5-033 起 go.mod/go.sum 入树）——SC-3 依赖周更对 Go 生态生效
+  - package-ecosystem: gomod
+    directory: "/"
+    schedule: { interval: weekly }
+    open-pull-requests-limit: 5
+    groups:
+      minor-patch:
+        patterns: ["*"]
+        update-types: ["minor", "patch"]
+        cooldown-days: 7

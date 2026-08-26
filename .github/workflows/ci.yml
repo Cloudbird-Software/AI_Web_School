@@ -2,7 +2,14 @@ name: CI
 # 组织治理基线（CI-1，ADR-0023）：PR/push 聚合 gate = 唯一 required check。
 # 复用工作流来自 Cloudbird-Software/CI-Workflows@v1（集中维护，本仓不复制实现）；
 # repo-gate 为本仓宪法门禁（自 pr-check.yml 迁移并入，未削弱任何一项）。
+# 钉点纪律：uses/ciw-ref/detector-ref 跟随 CI-Workflows 最新发布 tag 的 commit
+# （当前 v1=v1.5.14=ce099e58；升级等新 release tag，勿追 main 中间提交——中间点
+# 可能不含策略基线勘误，如 61191f87 缺 #119 的 AI_Web_School 248 勘误，
+# 会导致 suppression-budget 总量维度假红）。
 on:
+  merge_group:
+    # ADR-0042：merge queue 必需订阅
+    types: [checks_requested]
   pull_request:
     # edited：任务卡引用消费可变的 PR title/body——编辑须重验
     types: [opened, synchronize, reopened, edited]
@@ -66,6 +73,61 @@ jobs:
       # 豁免（注意逗号分隔——空格分隔会被解析为单个畸形条目）；上游归一化修复后回撤。
       allow-dependencies-licenses: pkg:pypi/psycopg-binary, pkg:golang/golang.org/x/mod, pkg:golang/golang.org/x/tools, pkg:golang/golang.org/x/text, pkg:golang/google.golang.org/protobuf
 
+  adr-required:
+    # C1 脚手架面（ADR-0021，GOVERNANCE C1 scope）：供应链入口文件变更须引用 ADR。
+    # 存在性校验读公开仓 archive/adr（ADR-0085 家园单仓化，GITHUB_TOKEN 可读公开仓，fail-closed）。
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      pull-requests: read
+    steps:
+      - name: C1 脚手架变更须引用 ADR
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_BODY: ${{ github.event.pull_request.body }}
+        run: |
+          PR_API="repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}"
+          CHANGED=$(gh api "$PR_API" --jq '.changed_files')
+          GOT=0; C1_HIT=0; PAGE=1
+          while :; do
+            PAGEJSON=$(gh api "$PR_API/files?per_page=100&page=$PAGE")
+            jq -e 'type == "array"' <<<"$PAGEJSON" >/dev/null 2>&1 || {
+              echo "::error::files API 拉取失败——C1 判定无法保证，fail-closed"; exit 1; }
+            N=$(jq 'length' <<<"$PAGEJSON")
+            GOT=$((GOT+N))
+            if jq -e '[.[] | .filename, (.previous_filename // empty)]
+                     | any(test("^(\\.github/|AGENTS\\.md|Makefile|docs/|zizmor\\.yml|\\.dependency-cruiser\\.cjs)"))' <<<"$PAGEJSON" >/dev/null 2>&1; then
+              C1_HIT=1
+            fi
+            [[ $N -lt 100 ]] && break
+            PAGE=$((PAGE+1))
+          done
+          if [ "$GOT" -lt "$CHANGED" ]; then
+            echo "::error::files API 截断（$GOT/$CHANGED）——fail-closed"; exit 1
+          fi
+          if [ "$C1_HIT" -ne 1 ]; then
+            echo "非 C1 脚手架路径变更，跳过 adr-required"; exit 0
+          fi
+          ADR_RE='\bADR-[0-9]{4}\b'
+          if ! { echo "$PR_TITLE"; echo "$PR_BODY"; } | grep -qE "$ADR_RE"; then
+            echo "::error::C1 脚手架面（.github/AGENTS.md/Makefile/docs/zizmor.yml）变更但 PR 未引用 ADR-NNNN（GOVERNANCE C1——供应链入口，ADR-0021）"
+            exit 1
+          fi
+          ADR_LISTING=$(gh api "repos/Cloudbird-Software/archive/contents/adr?per_page=100" --paginate --jq '.[].name' 2>/dev/null)
+          if [[ -z "$ADR_LISTING" ]]; then
+            echo "::error::archive/adr 清单拉取失败（fail-closed）"; exit 1
+          fi
+          MISSING=0
+          for ref in $( { echo "$PR_TITLE"; echo "$PR_BODY"; } | grep -oE "$ADR_RE" | sort -u ); do
+            num="${ref#ADR-}"
+            grep -q "^ADR-${num}-" <<<"$ADR_LISTING" || {
+              echo "::error::引用的 ${ref} 在 archive/adr/ 无对应文件（幽灵 ADR；ADR-0085 家园单仓化）"; MISSING=1; }
+          done
+          exit $MISSING
+
   repo-gate:
     # 宪法门禁（原 pr-check.yml 全量迁移）：任务卡引用 / 泄密扫描 / 反测试削弱 /
     # 核心域禁 import 学科包 / 规则同步一致性。来源登记（check_sources.py）与
@@ -86,6 +148,13 @@ jobs:
           PR_TITLE: ${{ github.event.pull_request.title }}
           PR_BODY: ${{ github.event.pull_request.body }}
         run: |
+          # 治理豁免通道（org 宪法：治理变更不需要卡——.github AGENTS.md 硬规则 /
+          # GOVERNANCE flows.governance_change）：引用 ADR-NNNN 的 PR 按治理变更放行；
+          # 防"挂 ADR 绕卡"由同文件 adr-required 门对 C1 路径做 ADR 存在性校验兜底。
+          if { echo "$PR_TITLE"; echo "$PR_BODY"; } | grep -qE '\bADR-[0-9]{4}\b'; then
+            echo "ADR 引用在列——按治理变更放行（豁免卡引用）"
+            exit 0
+          fi
           echo "$PR_TITLE $PR_BODY" \
             | grep -qE 'T-W[0-9]+-[0-9]+' || { echo "❌ PR 标题或描述必须含任务卡 id（如 T-W1-001）"; exit 1; }
 
@@ -176,7 +245,9 @@ jobs:
 
   gate:
     if: always()
-    needs: [hygiene, deps-audit, check, deps, repo-gate, test-freeze, contract, suppression-budget, go-check]
+    needs: [hygiene, deps-audit, check, deps, adr-required, repo-gate, test-freeze, contract, suppression-budget, go-check]
+    # 结构注记（对齐缺口显式登记）：quality-gates（ADR-0061 统一编排器）未接入——
+    # 本仓尚无 quality/ 骨架；引入属 W5 序列独立卡，勿在骨架缺位时挂空转 job。
     runs-on: ubuntu-latest
     steps:
       - name: All required jobs green?
@@ -190,7 +261,8 @@ jobs:
           # 未登记的 skipped 与一切非 success（failure/cancelled/timed_out/startup_failure）一律红
           case "$EVENT" in
             pull_request) EXPECTED_SKIP="deps-audit" ;;
-            push)         EXPECTED_SKIP="deps repo-gate" ;;
+            push)         EXPECTED_SKIP="deps repo-gate adr-required" ;;
+            merge_group)  EXPECTED_SKIP="deps deps-audit adr-required repo-gate" ;;   # ADR-0042: PR-only/push-only jobs structurally skipped
             *)            EXPECTED_SKIP="" ;;
           esac
           BAD=$(echo "$NEEDS" | jq -r --arg skip "$EXPECTED_SKIP" '
