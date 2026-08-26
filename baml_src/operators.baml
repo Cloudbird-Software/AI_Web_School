@@ -54,3 +54,5 @@ test spike_golden_generate_draft {
     "#
   }
 }
+
+// verify redline D: baml change without golden update (BAML-1)
