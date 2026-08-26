@@ -33,7 +33,6 @@ from src.core.data.health import (
 from src.core.models.item_lifecycle import (
     ACTIVE_POOL_STATES,
     ItemLifecycleState,
-    ItemLifecycleTransition,
 )
 
 

@@ -22,7 +22,6 @@ from urllib.parse import urlparse
 
 from fastapi import Depends, FastAPI, Form, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
-from fastapi.staticfiles import StaticFiles
 from starlette.templating import Jinja2Templates
 
 from src.workbench.auth import (

@@ -36,7 +36,6 @@ from dataclasses import asdict, dataclass
 from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Optional, Sequence
-from uuid import UUID
 
 import pyarrow as pa
 import pyarrow.parquet as pq

@@ -65,6 +65,20 @@ type ScorerBinding struct {
 	Params map[string]any
 }
 
+// resolve 是两个解析器的公共内核：id 必须已登记，否则返回 D4 私造装配错误。
+// kind 只进错误文案（"interaction"/"scorer"）；抽出后错误文案单处维护，
+// 不再随两份拷贝漂移（行为不变：字符串与拆分前逐字一致）。
+func resolve[T any](reg *registry.Registry[T], kind, id string) (T, error) {
+	v, ok := reg.Get(id)
+	if !ok {
+		return v, fmt.Errorf(
+			"packs: %s %q 未在注册表登记（D4 禁止私造：条目须先经 registry.Register）",
+			kind, id,
+		)
+	}
+	return v, nil
+}
+
 // ResolveInteractions 把交互引用解析为「注册表条目 + 参数」绑定——pack
 // 装配进 core 的唯一通道（D4）。未注册 id → 装配失败：学科包引用了平台
 // 未登记的私造实现。
@@ -74,31 +88,26 @@ func ResolveInteractions(
 ) ([]InteractionBinding, error) {
 	out := make([]InteractionBinding, 0, len(refs))
 	for _, ref := range refs {
-		v, ok := reg.Get(ref.ID)
-		if !ok {
-			return nil, fmt.Errorf(
-				"packs: interaction %q 未在注册表登记（D4 禁止私造：条目须先经 registry.Register）",
-				ref.ID,
-			)
+		v, err := resolve(reg, "interaction", ref.ID)
+		if err != nil {
+			return nil, err
 		}
 		out = append(out, InteractionBinding{Interaction: v, Params: ref.Params})
 	}
 	return out, nil
 }
 
-// ResolveScorers 把评分器引用解析为注册表条目（同 ResolveInteractions）。
+// ResolveScorers 把评分器引用解析为「注册表条目 + 参数」绑定（同
+// ResolveInteractions；公共内核见 resolve）。
 func ResolveScorers(
 	reg *registry.Registry[registry.Scorer],
 	refs []ScorerRef,
 ) ([]ScorerBinding, error) {
 	out := make([]ScorerBinding, 0, len(refs))
 	for _, ref := range refs {
-		v, ok := reg.Get(ref.ID)
-		if !ok {
-			return nil, fmt.Errorf(
-				"packs: scorer %q 未在注册表登记（D4 禁止私造：条目须先经 registry.Register）",
-				ref.ID,
-			)
+		v, err := resolve(reg, "scorer", ref.ID)
+		if err != nil {
+			return nil, err
 		}
 		out = append(out, ScorerBinding{Scorer: v, Params: ref.Params})
 	}
