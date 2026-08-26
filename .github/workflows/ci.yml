@@ -157,7 +157,8 @@ jobs:
     # TestMain）/ BAML-1 golden / SQL-1 静态成对。独立 job 而非只靠 make check 内嵌：
     # Go 工具链显式 setup-go（版本随 go.mod）+ 独立缓存与超时，Python 冻结面与 Go
     # 重建面互不拖累；无事件条件，PR/push 两面都真跑（ADR-0032：无 skipped=通过路径）。
-    # SQL-2 sqlc diff 与 SQL-1 运行时可逆（check job 内 migrate-go-check）随后续 PR 接线。
+    # SQL-2 sqlc-diff 在 check-go 链首（Makefile 内，本 job 与 check job 双跑）；
+    # SQL-1 运行时可逆由 check job 内 migrate-go-check 承担，静态成对在本 job sql-pairs。
     runs-on: ubuntu-latest
     timeout-minutes: 15
     permissions:
