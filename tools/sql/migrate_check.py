@@ -425,9 +425,12 @@ def main() -> None:
                     raise SystemExit(f"❌ {op_sql} 未被 append-only 触发器拦截（行为与目录双重校验均失败）")
     print(f"✅ {len(tables)} 张 append-only 表 × 真 UPDATE / UPDATE WHERE FALSE / DELETE 全部被拒（含 D1 四核心账表）")
 
-    print("== 4/4 append-only 回滚：down -1 后内容版本账触发器移除 ==")
+    print("== 4/4 append-only 回滚：down 至 0023 后内容版本账触发器移除 ==")
     content_tables = migration_trigger_targets("0024")
-    go_migrate(go_dsn, "down", "1")
+    # 回滚目标 = 0024 之前。head 不再恒为 0024（0025+ 在场时 down 1 只回滚最新迁移，
+    # CI 实证：0025 存在时误报 corpus_version 触发器未移除）。步数 = head - 23。
+    head_num = max(int(p.stem.split("_", 1)[0]) for p in MIGRATIONS_DIR.glob("*.up.sql"))
+    go_migrate(go_dsn, "down", str(head_num - 23))
     with psycopg.connect(go_dsn, autocommit=True) as conn:
         for t in content_tables:
             col = _probe_column(conn, t)
