@@ -82,7 +82,11 @@ golden: ; python -m pytest tests/golden -q
 golden-path: ; python -m pytest tests/golden-path -q
 
 ## ── W5-R Go 工具链（T-W5-030/031；GO-1 gofmt / GO-4 test -race / X6 边界 lint / BAML-1 golden）──
-go-fmt: ; @out=$$(gofmt -l $$(go list ./...)); [ -z "$$out" ] || { echo "❌ gofmt 未通过:"; echo "$$out"; exit 1; }
+## GO-1：gofmt 必须吃目录路径。`go list ./...` 给的是 import 路径——gofmt 对每个
+## import 路径 lstat 失败但整体 exit 0（CI 实证：全部 no such file 仍绿=门空转，
+## verify PR #71 cycle B 抓获），必须 -f {{.Dir}} 取真实目录且空目录列表本身即红。
+go-fmt:
+	@dirs=$$(go list -f '{{.Dir}}' ./...) || { echo "❌ go list 失败"; exit 1; }; 	[ -n "$$dirs" ] || { echo "❌ 包目录列表为空——GO-1 检查面失效"; exit 1; }; 	out=$$(gofmt -l $$dirs); [ -z "$$out" ] || { echo "❌ gofmt 未通过:"; echo "$$out"; exit 1; }
 go-build: ; go build ./... && go vet ./...
 go-test: ; go test ./... -race -count=1
 go-boundary: ; go run ./tools/go-lint/import-boundary
