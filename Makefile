@@ -102,7 +102,9 @@ sql-pairs: ; python tools/sql/check_pairs.py
 ## T-W5-033 SQL-2：sqlc 生成物漂移检查（手改 db/gen 即红）；改查询后先 sqlc-generate 再提交
 sqlc-generate: ; go tool sqlc generate -f sqlc.yaml
 sqlc-diff: ; go tool sqlc diff -f sqlc.yaml
-check-go: go-fmt go-build go-test go-boundary baml-golden-check go-errcheck sqlc-diff
+## sqlc-diff 置于链首：生成物漂移是最上游的身份问题——先判定再谈编译/静态检查，
+## 避免漂移导致的编译/errcheck 失败掩盖根因（红队 Major 2）
+check-go: sqlc-diff go-fmt go-build go-test go-boundary baml-golden-check go-errcheck
 
 ## 任务验收：唯一完成标准
 accept: ## make accept TASK=T-W0-001
