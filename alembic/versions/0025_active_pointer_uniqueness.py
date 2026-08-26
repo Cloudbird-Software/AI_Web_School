@@ -48,11 +48,18 @@ def upgrade() -> None:
 
 def downgrade() -> None:
     """删除 activated_by（对称回滚，仅回收本迁移引入的列）."""
+    # 拆成独立 op：contract 引擎按首个命中分类 alter_column——合写 nullable=True +
+    # server_default=None 会被归为 DROP_DEFAULT 而非 RELAX_NOTNULL（SET_NOT_NULL 的逆）。
+    op.alter_column(
+        "estimator_run",
+        "activated_by",
+        existing_type=sa.Text(),
+        nullable=True,
+    )
     op.alter_column(
         "estimator_run",
         "activated_by",
         existing_type=sa.Text(),
         server_default=None,
-        nullable=True,  # SET_NOT_NULL 的显式逆操作（DROP_NOT_NULL）——contract 门 INVERSE_KINDS 要求
     )
     op.drop_column("estimator_run", "activated_by")
