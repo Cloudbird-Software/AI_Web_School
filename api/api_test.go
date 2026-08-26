@@ -5,7 +5,16 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+
+	"go.uber.org/goleak"
 )
+
+// GO-5（T-W5-033）：api 是服务生命周期的边界层，TestMain 兜底检测
+// goroutine 泄漏（httptest 清理不净即红）。后续包若自身拉起 goroutine，
+// 同样在各自 TestMain 挂 goleak。
+func TestMain(m *testing.M) {
+	goleak.VerifyTestMain(m)
+}
 
 // T-W5-031 验收 #4：healthz 端点 200 + 最小字段，不泄露内部信息。
 func TestHealthz(t *testing.T) {
@@ -16,7 +25,7 @@ func TestHealthz(t *testing.T) {
 	if err != nil {
 		t.Fatalf("请求失败: %v", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	if resp.StatusCode != http.StatusOK {
 		t.Fatalf("status = %d, want 200", resp.StatusCode)
 	}
@@ -45,7 +54,7 @@ func TestUnknownPath(t *testing.T) {
 	if err != nil {
 		t.Fatalf("请求失败: %v", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	if resp.StatusCode != http.StatusNotFound {
 		t.Fatalf("status = %d, want 404", resp.StatusCode)
 	}

@@ -11,7 +11,7 @@ ifneq (,$(wildcard .env))
 export POSTGRES_USER POSTGRES_PASSWORD POSTGRES_DB MINIO_ROOT_USER MINIO_ROOT_PASSWORD
 endif
 
-.PHONY: bootstrap up down migrate migrate-go migrate-go-check test accept contract golden golden-path nightly dashboard sync-rules model-bench demo-w0 demo-w2 demo-w3 setup check test-freeze-check holdout
+.PHONY: bootstrap up down migrate migrate-go migrate-go-check test accept contract golden golden-path nightly dashboard sync-rules model-bench demo-w0 demo-w2 demo-w3 setup check test-freeze-check holdout go-errcheck sql-pairs
 
 ## 环境一键搭建与自检（新机器第一步）
 bootstrap:
@@ -75,13 +75,14 @@ check:
 	GOLDEN_PATH_QUICK=1 python -m pytest tests/golden-path -q
 	python tools/ci/check_sources.py
 	$(MAKE) check-go
+	$(MAKE) sql-pairs
 	$(MAKE) migrate-go-check
 contract: ; python -m pytest tests/contract -q
 golden: ; python -m pytest tests/golden -q
 golden-path: ; python -m pytest tests/golden-path -q
 
 ## ── W5-R Go 工具链（T-W5-030/031；GO-1 gofmt / GO-4 test -race / X6 边界 lint / BAML-1 golden）──
-go-fmt: ; @out=$$(gofmt -l cmd core api packs registry baml_client tools 2>/dev/null); [ -z "$$out" ] || { echo "❌ gofmt 未通过:"; echo "$$out"; exit 1; }
+go-fmt: ; @out=$$(gofmt -l $$(go list ./...)); [ -z "$$out" ] || { echo "❌ gofmt 未通过:"; echo "$$out"; exit 1; }
 go-build: ; go build ./... && go vet ./...
 go-test: ; go test ./... -race -count=1
 go-boundary: ; go run ./tools/go-lint/import-boundary
@@ -93,7 +94,12 @@ baml-generate:
 	npx -y @boundaryml/baml@0.226.1 generate
 	go run golang.org/x/tools/cmd/goimports@latest -w baml_client
 	$(MAKE) go-fmt
-check-go: go-fmt go-build go-test go-boundary baml-golden-check
+## T-W5-033 GO-2：errcheck 全仓扫描（baml_client 为 BAML 生成物，随 baml-generate 再生，豁免留痕）
+go-errcheck:
+	@go tool errcheck $$(go list ./... | grep -v baml_client)
+## T-W5-033 SQL-1 静态面：up/down 成对 + 非空 down + 版本号唯一（运行时可逆由 migrate-go-check 承担）
+sql-pairs: ; python tools/sql/check_pairs.py
+check-go: go-fmt go-build go-test go-boundary baml-golden-check go-errcheck
 
 ## 任务验收：唯一完成标准
 accept: ## make accept TASK=T-W0-001

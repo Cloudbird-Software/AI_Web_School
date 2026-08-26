@@ -58,7 +58,13 @@ jobs:
       # （PyPI 实为 LGPL-3.0-only，不在 org deny 清单 AGPL-3.0/GPL-3.0/SSPL-1.0）。
       # --require-hashes 模式要求 extras 闭包独立行（requirements.txt 头部说明），
       # 拆行后触发该误报——按 PURL 精确豁免，deny 清单本体不变。
-      allow-dependencies-licenses: pkg:pypi/psycopg-binary
+      # T-W5-033：golang.org/x/{mod,tools,text} 与 protobuf 被 dependency-review
+      # 归一化为 BSD-3-Clause AND LicenseRef-scancode-google-patent-license-golang
+      # （x/ 仓库与 protobuf 新版附加的 Go 专利授权条款；非 copyleft，不在 org
+      # deny 清单 AGPL-3.0/GPL-3.0/SSPL-1.0，且 license.allowlist 的 BSD-3-Clause
+      # 条目本应覆盖）。与 psycopg-binary 同一误报类，按 ADR-0026 先例 PURL 精确
+      # 豁免（注意逗号分隔——空格分隔会被解析为单个畸形条目）；上游归一化修复后回撤。
+      allow-dependencies-licenses: pkg:pypi/psycopg-binary, pkg:golang/golang.org/x/mod, pkg:golang/golang.org/x/tools, pkg:golang/golang.org/x/text, pkg:golang/google.golang.org/protobuf
 
   repo-gate:
     # 宪法门禁（原 pr-check.yml 全量迁移）：任务卡引用 / 泄密扫描 / 反测试削弱 /
@@ -145,9 +151,31 @@ jobs:
     with:
       detector-ref: ce099e5853725acb04371a6018ce0ce03696dc99
 
+  go-check:
+    # T-W5-033 gate 切 Go 工具链（BRIEF S6 / ADR-0004 §三）：GO-1 gofmt / GO-2 errcheck /
+    # GO-3 循环依赖由编译器与 import-boundary lint 强制 / GO-4 test -race（含 GO-5 goleak
+    # TestMain）/ BAML-1 golden / SQL-1 静态成对。独立 job 而非只靠 make check 内嵌：
+    # Go 工具链显式 setup-go（版本随 go.mod）+ 独立缓存与超时，Python 冻结面与 Go
+    # 重建面互不拖累；无事件条件，PR/push 两面都真跑（ADR-0032：无 skipped=通过路径）。
+    # SQL-2 sqlc diff 与 SQL-1 运行时可逆（check job 内 migrate-go-check）随后续 PR 接线。
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+      - name: GO-1..5 / BAML-1 / SQL-1 静态面
+        run: |
+          make check-go sql-pairs
+
   gate:
     if: always()
-    needs: [hygiene, deps-audit, check, deps, repo-gate, test-freeze, contract, suppression-budget]
+    needs: [hygiene, deps-audit, check, deps, repo-gate, test-freeze, contract, suppression-budget, go-check]
     runs-on: ubuntu-latest
     steps:
       - name: All required jobs green?

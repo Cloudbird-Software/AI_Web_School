@@ -62,7 +62,9 @@ func main() {
 	if err != nil {
 		log.Fatalf("初始化迁移器失败: %v", err)
 	}
-	defer m.Close()
+	// GO-2：错误显式丢弃（进程即将退出，关闭失败无处理面；Close 返回
+	// source/database 两个 error，均无处理面）
+	defer func() { _, _ = m.Close() }()
 
 	switch args[0] {
 	case "up":

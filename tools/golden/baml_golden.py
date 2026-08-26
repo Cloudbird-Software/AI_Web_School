@@ -27,7 +27,7 @@ def digest() -> str:
         return ""
     h = hashlib.sha256()
     for f in files:
-        h.update(str(f.relative_to(BAML_SRC)).encode())
+        h.update(f.relative_to(BAML_SRC).as_posix().encode())
         h.update(b"\0")
         h.update(f.read_bytes())
         h.update(b"\0")
