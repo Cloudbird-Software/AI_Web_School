@@ -1,17 +1,21 @@
 #!/usr/bin/env python
 """T-W5-032 全链校验：SQL 迁移与 alembic 语义等价 + 可逆性 + append-only 行为。
 
-四段验收（对应任务卡验收标准 #1/#2/#3/#4）：
-0. pairs：22 对 up/down 成对齐全，版本号连续（SQL-1）。
+五段验收（对应任务卡验收标准；#4 为 T-W5-001 新增）：
+0. pairs：N 对 up/down 成对齐全，版本号连续（SQL-1）。
 1. parity：alembic upgrade head（库 A） vs go migrate up（库 B）→
    pg_dump --schema-only 逐语句 diff 为空（排除双方自带账本表）；
    0012 review_policy 种子行两侧一致（schema-only dump 不含数据，单独探针）。
 2. cycle：库 B down 全量→0 → up→head（E2E-9 的 Go 侧事实源）。
-3. append-only：全部挂触发器的账表 UPDATE/DELETE 必须抛 'append-only' 异常
-   （语句级触发器空谓词亦触发；若未来引入 FOR EACH ROW 触发器，空谓词
-   不触发的表由目录校验兜底，见 3/3 注释）；
-   D1 四张核心账表（response_event/gate_certificate/gate_run/gate_verdict）
-   必须在清单内。
+3. append-only：全部挂触发器的账表三种语句必须抛 'append-only' 异常——
+   真 UPDATE（无 WHERE）、UPDATE ... WHERE FALSE、DELETE ... WHERE FALSE。
+   语句级触发器连零行命中的真 UPDATE 也拒绝，这正是 T-W5-001 验收 #3；
+   若未来引入 FOR EACH ROW 触发器，空谓词不触发的表由目录校验兜底，
+   见 3/4 注释；D1 四张核心账表
+   （response_event/gate_certificate/gate_run/gate_verdict）必须在清单内。
+4. append-only 回滚（T-W5-001 验收 #4）：go migrate down 1 后，0024 覆盖的
+   内容版本账表触发器在目录中清零、UPDATE ... WHERE FALSE 可执行——
+   成对回滚的行为证明，不只静态成对。
 
 用法：
     # compose db（make migrate-go-check 的调用形态，pg_dump 走容器内避免宿主机
@@ -278,13 +282,56 @@ def discover_append_only_tables() -> list[str]:
     """从 SQL 产物发现全部 append-only 触发器表（探针清单随迁移自动扩张）。"""
     tables: set[str] = set()
     for f in sorted(MIGRATIONS_DIR.glob("*.up.sql")):
-        # #43：两种事件顺序都要发现（BEFORE UPDATE OR DELETE / BEFORE DELETE OR UPDATE）
-        for m in re.finditer(r"BEFORE (?:UPDATE OR DELETE|DELETE OR UPDATE) ON ([a-z_]+)", f.read_text(encoding="utf-8")):
-            tables.add(m.group(1))
+        tables |= set(_trigger_targets_in_text(f.read_text(encoding="utf-8")))
     missing = set(CORE_LEDGER_TABLES) - tables
     if missing:
         raise SystemExit(f"❌ D1 核心账表缺 append-only 触发器：{missing}")
     return sorted(tables)
+
+
+def _trigger_targets_in_text(sql_text: str) -> list[str]:
+    """单个迁移文本里挂 BEFORE UPDATE/DELETE 触发器的表名（#43 两种事件顺序）。"""
+    return [
+        m.group(1)
+        for m in re.finditer(
+            r"BEFORE (?:UPDATE OR DELETE|DELETE OR UPDATE) ON ([a-z_]+)", sql_text
+        )
+    ]
+
+
+def migration_trigger_targets(version_prefix: str) -> list[str]:
+    """指定版本号迁移的触发器目标表（T-W5-001 回滚探针 #4 的作用域清单）。
+
+    回滚段只对被该迁移覆盖的表断言"触发器已移除"——down 1 步后其他账表的
+    触发器本就应保留，用全量清单会误报。
+    """
+    ups = sorted(MIGRATIONS_DIR.glob(f"{version_prefix}_*.up.sql"))
+    if len(ups) != 1:
+        raise SystemExit(f"❌ 迁移 {version_prefix} 不唯一或缺失：{[p.name for p in ups]}")
+    tables = sorted(set(_trigger_targets_in_text(ups[0].read_text(encoding="utf-8"))))
+    if not tables:
+        raise SystemExit(f"❌ {ups[0].name} 未发现任何 append-only 触发器目标")
+    return tables
+
+
+def _probe_column(conn, table: str) -> str:
+    """取该表可作 UPDATE 探针的普通列名（共享给 #3 拒绝段与 #4 回滚段）。
+
+    UPDATE 探针的 SET 列不能假设 created_at 存在（review_policy 等
+    无该列），且 GENERATED ALWAYS 身份列/生成列 SET 自身会先于触发
+    器报错——优先 created_at，否则取首个普通列。
+    """
+    row = conn.execute(
+        "SELECT column_name FROM information_schema.columns "
+        "WHERE table_schema = 'public' AND table_name = %s "
+        "AND is_generated = 'NEVER' "
+        "AND COALESCE(identity_generation, 'NO') = 'NO' "
+        "ORDER BY (column_name = 'created_at') DESC, ordinal_position LIMIT 1",
+        (table,),
+    ).fetchone()
+    if row is None:
+        raise SystemExit(f"❌ 表 {table} 不存在或无普通列可作探针（触发器清单与 schema 脱节）")
+    return row[0]
 
 
 def main() -> None:
@@ -295,7 +342,7 @@ def main() -> None:
 
     wait_for_server(args.admin_dsn)
 
-    print("== 0/3 pairs：up/down 成对性 ==")
+    print("== 0/4 pairs：up/down 成对性 ==")
     check_pairs()
 
     go_db, py_db = "mig_check_go", "mig_check_py"
@@ -305,7 +352,7 @@ def main() -> None:
     go_dsn = db_dsn(args.admin_dsn, go_db)
     py_dsn = db_dsn(args.admin_dsn, py_db)
 
-    print("== 1/3 parity：alembic head vs go migrate head ==")
+    print("== 1/4 parity：alembic head vs go migrate head ==")
     alembic_up(py_db, args.admin_dsn)
     print(go_migrate(go_dsn, "up").strip())
     py_dump = dump_schema(args.admin_dsn, args.pg_dump, py_db)
@@ -333,32 +380,25 @@ def main() -> None:
     # go 侧 down 0014 的 DROP ROLE 会因跨库共享依赖而失败
     psql(args.admin_dsn, f'DROP DATABASE IF EXISTS "{py_db}";')
 
-    print("== 2/3 cycle：down 全量 → up 全量 ==")
+    print("== 2/4 cycle：down 全量 → up 全量 ==")
     out = go_migrate(go_dsn, "down", str(N_STEPS))
     if "version: 0" not in out and "全部回滚" not in out:
         raise SystemExit(f"❌ down 未回到 0：{out}")
     out = go_migrate(go_dsn, "up")
     print(f"✅ {out.strip()}")
 
-    print("== 3/3 append-only：账表 UPDATE/DELETE 必须被拒 ==")
+    print("== 3/4 append-only：账表三种 UPDATE/DELETE 语句必须被拒 ==")
     tables = discover_append_only_tables()
     with psycopg.connect(go_dsn, autocommit=True) as conn:
         for t in tables:
-            # UPDATE 探针的 SET 列不能假设 created_at 存在（review_policy 等
-            # 无该列），且 GENERATED ALWAYS 身份列/生成列 SET 自身会先于触发
-            # 器报错——优先 created_at，否则取首个普通列
-            col = conn.execute(
-                "SELECT column_name FROM information_schema.columns "
-                "WHERE table_schema = 'public' AND table_name = %s "
-                "AND is_generated = 'NEVER' "
-                "AND COALESCE(identity_generation, 'NO') = 'NO' "
-                "ORDER BY (column_name = 'created_at') DESC, ordinal_position LIMIT 1",
-                (t,),
-            ).fetchone()
-            if col is None:
-                raise SystemExit(f"❌ 表 {t} 不存在或无普通列可作探针（触发器清单与 schema 脱节）")
+            col = _probe_column(conn, t)
             probes = (
-                (f"UPDATE {t} SET {col[0]} = {col[0]} WHERE false;", 1 << 5),  # TRIGGER_TYPE_UPDATE
+                # 真 UPDATE（无 WHERE）：库刚 up 全量为空表（review_policy 种子
+                # 行除外，其触发器同样拦截），零行命中也必须拒绝——语句级触发
+                # 器在 BEFORE 打响，不进任何行处理，这是 T-W5-001 验收 #3 的
+                # 关键差异点。
+                (f"UPDATE {t} SET {col} = {col};", 1 << 5),  # TRIGGER_TYPE_UPDATE
+                (f"UPDATE {t} SET {col} = {col} WHERE false;", 1 << 5),  # TRIGGER_TYPE_UPDATE
                 (f"DELETE FROM {t} WHERE false;", 1 << 4),  # TRIGGER_TYPE_DELETE
             )
             for op_sql, event_bit in probes:
@@ -383,7 +423,26 @@ def main() -> None:
                 ).fetchone()[0]
                 if verified < 1:
                     raise SystemExit(f"❌ {op_sql} 未被 append-only 触发器拦截（行为与目录双重校验均失败）")
-    print(f"✅ {len(tables)} 张 append-only 表 × UPDATE/DELETE 全部被拒（含 D1 四核心账表）")
+    print(f"✅ {len(tables)} 张 append-only 表 × 真 UPDATE / UPDATE WHERE FALSE / DELETE 全部被拒（含 D1 四核心账表）")
+
+    print("== 4/4 append-only 回滚：down -1 后内容版本账触发器移除 ==")
+    content_tables = migration_trigger_targets("0024")
+    go_migrate(go_dsn, "down", "1")
+    with psycopg.connect(go_dsn, autocommit=True) as conn:
+        for t in content_tables:
+            col = _probe_column(conn, t)
+            try:
+                conn.execute(f"UPDATE {t} SET {col} = {col} WHERE false;")
+            except psycopg.Error as e:
+                raise SystemExit(f"❌ down -1 后 {t} 的 UPDATE 仍被拒（触发器未随 0024 down 移除？）: {e}")
+            n = conn.execute(
+                "SELECT count(*) FROM pg_trigger "
+                "WHERE tgrelid = %s::regclass AND tgname LIKE '%append_only%'",
+                (t,),
+            ).fetchone()[0]
+            if n != 0:
+                raise SystemExit(f"❌ down -1 后 {t} 仍残留 {n} 个 append-only 触发器")
+    print(f"✅ down -1 后 {len(content_tables)} 张内容版本账表（0024）触发器清零、UPDATE 放行")
 
     for db in (go_db, py_db):
         psql(args.admin_dsn, f'DROP DATABASE IF EXISTS "{db}";')
