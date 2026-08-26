@@ -58,7 +58,12 @@ jobs:
       # （PyPI 实为 LGPL-3.0-only，不在 org deny 清单 AGPL-3.0/GPL-3.0/SSPL-1.0）。
       # --require-hashes 模式要求 extras 闭包独立行（requirements.txt 头部说明），
       # 拆行后触发该误报——按 PURL 精确豁免，deny 清单本体不变。
-      allow-dependencies-licenses: pkg:pypi/psycopg-binary
+      # T-W5-033：golang.org/x/{mod,tools} 被 dependency-review 归一化为
+      # BSD-3-Clause AND LicenseRef-scancode-google-patent-license-golang（x/ 仓库
+      # 附加的 Go 专利授权条款；非 copyleft，不在 org deny 清单
+      # AGPL-3.0/GPL-3.0/SSPL-1.0）。与 psycopg-binary 同一误报类，按 ADR-0026
+      # 先例 PURL 精确豁免；上游归一化修复后回撤。
+      allow-dependencies-licenses: pkg:pypi/psycopg-binary pkg:golang/golang.org/x/mod pkg:golang/golang.org/x/tools
 
   repo-gate:
     # 宪法门禁（原 pr-check.yml 全量迁移）：任务卡引用 / 泄密扫描 / 反测试削弱 /
