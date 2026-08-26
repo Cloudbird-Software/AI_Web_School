@@ -13,6 +13,9 @@
 | 任务卡 | PR | Verifier |
 |---|---|---|
 | T-W5-033 | #64+#68（已合并；#65 被 ADR-0040 自动关闭后按指示以 #68 续作） | gate 切 Go 工具链全量落地：GO-2 errcheck（tool 钉 v1.9.0）/ GO-5 goleak（api TestMain）/ SQL-1 静态成对 check_pairs.py / SQL-2 sqlc（SHA256 钉扎二进制 v1.31.1，drift 检查进 check-go 链首）/ ci go-check job 入 gate。红线实证：verify PR #71（sqlc 漂移→go-check/gate 双红，日志含精确 diff 输出）+ 后续 cycle；供应链：x-tools/x-mod 下钉 ≥90 天、x 系许可 PURL 豁免（ADR-0026 先例）、grpc GHSA×age 死结以钉扎二进制解（ADR-0039 备忘） |
+| T-W5-019 | #72（已合并） | 0025 留痕迁移（activated_by）+ core/estimator 并发安全（64 goroutine -race 恰一活跃）；事实修正：0016 已有偏唯一索引，真缺陷是无锁+无留痕 |
+| T-W5-017 | #76（已合并） | core/events 事务显式传递（ErrNoTransaction fail-closed）+ go/parser 静态守卫（零 Commit/Rollback，红绿双向）+ fakeTx 回滚一致性 |
+| T-W5-014 | #75（已合并） | core/ai 总线：fail-closed 三路径（PII 剥离/台账/预算）+ 0026 ai_call_ledger（append-only 触发器）+ 出站 https 强制 + 零新依赖；W6 LLM harness 地基 |
 | T-W5-001 | #69（已合并） | 0024 迁移四表语句级 append-only 触发器（复用 0005 函数）；migrate_check.py 探针（真 UPDATE/WHERE FALSE/DELETE 三拒 + down 回滚段）在 CI 真实 PG 全绿；passage 审阅扩盖、item_version 契约排除逐表留痕 |
 | T-W5-031 | #42（已合并） | Go 骨架：t_w5_031.sh 全绿（gofmt/build/vet/test-race + fuzz + X6 红绿双向 + healthz 脱敏）；遗留缺陷清单见 issue #43/#45，随修复 PR 关闭 |
 | T-W5-035 | #48 | org 治理 CI 变更（Cloudbird-Software/.github#84 / ADR-0032）：gate aggregator 严格化 skipped≠success + EXPECTED_SKIP 白名单；Verifier=机器门禁（本 PR CI 全绿；T1 注入负向测试 Use-up-Plan PR#30 gate 红） |
