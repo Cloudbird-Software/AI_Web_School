@@ -13,7 +13,6 @@
 from __future__ import annotations
 
 import json
-import sys
 from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 from uuid import UUID, uuid4
@@ -27,7 +26,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.core.data.parquet_export import (
     PARQUET_SCHEMA,
     SCENES,
-    ExportResult,
     build_output_path,
     export_daily,
     export_scene,
