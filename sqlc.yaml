@@ -1,0 +1,16 @@
+# T-W5-033（SQL-2）：sqlc 类型安全查询层配置。
+# schema 指向 golang-migrate 目录（sqlc 原生识别 NNNN_*.up.sql 顺序拼装，
+# down 文件自动忽略）；查询经 `make sqlc-generate` 生成 db/gen（提交入库），
+# `make sqlc-diff` 在 gate 内拦截手改生成物（生成物漂移即红）。
+# 纪律：查询只写在这里，禁止在 Go 代码里拼 SQL 字符串（SQL-2 查询面类型生成）。
+version: "2"
+sql:
+  - engine: "postgresql"
+    schema: "db/migrations"
+    queries: "db/queries"
+    gen:
+      go:
+        package: "dbgen"
+        out: "db/gen"
+        sql_package: "pgx/v5"
+        emit_json_tags: false

@@ -11,7 +11,7 @@ ifneq (,$(wildcard .env))
 export POSTGRES_USER POSTGRES_PASSWORD POSTGRES_DB MINIO_ROOT_USER MINIO_ROOT_PASSWORD
 endif
 
-.PHONY: bootstrap up down migrate migrate-go migrate-go-check test accept contract golden golden-path nightly dashboard sync-rules model-bench demo-w0 demo-w2 demo-w3 setup check test-freeze-check holdout go-errcheck sql-pairs
+.PHONY: bootstrap up down migrate migrate-go migrate-go-check test accept contract golden golden-path nightly dashboard sync-rules model-bench demo-w0 demo-w2 demo-w3 setup check test-freeze-check holdout go-errcheck sql-pairs sqlc-generate sqlc-diff
 
 ## 环境一键搭建与自检（新机器第一步）
 bootstrap:
@@ -99,7 +99,10 @@ go-errcheck:
 	@go tool errcheck $$(go list ./... | grep -v baml_client)
 ## T-W5-033 SQL-1 静态面：up/down 成对 + 非空 down + 版本号唯一（运行时可逆由 migrate-go-check 承担）
 sql-pairs: ; python tools/sql/check_pairs.py
-check-go: go-fmt go-build go-test go-boundary baml-golden-check go-errcheck
+## T-W5-033 SQL-2：sqlc 生成物漂移检查（手改 db/gen 即红）；改查询后先 sqlc-generate 再提交
+sqlc-generate: ; go tool sqlc generate -f sqlc.yaml
+sqlc-diff: ; go tool sqlc diff -f sqlc.yaml
+check-go: go-fmt go-build go-test go-boundary baml-golden-check go-errcheck sqlc-diff
 
 ## 任务验收：唯一完成标准
 accept: ## make accept TASK=T-W0-001
