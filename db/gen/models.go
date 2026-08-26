@@ -447,6 +447,28 @@ func (ns NullResponseEventSceneEnum) Value() (driver.Value, error) {
 	return string(ns.ResponseEventSceneEnum), nil
 }
 
+type AiCallLedger struct {
+	CallID        string
+	Modality      string
+	TaskLevel     pgtype.Text
+	TaskName      string
+	Provider      string
+	Model         string
+	ModelVersion  string
+	PromptHash    string
+	PromptVersion string
+	TokenIn       int32
+	TokenOut      int32
+	CostCny       float64
+	DurationMs    float64
+	Status        string
+	Reason        pgtype.Text
+	Fallback      bool
+	ArtifactRef   pgtype.Text
+	CallerName    pgtype.Text
+	CreatedAt     pgtype.Timestamptz
+}
+
 type Blueprint struct {
 	BlueprintID       string
 	WritingType       string
