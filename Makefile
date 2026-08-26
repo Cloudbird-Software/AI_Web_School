@@ -11,7 +11,7 @@ ifneq (,$(wildcard .env))
 export POSTGRES_USER POSTGRES_PASSWORD POSTGRES_DB MINIO_ROOT_USER MINIO_ROOT_PASSWORD
 endif
 
-.PHONY: bootstrap up down migrate migrate-go migrate-go-check test accept contract golden golden-path nightly dashboard sync-rules model-bench demo-w0 demo-w2 demo-w3 setup check test-freeze-check holdout go-errcheck sql-pairs
+.PHONY: bootstrap up down migrate migrate-go migrate-go-check test accept contract golden golden-path nightly dashboard sync-rules model-bench demo-w0 demo-w2 demo-w3 setup check test-freeze-check holdout go-errcheck sql-pairs sqlc-generate sqlc-diff
 
 ## 环境一键搭建与自检（新机器第一步）
 bootstrap:
@@ -99,7 +99,43 @@ go-errcheck:
 	@go tool errcheck $$(go list ./... | grep -v baml_client)
 ## T-W5-033 SQL-1 静态面：up/down 成对 + 非空 down + 版本号唯一（运行时可逆由 migrate-go-check 承担）
 sql-pairs: ; python tools/sql/check_pairs.py
-check-go: go-fmt go-build go-test go-boundary baml-golden-check go-errcheck
+## T-W5-033 SQL-2：sqlc 为版本+SHA256 双钉扎的发布二进制（非 go.mod 依赖）。
+## 为什么：sqlc v1.31.1 传递树含 grpc v1.80.0——GHSA-hrxh-6v49-42gf（高危）唯一
+## 修复版 v1.82.1 发布 <90 天，组织供应链 age≥90 硬红与漏洞高危硬红在该传递依赖上
+## 互斥（dep-review.yml 无 allow-ghsas 透传）。二进制+SHA256 钉扎与 baml-generate 的
+## npx@精确版本同构，模块图零污染；grpc v1.82.1 满 90 天（2026-10-13 后）可评估
+## 回迁 go tool 指令并删除本段注释。
+SQLC_VERSION := v1.31.1
+SQLC_BIN := tools/bin/sqlc.exe
+ifeq ($(shell uname -s 2>/dev/null | grep -qi linux && echo yes),yes)
+  SQLC_OS := linux
+  SQLC_PKG := sqlc_1.31.1_linux_amd64.tar.gz
+  SQLC_SHA256 := 497ae4fcdfa64c5b0c311ffe4c2bd991e43991e82e5367792ed78bc2dca27354
+else ifeq ($(shell uname -s 2>/dev/null | grep -qi darwin && echo yes),yes)
+  SQLC_OS := darwin
+  $(error darwin 校验和未钉扎——请补充 sqlc_1.31.1_darwin_amd64.tar.gz 的 SHA256 后使用)
+else
+  SQLC_OS := windows
+  SQLC_PKG := sqlc_1.31.1_windows_amd64.zip
+  SQLC_SHA256 := 352711fa7dcb05dcdfefca0ad71b2c9a74fd090f8d7fc609419de4cbc725429f
+endif
+tools/bin/sqlc.exe:
+	@mkdir -p tools/bin .sqlc_tmp
+	curl -fsSL -o .sqlc_tmp/$(SQLC_PKG) "https://github.com/sqlc-dev/sqlc/releases/download/$(SQLC_VERSION)/$(SQLC_PKG)"
+	echo "$(SQLC_SHA256)  .sqlc_tmp/$(SQLC_PKG)" | sha256sum -c -
+ifeq ($(SQLC_OS),linux)
+	tar -xzf .sqlc_tmp/$(SQLC_PKG) -C tools/bin sqlc
+	mv tools/bin/sqlc tools/bin/sqlc.exe
+else
+	unzip -o -q .sqlc_tmp/$(SQLC_PKG) -d tools/bin
+endif
+	@rm -rf .sqlc_tmp
+	@chmod +x tools/bin/sqlc.exe 2>/dev/null || true
+sqlc-generate: tools/bin/sqlc.exe ; tools/bin/sqlc.exe generate -f sqlc.yaml
+sqlc-diff: tools/bin/sqlc.exe ; tools/bin/sqlc.exe diff -f sqlc.yaml
+## sqlc-diff 置于链首：生成物漂移是最上游的身份问题——先判定再谈编译/静态检查，
+## 避免漂移导致的编译/errcheck 失败掩盖根因（红队 Major 2）
+check-go: sqlc-diff go-fmt go-build go-test go-boundary baml-golden-check go-errcheck
 
 ## 任务验收：唯一完成标准
 accept: ## make accept TASK=T-W0-001

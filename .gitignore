@@ -35,3 +35,7 @@ ai_runner.ps1
 
 # T-W5-032 Go 编译产物（go build ./tools/migrate 落在仓库根目录，禁止入库）
 /migrate
+
+# T-W5-033 sqlc 钉扎二进制（版本+SHA256 见 Makefile）
+tools/bin/
+.sqlc_tmp/
