@@ -437,7 +437,8 @@ def main() -> None:
                 raise SystemExit(f"❌ down -1 后 {t} 的 UPDATE 仍被拒（触发器未随 0024 down 移除？）: {e}")
             n = conn.execute(
                 "SELECT count(*) FROM pg_trigger "
-                "WHERE tgrelid = %s::regclass AND tgname LIKE '%append_only%'",
+                # psycopg3 pyformat：带参数的 execute 中字面 % 须转义为 %%（CI 实证：%a 被当占位符）
+                "WHERE tgrelid = %s::regclass AND tgname LIKE '%%append_only%%'",
                 (t,),
             ).fetchone()[0]
             if n != 0:
