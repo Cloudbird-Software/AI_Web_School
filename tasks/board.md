@@ -12,6 +12,8 @@
 ## 待验
 | 任务卡 | PR | Verifier |
 |---|---|---|
+| T-W5-033 | #64+#68（已合并；#65 被 ADR-0040 自动关闭后按指示以 #68 续作） | gate 切 Go 工具链全量落地：GO-2 errcheck（tool 钉 v1.9.0）/ GO-5 goleak（api TestMain）/ SQL-1 静态成对 check_pairs.py / SQL-2 sqlc（SHA256 钉扎二进制 v1.31.1，drift 检查进 check-go 链首）/ ci go-check job 入 gate。红线实证：verify PR #71（sqlc 漂移→go-check/gate 双红，日志含精确 diff 输出）+ 后续 cycle；供应链：x-tools/x-mod 下钉 ≥90 天、x 系许可 PURL 豁免（ADR-0026 先例）、grpc GHSA×age 死结以钉扎二进制解（ADR-0039 备忘） |
+| T-W5-001 | #69（已合并） | 0024 迁移四表语句级 append-only 触发器（复用 0005 函数）；migrate_check.py 探针（真 UPDATE/WHERE FALSE/DELETE 三拒 + down 回滚段）在 CI 真实 PG 全绿；passage 审阅扩盖、item_version 契约排除逐表留痕 |
 | T-W5-031 | #42（已合并） | Go 骨架：t_w5_031.sh 全绿（gofmt/build/vet/test-race + fuzz + X6 红绿双向 + healthz 脱敏）；遗留缺陷清单见 issue #43/#45，随修复 PR 关闭 |
 | T-W5-035 | #48 | org 治理 CI 变更（Cloudbird-Software/.github#84 / ADR-0032）：gate aggregator 严格化 skipped≠success + EXPECTED_SKIP 白名单；Verifier=机器门禁（本 PR CI 全绿；T1 注入负向测试 Use-up-Plan PR#30 gate 红） |
 | T-W5-036 | #49 | org 治理 CI 变更（Cloudbird-Software/.github#89 / ADR-0038）：契约兼容性检测门接线——contract job（CI-Workflows contract.yml）入 gate needs；检测面 specs/contracts/**（jsonschema breaking）+ alembic/versions/**（destructive DDL 须 ADR+downgrade 逆操作）；Verifier=机器门禁（本 PR CI 全绿，含 contract job 首跑） |
@@ -27,8 +29,8 @@
 
 | 任务卡 | 标题 | model_floor | 依赖 |
 |---|---|---|---|
-| **批次 R（W5-R 基建，先行）** | | | |
-| T-W5-033 | gate 切 Go 工具链（GO-1..5/BAML-1/SQL-1/2） | T1 | T-W5-030/031/032 |
+> 批次 R（T-W5-030..033）已全部完成（2026-08-27），批次 A 解锁。
+
 | **批次 A（可并行 8 条，重锚定 Go）** | | | |
 | T-W5-001 | 内容版本账 append-only 物理强制补齐 | T0 | — |
 | T-W5-005 | 认证与主体绑定框架 | T0 | — |
