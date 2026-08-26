@@ -53,5 +53,6 @@ def downgrade() -> None:
         "activated_by",
         existing_type=sa.Text(),
         server_default=None,
+        nullable=True,  # SET_NOT_NULL 的显式逆操作（DROP_NOT_NULL）——contract 门 INVERSE_KINDS 要求
     )
     op.drop_column("estimator_run", "activated_by")
