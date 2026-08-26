@@ -54,3 +54,5 @@ test spike_golden_generate_draft {
     "#
   }
 }
+
+// verify redline baml change (BAML-1 应红)
