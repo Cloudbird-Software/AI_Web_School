@@ -978,3 +978,7 @@ type VServingMaterialVersion struct {
 	LicenseExpiresAt  pgtype.Timestamptz
 	LicenseDecision   NullMaterialLicenseDecisionEnum
 }
+
+type VerifyOrphanE struct {
+	ID string
+}
