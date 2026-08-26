@@ -7,7 +7,10 @@ migrate-go-check（make check 内，运行时 up→down→up 全量演练）依�
   1. db/migrations/ 下每个 NNNN_*.up.sql 必须有同名 .down.sql（只升不降 = 红）；
   2. .down.sql 不得为空文件（空文件 = 伪回滚，SQL-1 的"成对"必须是真成对）；
   3. 不允许只有 down 没有 up 的孤儿（半对同样破坏可逆演练的步进语义）；
-  4. 版本号 NNNN 前缀不得重复（重复会让 golang-migrate 的版本排序出现歧义）。
+  4. 版本号 NNNN 前缀不得重复（重复会让 golang-migrate 的版本排序出现歧义）；
+  5. 目录内不允许出现子目录（golang-migrate 只读单层；子目录=静默逃逸面，红）。
+
+编码面：down 以 utf-8-sig 读取——BOM-only 文件不是"非空 down"（红队审查 Minor 2）。
 
 运行时可逆性（down 真能执行）仍由 migrate-go-check 承担——静态配对 +
 运行时可逆共同构成 SQL-1 的完整 gate 面。只用标准库。
@@ -33,6 +36,9 @@ def main() -> int:
     violations: list[str] = []
 
     for f in sorted(MIGRATIONS.iterdir()):
+        if f.is_dir():
+            violations.append(f"迁移目录不允许子目录（单层语义，golang-migrate 同）: {f.name}")
+            continue
         m = NAME_RE.match(f.name)
         if not m:
             # 与 golang-migrate 命名规约不符的文件直接红（会被 source/file 拒载）
@@ -51,7 +57,7 @@ def main() -> int:
             continue
         down_path = MIGRATIONS / down_name
         # 空文件 = 伪回滚（0 字节绕过"非空"文本判断的所有空白变体）
-        if down_path.read_text(encoding="utf-8", errors="strict").strip() == "":
+        if down_path.read_text(encoding="utf-8-sig", errors="strict").strip() == "":
             violations.append(f"down 为空文件（伪回滚）: {down_name}")
 
     for version, down_name in sorted(downs.items()):
