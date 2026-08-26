@@ -489,6 +489,7 @@ type EstimatorRun struct {
 	ActivatedAt     pgtype.Timestamptz
 	RetiredAt       pgtype.Timestamptz
 	CreatedAt       pgtype.Timestamptz
+	ActivatedBy     string
 }
 
 type GateCertificate struct {
