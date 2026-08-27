@@ -17,6 +17,7 @@ import (
 	"strconv"
 
 	"github.com/Cloudbird-Software/AI_Web_School/core/auth"
+	"github.com/Cloudbird-Software/AI_Web_School/core/compliance"
 )
 
 // 对外错误类语义。线上形态只有 error_class 一个字段：类粒度刻意压粗——
@@ -55,6 +56,10 @@ func WriteError(w http.ResponseWriter, status int, class string) {
 // 矩阵（按判定顺序，先具体后兜底）：
 //
 //   - *http.MaxBytesError（请求体超限）→ 413 payload_too_large；
+//   - 家长授权缺失（T-W5-010，missing/revoked/expired 三态统一哨兵）→
+//     403 forbidden：宪法红线「家长授权前置」的协议映射。对外只用既有粗粒度
+//     forbidden 类——三类拒绝态的区别只在服务端审计日志（ConsentRequiredError
+//     的 State），给客户端细分等于向探测者开放他人授权状态的反馈通道；
 //   - 授权类（角色不足/越权 alias/主体模型非法）→ 403 forbidden（D9）；
 //   - 认证类（缺令牌/签名错/过期/载荷非法）→ 401 unauthorized；
 //   - 其余一律 500 internal：未知错误绝不映射成 4xx"客户端错误"误导
@@ -70,6 +75,8 @@ func MapError(err error) (int, string) {
 	switch {
 	case errors.As(err, &tooLarge):
 		return http.StatusRequestEntityTooLarge, ErrorClassPayloadTooLarge
+	case errors.Is(err, compliance.ErrConsentRequired):
+		return http.StatusForbidden, ErrorClassForbidden
 	case auth.IsAuthorizationError(err):
 		return http.StatusForbidden, ErrorClassForbidden
 	case auth.IsAuthenticationError(err):

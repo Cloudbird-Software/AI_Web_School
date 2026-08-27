@@ -13,6 +13,7 @@ import (
 	"testing"
 
 	"github.com/Cloudbird-Software/AI_Web_School/core/auth"
+	"github.com/Cloudbird-Software/AI_Web_School/core/compliance"
 )
 
 // TestMapError_Matrix 错误 → (状态码, error_class) 映射矩阵（单点扩展处，
@@ -31,6 +32,15 @@ func TestMapError_Matrix(t *testing.T) {
 		{"角色不足", auth.ErrRoleDenied, http.StatusForbidden, ErrorClassForbidden},
 		{"越权alias", auth.ErrAliasNotOwned, http.StatusForbidden, ErrorClassForbidden},
 		{"主体模型非法", auth.ErrInvalidSubject, http.StatusForbidden, ErrorClassForbidden},
+		// T-W5-010：授权缺失三态经统一哨兵进矩阵；对外一律粗粒度 forbidden
+		//（细分只进服务端审计日志），任意 State 载体不得映射到别的类；
+		// 授权账基础设施故障（非授权语义）保持 500 internal——fail-closed
+		// 但不向运维伪装成客户端越权。
+		{"授权缺失missing", &compliance.ConsentRequiredError{StudentAliasID: "a", Purpose: compliance.PurposeOnlinePractice, State: compliance.StateMissing}, http.StatusForbidden, ErrorClassForbidden},
+		{"授权缺失revoked", &compliance.ConsentRequiredError{StudentAliasID: "a", Purpose: compliance.PurposeOnlinePractice, State: compliance.StateRevoked}, http.StatusForbidden, ErrorClassForbidden},
+		{"授权缺失expired", &compliance.ConsentRequiredError{StudentAliasID: "a", Purpose: compliance.PurposeOnlinePractice, State: compliance.StateExpired}, http.StatusForbidden, ErrorClassForbidden},
+		{"授权哨兵直传", compliance.ErrConsentRequired, http.StatusForbidden, ErrorClassForbidden},
+		{"授权账故障按内部错", fmt.Errorf("session: 授权账读取失败（fail-closed，不放行）: %w", errors.New("db down")), http.StatusInternalServerError, ErrorClassInternal},
 		{"请求体超限", &http.MaxBytesError{Limit: 1024}, http.StatusRequestEntityTooLarge, ErrorClassPayloadTooLarge},
 		{"未知错误", errors.New("boom"), http.StatusInternalServerError, ErrorClassInternal},
 		{"nil按内部错", nil, http.StatusInternalServerError, ErrorClassInternal},
