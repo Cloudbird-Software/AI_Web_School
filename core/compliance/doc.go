@@ -31,5 +31,13 @@
 // 的已 begin 事务执行面（Executor），内存实现无持久化事务面；提交/回滚一律在
 // 最外层调用方。
 //
+// PII 保险库子域（T-W5-012）：vault.go 承载直标识的权限判定（VaultAccess
+// fail-closed 角色判定，deny 也是审计事实）、加解密（vault_cipher.go，
+// AES-256-GCM 应用层加解密，密钥环境变量注入）与双 Executor 独立审计事务
+// （vault 业务语句走业务执行面，access_log 留痕走独立审计执行面——审计失败
+// 不回滚业务、业务失败审计仍留痕，边界方向与主链单事务相反，理由见
+// vault.go 文件头）。DB 角色前提（pii_vault_reader 读身份+读审计 /
+// pii_vault_writer 写身份+写审计）由迁移 0030 提供.
+//
 // 宪法 A5/X6：本包是核心域，禁止 import 任何学科/学段包（packs/*）。
 package compliance
