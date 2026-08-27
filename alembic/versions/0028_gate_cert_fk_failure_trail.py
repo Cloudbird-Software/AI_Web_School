@@ -24,7 +24,7 @@ D2「门的数据库级强制」此前只有半个身子：
 契约门自检（CI-Workflows scripts/contract 引擎语义）：upgrade 全部语句为
 CREATE_TABLE/TRIGGER + ADD_CONSTRAINT(NOT VALID) + RELAX_NOTNULL 加性面，
 无 destructive DDL、无需 ADR 手续；downgrade 为显式逆操作成对回滚。
-链序说明：down_revision 指 0026（ai_call_ledger）；0027 已被并行分支预分配。
+链序说明：down_revision 指 0027（consent 唯一性，#83 已合入 main）；本迁移线性收尾于 0028。
 """
 from __future__ import annotations
 
@@ -36,7 +36,7 @@ from sqlalchemy.dialects.postgresql import JSONB
 
 # revision identifiers, used by Alembic.
 revision: str = "0028"
-down_revision: Union[str, None] = "0026"
+down_revision = "0027"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
