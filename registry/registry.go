@@ -21,12 +21,14 @@ type Interaction interface {
 	Normalize(raw string) (string, error)
 }
 
-// ScoreResult 是评分器输出的最小契约（model_version 供 D10 可回放）。
+// ScoreResult 是评分器输出的最小契约（model/model_version 供 D10 可回放；
+// 双向强制见 ValidateResult——AI 评分必填，确定性评分器为空）。
 type ScoreResult struct {
 	Correct      bool
 	Score        float64
 	Confidence   float64
-	ModelVersion string // AI 评分必填（写入 scoring_trace）；确定性评分器为空
+	Model        string // 模型标识（AI 评分必填，写入 scoring_trace）；确定性评分器为空
+	ModelVersion string // 模型版本（AI 评分必填，写入 scoring_trace）；确定性评分器为空
 }
 
 // Scorer 是评分器注册表接口。human_confirm 兜底的处置见 ADR-0005（申请中）。
