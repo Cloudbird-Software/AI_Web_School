@@ -1,4 +1,4 @@
-// Command mathgen 是 W6 数学轮第一阶的批量出题入口：对已注册数学母题
+// Command mathgen 是 W6 数学轮的批量出题入口：对已注册数学母题
 // 各生成 N 个「过确定性验证器且结构互异」的实例，写 JSONL 并输出产能
 // 汇总报告（issue #34 §七 W6：函数库生成 + 确定性验证）。
 //
@@ -45,7 +45,7 @@ func run() error {
 		return fmt.Errorf("创建输出目录 %s 失败: %w", *outDir, err)
 	}
 
-	fmt.Println("════════ mathgen · 数学母题确定性生成（W6 数学轮第一阶） ════════")
+	fmt.Println("════════ mathgen · 数学母题确定性生成（W6 数学轮） ════════")
 	fmt.Printf("seed=%d  n=%d/母题  out=%s\n", *seed, *n, *outDir)
 	fmt.Printf("模板 %d 个：%s\n\n", len(ids), strings.Join(ids, ", "))
 

@@ -62,6 +62,12 @@ func Validate(inst *Instance) error {
 		return validateDecCompare(inst)
 	case idIntAddSub:
 		return validateIntAddSub(inst)
+	case idIntMulDiv:
+		return validateIntMulDiv(inst)
+	case idTimeConv:
+		return validateTimeConv(inst)
+	case idGeoRect:
+		return validateGeoRect(inst)
 	default:
 		return shapef("未知母题模板 id：%q", inst.TemplateID)
 	}
@@ -856,6 +862,330 @@ func validateIntAddSub(inst *Instance) error {
 	if !strings.Contains(expl, fmtInt(a)) || !strings.Contains(expl, fmtInt(b)) ||
 		!strings.Contains(expl, fmtInt(expected)) {
 		return consistf("解析未含可复核要素（%d / %d / %s）", a, b, fmtInt(expected))
+	}
+	if inst.ErrorBindings[0]["subject"] != "blank:b1" {
+		return consistf("填空题错误绑定主体应为 blank:b1")
+	}
+	return nil
+}
+
+// ────────────────────────────────────────────────────────────────
+// 母题⑧ 乘除混合运算 数值填空验证器
+//
+// 独立路径：从题干重提三操作数 + 按「×/÷ 出现次序」判形态（与生成器的
+// form 参数互为独立判定）+ 整除性/商性质断言 + 从左往右两步重算。
+// ────────────────────────────────────────────────────────────────
+
+func validateIntMulDiv(inst *Instance) error {
+	stem, err := checkPublishedShape(inst)
+	if err != nil {
+		return err
+	}
+	interID, _ := inst.InteractionRef["interaction_id"].(string)
+	if interID != "numeric_blank" {
+		return shapef("interaction_id=%q，本模板应为 numeric_blank", interID)
+	}
+	ix := strings.Index(stem.rendered, "×")
+	idv := strings.Index(stem.rendered, "÷")
+	if ix < 0 || idv < 0 {
+		return shapef("题干缺乘/除算符：%q", stem.rendered)
+	}
+	if strings.Count(stem.rendered, "×")+strings.Count(stem.rendered, "÷") != 2 {
+		return shapef("题干算符数应恰为 2（一乘一除）：%q", stem.rendered)
+	}
+	tokens := intTokenRe.FindAllString(stem.rendered, -1)
+	if len(tokens) != 3 {
+		return consistf("题干应恰含三个操作数，实得 %d 个数字串", len(tokens))
+	}
+	a, e1 := strconv.ParseInt(tokens[0], 10, 64)
+	b, e2 := strconv.ParseInt(tokens[1], 10, 64)
+	c, e3 := strconv.ParseInt(tokens[2], 10, 64)
+	if e1 != nil || e2 != nil || e3 != nil {
+		return formatf("操作数解析失败：%v", tokens)
+	}
+	if a <= 1 || b <= 1 || c <= 1 {
+		return formatf("操作数含退化值 0/1（a,b,c ≥ 2）：%d %d %d", a, b, c)
+	}
+
+	// 独立重算（从左往右两步）+ 性质断言（整除性与值域，自持口径）
+	var expected int64
+	if ix < idv { // a × b ÷ c
+		if a > 20 || b > 9 || c > 9 {
+			return formatf("MD 操作数超域 a∈[2,20] b∈[2,9] c∈[2,9]：%d %d %d", a, b, c)
+		}
+		if (a*b)%c != 0 {
+			return consistf("先乘后除中间积 %d 不被 %d 整除（超空间约束）", a*b, c)
+		}
+		expected = a * b / c
+	} else { // a ÷ b × c
+		if a > 99 || b > 9 || c > 9 {
+			return formatf("DM 操作数超域 a∈[4,99] b∈[2,9] c∈[2,9]：%d %d %d", a, b, c)
+		}
+		if a%b != 0 {
+			return consistf("先除后乘首步 %d 不被 %d 整除（超空间约束）", a, b)
+		}
+		if a/b < 2 {
+			return consistf("首步商 %d < 2（退化题，超空间约束）", a/b)
+		}
+		expected = a / b * c
+	}
+
+	ansM, _ := inst.Content["answer"].(map[string]any)
+	gotVal, _ := ansM["value"].(string)
+	sp, _ := inst.ScoringRef["scorer_params"].(map[string]any)
+	scAns, _ := sp["answer"].(string)
+	if gotVal != fmtInt(expected) || scAns != fmtInt(expected) {
+		return answerf("从左往右计算应为 %s，content.answer=%q scoring_ref=%q",
+			fmtInt(expected), gotVal, scAns)
+	}
+	if blank, _ := ansM["blank_id"].(string); blank == "" {
+		return shapef("content.answer.blank_id 缺失")
+	}
+	if !strings.Contains(stem.rendered, "（") || !strings.Contains(stem.rendered, "）") {
+		return shapef("题干缺括号空位：%q", stem.rendered)
+	}
+	expl, _ := inst.Content["explanation"].(string)
+	for _, need := range []string{fmtInt(a), fmtInt(b), fmtInt(c), fmtInt(expected)} {
+		if !strings.Contains(expl, need) {
+			return consistf("解析未含可复核要素 %q", need)
+		}
+	}
+	if inst.ErrorBindings[0]["subject"] != "blank:b1" {
+		return consistf("填空题错误绑定主体应为 blank:b1")
+	}
+	return nil
+}
+
+// ────────────────────────────────────────────────────────────────
+// 母题⑨ 时间单位换算 数值填空验证器
+//
+// 独立副本时间量纲表（秒⁰/分¹/时²，进率 60）+ 长除逐位取商的独立渲染路径
+// （与生成器的约分补幂路径互为防共谋对照）；放大路径独立按 mant×60/10^s
+// 整数重算。规范域断言自持：s∈{0,1}、无尾零、值域 [1,999]。
+// ────────────────────────────────────────────────────────────────
+
+var timeStemRe = regexp.MustCompile(
+	`([0-9]+(?:\.[0-9]+)?)\s*(时|分|秒)\s*=\s*（\s*）\s*(时|分|秒)`)
+
+// timeExp60Of 验证器侧幂次表（独立副本；未登记单位返回 -1000）。
+func timeExp60Of(u string) int {
+	switch u {
+	case "秒":
+		return 0
+	case "分":
+		return 1
+	case "时":
+		return 2
+	}
+	return -1000
+}
+
+func validateTimeConv(inst *Instance) error {
+	stem, err := checkPublishedShape(inst)
+	if err != nil {
+		return err
+	}
+	interID, _ := inst.InteractionRef["interaction_id"].(string)
+	if interID != "numeric_blank" {
+		return shapef("interaction_id=%q，本模板应为 numeric_blank", interID)
+	}
+	ms := timeStemRe.FindStringSubmatch(stem.rendered)
+	if ms == nil {
+		return shapef("题干不匹配时间换算句式：%q", stem.rendered)
+	}
+	valStr, uFrom, uTo := ms[1], ms[2], ms[3]
+	if timeExp60Of(uFrom) < 0 || timeExp60Of(uTo) < 0 {
+		return shapef("单位不在验证器时间量纲表内：%q→%q", uFrom, uTo)
+	}
+	if uFrom == uTo {
+		return consistf("同单位换算无意义：%s", uFrom)
+	}
+	mant, scale, perr := parseDecString(valStr)
+	if perr != nil {
+		return formatf("换算值非规范十进制：%q（%v）", valStr, perr)
+	}
+	if mant <= 0 || mant > 999 {
+		return formatf("换算值超出母题值域 [1,999] 的整数有效数字段：%q", valStr)
+	}
+	if scale > 1 {
+		return formatf("小数位超域（母题口径 s∈{0,1}）：%q", valStr)
+	}
+	if scale == 1 && mant%10 == 0 {
+		return formatf("尾零非规范：%q", valStr)
+	}
+
+	// 独立重算：exp60 为「1 该单位 = 60^exp 秒」的幂次，乘数 = 60^Δ，
+	// Δ = exp(from) − exp(to)。|Δ|=1 属母题口径；|Δ|=2（时↔秒）超纲拒。
+	delta := timeExp60Of(uFrom) - timeExp60Of(uTo)
+	var expected string
+	switch delta {
+	case 1:
+		// 放大：mant/10^s × 60 = mant×6（s=1 时恰为整数——独立整数路径）
+		if scale == 1 {
+			expected = fmtInt(mant * 6)
+		} else {
+			expected = fmtInt(mant * 60)
+		}
+	case -1:
+		// 缩小：mant/10^s ÷ 60，长除逐位取商（≤4 位内必终止：
+		// 既约分母 2^a·5^b ≤ 200 → 小数位 ≤ 3）
+		den := int64(60) * pow10(scale)
+		ip := mant / den
+		rem := mant % den
+		frac := ""
+		for i := 0; i < 4 && rem != 0; i++ {
+			rem *= 10
+			frac += fmtInt(rem / den)
+			rem %= den
+		}
+		if rem != 0 {
+			return formatf("缩小方向结果非有限小数：%s %s → %s（超空间约束）", valStr, uFrom, uTo)
+		}
+		expected = fmtInt(ip)
+		if frac != "" {
+			expected += "." + frac
+		}
+	default:
+		return formatf("进率级差超界 delta=%d（母题口径 |Δ|=1）", delta)
+	}
+
+	ansM, _ := inst.Content["answer"].(map[string]any)
+	gotVal, _ := ansM["value"].(string)
+	gotUnit, _ := ansM["unit"].(string)
+	sp, _ := inst.ScoringRef["scorer_params"].(map[string]any)
+	scAns, _ := sp["answer"].(string)
+	scUnit, _ := sp["unit"].(string)
+	if gotVal != expected || scAns != expected {
+		return answerf("%s %s → %s 应为 %s，content.answer=%q scoring_ref=%q",
+			valStr, uFrom, uTo, expected, gotVal, scAns)
+	}
+	if gotUnit != uTo || scUnit != uTo {
+		return answerf("目标单位应为 %s，content.answer.unit=%q scoring_ref.unit=%q", uTo, gotUnit, scUnit)
+	}
+	if blank, _ := ansM["blank_id"].(string); blank == "" {
+		return shapef("content.answer.blank_id 缺失")
+	}
+	expl, _ := inst.Content["explanation"].(string)
+	if !strings.Contains(expl, expected) || !strings.Contains(expl, uTo) {
+		return consistf("解析未含复核要素（%s / %s）", expected, uTo)
+	}
+	if inst.ErrorBindings[0]["subject"] != "blank:b1" {
+		return consistf("填空题错误绑定主体应为 blank:b1")
+	}
+	return nil
+}
+
+// ────────────────────────────────────────────────────────────────
+// 母题⑩ 长方形/正方形周长面积 数值填空验证器
+//
+// 独立路径：形状词/量词/单位从题干重新判读（不读 lineage.form），独立套公式
+// 重算，并复核性质断言：长>宽、矩形周长必为偶数、正方形周长必被 4 整除、
+// 正方形面积必为完全平方数。量词与单位交叉错配（周长配平方厘米等）必拒。
+// ────────────────────────────────────────────────────────────────
+
+var geoRectStemRe = regexp.MustCompile(
+	`长方形[^0-9]*长\s*([0-9]+)\s*厘米[^0-9]*宽\s*([0-9]+)\s*厘米[^0-9]*(周长|面积)是（\s*）(平方厘米|厘米)`)
+var geoSqStemRe = regexp.MustCompile(
+	`正方形[^0-9]*边长\s*([0-9]+)\s*厘米[^0-9]*(周长|面积)是（\s*）(平方厘米|厘米)`)
+
+func validateGeoRect(inst *Instance) error {
+	stem, err := checkPublishedShape(inst)
+	if err != nil {
+		return err
+	}
+	interID, _ := inst.InteractionRef["interaction_id"].(string)
+	if interID != "numeric_blank" {
+		return shapef("interaction_id=%q，本模板应为 numeric_blank", interID)
+	}
+
+	var expected int64
+	var unit, explNeed string
+	if ms := geoRectStemRe.FindStringSubmatch(stem.rendered); ms != nil {
+		a, e1 := strconv.ParseInt(ms[1], 10, 64)
+		b, e2 := strconv.ParseInt(ms[2], 10, 64)
+		if e1 != nil || e2 != nil {
+			return formatf("长/宽解析失败：%v", ms[1:3])
+		}
+		if a < 2 || a > 30 || b < 1 || b > 29 {
+			return formatf("长/宽超域 a∈[2,30] b∈[1,29]：%d %d", a, b)
+		}
+		if a <= b {
+			return consistf("长 %d ≤ 宽 %d（长>宽为空间约束；正方形应走 square 形态）", a, b)
+		}
+		unit = ms[4]
+		if ms[3] == "周长" {
+			if unit != "厘米" {
+				return consistf("周长单位应为厘米，题干为 %q", unit)
+			}
+			expected = (a + b) * 2
+			if expected%2 != 0 {
+				return consistf("矩形周长 %d 为奇数（性质破坏）", expected)
+			}
+			explNeed = "（长＋宽）×2"
+		} else {
+			if unit != "平方厘米" {
+				return consistf("面积单位应为平方厘米，题干为 %q", unit)
+			}
+			expected = a * b
+			explNeed = "长×宽"
+		}
+	} else if ms := geoSqStemRe.FindStringSubmatch(stem.rendered); ms != nil {
+		c, perr := strconv.ParseInt(ms[1], 10, 64)
+		if perr != nil {
+			return formatf("边长解析失败：%q", ms[1])
+		}
+		if c < 2 || c > 30 {
+			return formatf("边长超域 c∈[2,30]：%d", c)
+		}
+		unit = ms[3]
+		if ms[2] == "周长" {
+			if unit != "厘米" {
+				return consistf("周长单位应为厘米，题干为 %q", unit)
+			}
+			expected = c * 4
+			if expected%4 != 0 {
+				return consistf("正方形周长 %d 不被 4 整除（性质破坏）", expected)
+			}
+			explNeed = "边长×4"
+		} else {
+			if unit != "平方厘米" {
+				return consistf("面积单位应为平方厘米，题干为 %q", unit)
+			}
+			expected = c * c
+			// 完全平方数性质断言（验证器自持整数平方根）
+			r := int64(1)
+			for r*r < expected {
+				r++
+			}
+			if r*r != expected {
+				return consistf("正方形面积 %d 非完全平方数（性质破坏）", expected)
+			}
+			explNeed = "边长×边长"
+		}
+	} else {
+		return shapef("题干不匹配长方形/正方形周长面积句式：%q", stem.rendered)
+	}
+
+	ansM, _ := inst.Content["answer"].(map[string]any)
+	gotVal, _ := ansM["value"].(string)
+	gotUnit, _ := ansM["unit"].(string)
+	sp, _ := inst.ScoringRef["scorer_params"].(map[string]any)
+	scAns, _ := sp["answer"].(string)
+	scUnit, _ := sp["unit"].(string)
+	if gotVal != fmtInt(expected) || scAns != fmtInt(expected) {
+		return answerf("结果应为 %s，content.answer=%q scoring_ref=%q",
+			fmtInt(expected), gotVal, scAns)
+	}
+	if gotUnit != unit || scUnit != unit {
+		return answerf("答案单位应为 %s，content.answer.unit=%q scoring_ref.unit=%q", unit, gotUnit, scUnit)
+	}
+	if blank, _ := ansM["blank_id"].(string); blank == "" {
+		return shapef("content.answer.blank_id 缺失")
+	}
+	expl, _ := inst.Content["explanation"].(string)
+	if !strings.Contains(expl, fmtInt(expected)) || !strings.Contains(expl, explNeed) ||
+		!strings.Contains(expl, unit) {
+		return consistf("解析未含复核要素（%s / %s / %s）", fmtInt(expected), explNeed, unit)
 	}
 	if inst.ErrorBindings[0]["subject"] != "blank:b1" {
 		return consistf("填空题错误绑定主体应为 blank:b1")
