@@ -13,9 +13,16 @@
 | 任务卡 | PR | Verifier |
 |---|---|---|
 | T-W5-033 | #64+#68（已合并；#65 被 ADR-0040 自动关闭后按指示以 #68 续作） | gate 切 Go 工具链全量落地：GO-2 errcheck（tool 钉 v1.9.0）/ GO-5 goleak（api TestMain）/ SQL-1 静态成对 check_pairs.py / SQL-2 sqlc（SHA256 钉扎二进制 v1.31.1，drift 检查进 check-go 链首）/ ci go-check job 入 gate。红线实证：verify PR #71（sqlc 漂移→go-check/gate 双红，日志含精确 diff 输出）+ 后续 cycle；供应链：x-tools/x-mod 下钉 ≥90 天、x 系许可 PURL 豁免（ADR-0026 先例）、grpc GHSA×age 死结以钉扎二进制解（ADR-0039 备忘） |
+| W6-math 第一阶 | #84（已合并） | 数学轮确定性生成管线：3 母题（乘法/分数比较/单位换算）×30 实例唯一率 100%（52,602 参数点全域扫描）；生成器×验证器独立+地面真值防共谋；PCG 可回放逐字节一致。owner 授权提前启动 W6（2026-08-27 会话） |
 | T-W5-019 | #72（已合并） | 0025 留痕迁移（activated_by）+ core/estimator 并发安全（64 goroutine -race 恰一活跃）；事实修正：0016 已有偏唯一索引，真缺陷是无锁+无留痕 |
 | T-W5-017 | #76（已合并） | core/events 事务显式传递（ErrNoTransaction fail-closed）+ go/parser 静态守卫（零 Commit/Rollback，红绿双向）+ fakeTx 回滚一致性 |
 | T-W5-014 | #75（已合并） | core/ai 总线：fail-closed 三路径（PII 剥离/台账/预算）+ 0026 ai_call_ledger（append-only 触发器）+ 出站 https 强制 + 零新依赖；W6 LLM harness 地基 |
+| T-W5-005 | #70（已合并） | 认证与主体绑定框架（core/auth + api/middleware，零新依赖）：HMAC 令牌/fail-closed 密钥/五类拒绝路径 -race 绿；owner review 通道完成 |
+| T-W5-020 | #79（已合并） | 查重验证器重建真实内容摘要路径（修复冻结实现 digest↔主键互证的 X11 缺陷）；CanonicalJSON/ContentDigest 唯一口径 |
+| T-W5-006 | #85（已合并） | 全端点接入认证：openapi 全 13 端点运行期扫描逐个匿名探测断言 401；D9 端到端闭合；X13 无无主体端点 |
+| T-W5-011 | #83（已合并） | 0027 唯一性迁移 + core/compliance 双实现；64 并发授权版本严格连续；事实修正：0015 仅非唯一索引 |
+| T-W5-002 | #82（已合并） | 0028 六引用面 FK + gate_failure 留痕表（append-only）+ CertificateVerifier/FailureTrail（显式事务面） |
+| T-W5-023 | #81（已合并） | tools/scan 双守卫：FROZEN.txt 全量遍历 + 无排名扫描（补驼峰/聚合/GORM 三盲区）；接线方式留 owner 裁量 |
 | T-W5-001 | #69（已合并） | 0024 迁移四表语句级 append-only 触发器（复用 0005 函数）；migrate_check.py 探针（真 UPDATE/WHERE FALSE/DELETE 三拒 + down 回滚段）在 CI 真实 PG 全绿；passage 审阅扩盖、item_version 契约排除逐表留痕 |
 | T-W5-031 | #42（已合并） | Go 骨架：t_w5_031.sh 全绿（gofmt/build/vet/test-race + fuzz + X6 红绿双向 + healthz 脱敏）；遗留缺陷清单见 issue #43/#45，随修复 PR 关闭 |
 | T-W5-035 | #48 | org 治理 CI 变更（Cloudbird-Software/.github#84 / ADR-0032）：gate aggregator 严格化 skipped≠success + EXPECTED_SKIP 白名单；Verifier=机器门禁（本 PR CI 全绿；T1 注入负向测试 Use-up-Plan PR#30 gate 红） |
