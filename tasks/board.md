@@ -14,6 +14,14 @@
 |---|---|---|
 | T-W5-033 | #64+#68（已合并；#65 被 ADR-0040 自动关闭后按指示以 #68 续作） | gate 切 Go 工具链全量落地：GO-2 errcheck（tool 钉 v1.9.0）/ GO-5 goleak（api TestMain）/ SQL-1 静态成对 check_pairs.py / SQL-2 sqlc（SHA256 钉扎二进制 v1.31.1，drift 检查进 check-go 链首）/ ci go-check job 入 gate。红线实证：verify PR #71（sqlc 漂移→go-check/gate 双红，日志含精确 diff 输出）+ 后续 cycle；供应链：x-tools/x-mod 下钉 ≥90 天、x 系许可 PURL 豁免（ADR-0026 先例）、grpc GHSA×age 死结以钉扎二进制解（ADR-0039 备忘） |
 | W6-math 第一阶 | #84（已合并） | 数学轮确定性生成管线：3 母题（乘法/分数比较/单位换算）×30 实例唯一率 100%（52,602 参数点全域扫描）；生成器×验证器独立+地面真值防共谋；PCG 可回放逐字节一致。owner 授权提前启动 W6（2026-08-27 会话） |
+| T-W5-008 | #89（已合并） | API 边界加固三件套：CORS 白名单/双维令牌桶限流/统一错误映射 + panic 防线与体限；与 006 合流（边界外圈+shield 内圈） |
+| T-W5-016 | #87（已合并） | 评分链路可回放：scoring_trace 固定记录 + 评分器契约注册即校验（ADR-0005 模型仲裁语义结构化） |
+| T-W5-021 | #91（已合并） | 语篇事实核查判定表显式化 + 阻断性归策略（修正冻结实现 review 结构性过不了门缺陷） |
+| T-W5-022 | #90（已合并） | migratechain 双守卫（版本连续性 + alembic 链一一对应）——免 Docker 本地可验；**首战即拦截 012 跳号** |
+| T-W5-012 | #92+#94（已合并） | 0030 角色职责分离（writer/reader 收敛 0014 误授）+ 审计独立双 Executor 事务（业务/审计双向语义）+ AES-GCM 零明文断言 |
+| T-W5-010 | #96（已合并） | 会话入口 fail-closed 授权门（nil 账=500 拒绝）+ 防 oracle 探测排序（越权判据先于授权门） |
+| T-W5-013 | #97（已合并） | 姓名脱敏边界修复 + Go 原生 fuzz（修复前 fuzz 即红、修复后 36 万 execs 零 crasher） |
+| W6-math 第二三阶 | #88+#95（已合并） | **数学轮 10/10 母题达成**（≈16.2 万参数点全域扫描、唯一率 100%、同 seed 逐字节可回放）；开发中抓到 2 个真换算 bug |
 | T-W5-019 | #72（已合并） | 0025 留痕迁移（activated_by）+ core/estimator 并发安全（64 goroutine -race 恰一活跃）；事实修正：0016 已有偏唯一索引，真缺陷是无锁+无留痕 |
 | T-W5-017 | #76（已合并） | core/events 事务显式传递（ErrNoTransaction fail-closed）+ go/parser 静态守卫（零 Commit/Rollback，红绿双向）+ fakeTx 回滚一致性 |
 | T-W5-014 | #75（已合并） | core/ai 总线：fail-closed 三路径（PII 剥离/台账/预算）+ 0026 ai_call_ledger（append-only 触发器）+ 出站 https 强制 + 零新依赖；W6 LLM harness 地基 |
