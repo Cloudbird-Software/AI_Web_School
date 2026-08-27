@@ -17,6 +17,7 @@ package api
 // 501，不存在可泄露数据，故本文件对此类只测角色面。
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -29,6 +30,7 @@ import (
 
 	"github.com/Cloudbird-Software/AI_Web_School/api/middleware"
 	"github.com/Cloudbird-Software/AI_Web_School/core/auth"
+	"github.com/Cloudbird-Software/AI_Web_School/core/compliance"
 )
 
 const apiTestKeyMaterial = "api-authz-test-secret-0123456789-t-w5-006"
@@ -39,10 +41,24 @@ const (
 	apiSessionID  = "6f9619ff-8b86-4000-b42d-00cf4fc964ff"
 )
 
+// 授权账测试时刻锚：grant 窗口固定为「过去生效、远期（2100）才过期」，
+// 与 MemoryStore.CheckConsent 的实时时钟组合下恒为 granted，测试不随
+// 挂钟漂移。apiTestUntilEarly 是短窗口锚，供过期态测试复用.
+var (
+	apiTestSince      = time.Unix(1_700_000_000, 0).UTC() // 2023-11：过去
+	apiTestUntilEarly = apiTestSince.Add(24 * time.Hour)  // 早已过期
+	apiTestUntilFar   = time.Unix(4_102_444_800, 0).UTC() // 2100：远未过期
+)
+
 type apiFixture struct {
 	signer  *auth.Signer
 	app     http.Handler
 	selfTok string // 学生 A 的合法令牌（绑定 alias=self）
+	// consent 是 T-W5-010 的 fixture 授权账：A（apiAliasSelf）已持有效授权
+	//（验收 #5 的「fixture 补授权」形态——既有测试靠补齐授权前提适配新
+	// 门禁，绝不通过跳过检查变绿，X11）。需要别的授权态时在子测试里自建
+	// store 并经 NewRouterWithConsent 重装（见 consent_test.go）。
+	consent *compliance.MemoryStore
 }
 
 func newAPIFixture(t *testing.T) *apiFixture {
@@ -53,7 +69,18 @@ func newAPIFixture(t *testing.T) *apiFixture {
 	if err != nil {
 		t.Fatalf("构造 Signer: %v", err)
 	}
-	f := &apiFixture{signer: signer, app: NewRouter(signer)}
+	store := compliance.NewMemoryStore()
+	if _, err := store.RecordGrant(context.Background(), nil, compliance.GrantInput{
+		StudentAliasID: apiAliasSelf,
+		Purpose:        compliance.PurposeOnlinePractice,
+		ValidFrom:      apiTestSince,
+		ValidUntil:     apiTestUntilFar,
+		RecordedBy:     "api-test-fixture",
+		At:             apiTestSince,
+	}); err != nil {
+		t.Fatalf("fixture 登记家长授权: %v", err)
+	}
+	f := &apiFixture{signer: signer, app: NewRouterWithConsent(signer, store), consent: store}
 	f.selfTok = f.tokenFor(t, auth.Principal{Role: auth.RoleStudent, SubjectID: "acc-self", AliasID: apiAliasSelf})
 	return f
 }
@@ -308,7 +335,8 @@ func TestCreateSession_BindsPrincipalNotRequestBody(t *testing.T) {
 		fmt.Sprintf(`{"student_alias_id":%q}`, apiAliasAlien))
 	expectForbidden(t, rec)
 
-	// 自己的 alias 或缺省体：通过越权判定，落到业务占位 501。
+	// 自己的 alias 或缺省体：通过越权判定与家长授权门（fixture 已为 self
+	// 补授权，T-W5-010 验收 #5），落到业务占位 501。
 	rec = f.do(http.MethodPost, "/sessions", f.selfTok,
 		fmt.Sprintf(`{"student_alias_id":%q}`, apiAliasSelf))
 	expectPlaceholder(t, rec)
