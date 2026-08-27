@@ -17,8 +17,9 @@ func TestMain(m *testing.M) {
 }
 
 // T-W5-031 验收 #4：healthz 端点 200 + 最小字段，不泄露内部信息。
+// T-W5-006 起 NewRouter 需装配 Signer（路由全量接认证；healthz 白名单仍匿名）。
 func TestHealthz(t *testing.T) {
-	srv := httptest.NewServer(NewRouter())
+	srv := httptest.NewServer(NewRouter(newAPIFixture(t).signer))
 	defer srv.Close()
 
 	resp, err := http.Get(srv.URL + "/healthz")
@@ -47,7 +48,7 @@ func TestHealthz(t *testing.T) {
 // 未知路径不被 healthz 吞掉：默认 404（路由骨架行为基线，后续错误映射
 // 统一在 T-W5-008 API 边界加固落地）。
 func TestUnknownPath(t *testing.T) {
-	srv := httptest.NewServer(NewRouter())
+	srv := httptest.NewServer(NewRouter(newAPIFixture(t).signer))
 	defer srv.Close()
 
 	resp, err := http.Get(srv.URL + "/no-such-path")

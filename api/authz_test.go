@@ -212,8 +212,9 @@ func TestContractEndpoints_RequireAuthentication(t *testing.T) {
 				// /healthz（T-W5-031 既有决策），见 TestHealthz_StaysAnonymous。
 				return
 			}
-			target := "/" + literalize(ep.path, apiAliasSelf)
-			rec := f.do(ep.method, target, "", "")
+			// httptest.NewRequest 接受纯路径；契约路径本身以 / 开头。
+			// 契约方法键按惯例小写，HTTP 方法名规范化为大写后匹配路由。
+			rec := f.do(strings.ToUpper(ep.method), literalize(ep.path, apiAliasSelf), "", "")
 			expectUnauthorized(t, rec)
 		})
 	}
