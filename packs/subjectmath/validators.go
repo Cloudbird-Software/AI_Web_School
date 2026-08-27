@@ -54,6 +54,14 @@ func Validate(inst *Instance) error {
 		return validateFracCompare(inst)
 	case idUnitConv:
 		return validateUnitConv(inst)
+	case idIntRound:
+		return validateIntRound(inst)
+	case idFracAddSub:
+		return validateFracAddSub(inst)
+	case idDecCmp:
+		return validateDecCompare(inst)
+	case idIntAddSub:
+		return validateIntAddSub(inst)
 	default:
 		return shapef("未知母题模板 id：%q", inst.TemplateID)
 	}
@@ -453,6 +461,401 @@ func validateUnitConv(inst *Instance) error {
 	expl, _ := inst.Content["explanation"].(string)
 	if !strings.Contains(expl, expected) || !strings.Contains(expl, uTo) {
 		return consistf("解析未含复核要素（%s / %s）", expected, uTo)
+	}
+	if inst.ErrorBindings[0]["subject"] != "blank:b1" {
+		return consistf("填空题错误绑定主体应为 blank:b1")
+	}
+	return nil
+}
+
+// ────────────────────────────────────────────────────────────────
+// 母题④ 四舍五入近似数 数值填空验证器
+//
+// half-up 用纯算术路径（余数×2 对比半单位）重算——与生成器的数位字符串
+// 路径互为独立实现；位档词表为验证器自持副本（字面与生成器一致但引用隔离）。
+// ────────────────────────────────────────────────────────────────
+
+var roundStemRe = regexp.MustCompile(
+	`([0-9]+)\s*≈\s*（\s*）\s*（四舍五入到(十|百|千)位）`)
+
+func validateIntRound(inst *Instance) error {
+	stem, err := checkPublishedShape(inst)
+	if err != nil {
+		return err
+	}
+	interID, _ := inst.InteractionRef["interaction_id"].(string)
+	if interID != "numeric_blank" {
+		return shapef("interaction_id=%q，本模板应为 numeric_blank", interID)
+	}
+	ms := roundStemRe.FindStringSubmatch(stem.rendered)
+	if ms == nil {
+		return shapef("题干不匹配近似数句式：%q", stem.rendered)
+	}
+	v, perr := strconv.ParseInt(ms[1], 10, 64)
+	if perr != nil {
+		return formatf("近似数值解析失败：%q", ms[1])
+	}
+	place := map[string]int{"十": 1, "百": 2, "千": 3}[ms[2]]
+	if v < 100 || v > 9999 {
+		return formatf("近似数值超出母题值域 [100,9999]：%d", v)
+	}
+	if place == 3 && v < 1000 {
+		return formatf("三位数 %d 无千位可四舍五入（位档与值域矛盾）", v)
+	}
+
+	// 独立重算（本文件自己的 half-up 算术路径）：u=10^k，余数×2 ≥ 半单位则进一
+	u := int64(1)
+	for i := 0; i < place; i++ {
+		u *= 10
+	}
+	rem := v % u
+	var expected int64
+	if rem*2 >= u {
+		expected = v - rem + u
+	} else {
+		expected = v - rem
+	}
+	if expected < 0 || expected-v > u/2 || v-expected > u/2 {
+		return consistf("half-up 性质破坏：v=%d place=%d expected=%d", v, place, expected)
+	}
+
+	ansM, _ := inst.Content["answer"].(map[string]any)
+	gotVal, _ := ansM["value"].(string)
+	sp, _ := inst.ScoringRef["scorer_params"].(map[string]any)
+	scAns, _ := sp["answer"].(string)
+	if gotVal != fmtInt(expected) || scAns != fmtInt(expected) {
+		return answerf("%d 四舍五入到%s应为 %s，content.answer=%q scoring_ref=%q",
+			v, ms[2], fmtInt(expected), gotVal, scAns)
+	}
+	if blank, _ := ansM["blank_id"].(string); blank == "" {
+		return shapef("content.answer.blank_id 缺失")
+	}
+	expl, _ := inst.Content["explanation"].(string)
+	if !strings.Contains(expl, fmtInt(v)) || !strings.Contains(expl, fmtInt(expected)) ||
+		!strings.Contains(expl, ms[2]) {
+		return consistf("解析未含复核要素（%d / %s / %s）", v, fmtInt(expected), ms[2])
+	}
+	if inst.ErrorBindings[0]["subject"] != "blank:b1" {
+		return consistf("填空题错误绑定主体应为 blank:b1")
+	}
+	return nil
+}
+
+// ────────────────────────────────────────────────────────────────
+// 母题⑤ 同分母分数加减 单选验证器
+//
+// 操作数只需真分数（允许未化简，如 2/8——同分母练习的原始形态）；**答案与
+// 选项必须最简**。重算路径：重新提取两分数→判同分母→分子加减→自行约分。
+// ────────────────────────────────────────────────────────────────
+
+func validateFracAddSub(inst *Instance) error {
+	stem, err := checkPublishedShape(inst)
+	if err != nil {
+		return err
+	}
+	hasAdd := strings.Contains(stem.rendered, "＋")
+	hasSub := strings.Contains(stem.rendered, "－")
+	if hasAdd == hasSub {
+		return shapef("题干算符歧义（应恰含一个 ＋/－）：%q", stem.rendered)
+	}
+
+	ms := fracTokenRe.FindAllStringSubmatch(stem.rendered, -1)
+	if len(ms) != 2 {
+		return consistf("题干应恰含两个分数，实得 %d 个", len(ms))
+	}
+	ops := make([]fracVal, 0, 2)
+	for i, m := range ms {
+		n, e1 := strconv.ParseInt(m[1], 10, 64)
+		d, e2 := strconv.ParseInt(m[2], 10, 64)
+		if e1 != nil || e2 != nil {
+			return formatf("操作数 %d 解析失败：%s/%s", i+1, m[1], m[2])
+		}
+		if d < 3 || d > 12 {
+			return formatf("分母 %d 超出母题口径 [3,12]", d)
+		}
+		if n < 1 || n >= d {
+			return formatf("操作数 %d 非真分数：%d/%d", i+1, n, d)
+		}
+		ops = append(ops, fracVal{n, d})
+	}
+	if ops[0].d != ops[1].d {
+		return consistf("非同分母（%s 与 %s），不属本母题", ms[0][0], ms[1][0])
+	}
+	d := ops[0].d
+
+	var raw int64
+	if hasAdd {
+		raw = ops[0].n + ops[1].n
+		if raw >= d {
+			return consistf("加法和 %d ≥ 分母 %d（超出真分数空间约束）", raw, d)
+		}
+	} else {
+		raw = ops[0].n - ops[1].n
+		if raw < 1 {
+			return consistf("减法差 %d 非正（超空间约束）", raw)
+		}
+	}
+	// 独立约分（验证器自己的三行约分，不复用生成器表达式路径）
+	g := gcdI64(raw, d)
+	expected := fmtInt(raw/g) + "/" + fmtInt(d/g)
+
+	answerValue := answerOf(inst, "value")
+	scAns, _ := inst.ScoringRef["scorer_params"].(map[string]any)["answer"].(string)
+	if answerValue != expected || scAns != expected {
+		return answerf("结果应为 %s，content.answer=%q scoring_ref.answer=%q",
+			expected, answerValue, scAns)
+	}
+
+	opts, err := parseChoiceBlocks(inst, numOptionCnt)
+	if err != nil {
+		return err
+	}
+	expKey := fracVal{raw, d}.key()
+	keyLabel := map[string]string{}
+	correct := make([]string, 0, 1)
+	for i, lab := range opts.labels {
+		om := fracTokenRe.FindStringSubmatch(lab)
+		if om == nil || om[0] != lab {
+			return formatf("选项 %s 非纯分数标签：%q", opts.letters[i], lab)
+		}
+		f, ferr := parseFracPair(om)
+		if ferr != nil {
+			return ferr
+		}
+		if prev, dup := keyLabel[f.key()]; dup {
+			return consistf("存在约分后等值的选项（多解）：%s 与 %s", prev, lab)
+		}
+		keyLabel[f.key()] = lab
+		if f.key() == expKey {
+			correct = append(correct, opts.letters[i])
+		}
+	}
+	if len(correct) != 1 {
+		return consistf("等于正解的选项应有且仅有 1 个，实得 %d", len(correct))
+	}
+	if got := answerOf(inst, "letter"); got != correct[0] {
+		return answerf("answer.letter=%q 应指向正解选项 %s", got, correct[0])
+	}
+	expl, _ := inst.Content["explanation"].(string)
+	for _, need := range []string{fmtInt(ops[0].n), fmtInt(ops[1].n), fmtInt(d), fmtInt(raw), expected} {
+		if !strings.Contains(expl, need) {
+			return consistf("解析缺可复核要素 %q", need)
+		}
+	}
+	if len(inst.ErrorBindings) != len(opts.labels)-1 {
+		return consistf("error_bindings 数量与干扰项数不一致")
+	}
+	return nil
+}
+
+// ────────────────────────────────────────────────────────────────
+// 母题⑥ 小数大小比较 单选验证器
+//
+// 独立比较路径：补零对齐位数后按整数比（与生成器的交叉相乘互为对照）。
+// 规范域断言自持副本：s∈{1,2}、值域上限、无尾零——非规范串一律 format 拒。
+// ────────────────────────────────────────────────────────────────
+
+var decTokenRe = regexp.MustCompile(`([0-9]+)\.([0-9]+)`)
+
+// decFromParts 把小数的整数/小数部分串重组为规范化 (m, s)（验证器自持实现）：
+// "0.01" → (1,2)；前导零整数部分（"01.2"）与超 int64 拼接一律拒绝。
+func decFromParts(ip, fp string) (decVal, error) {
+	if len(ip) > 1 && ip[0] == '0' {
+		return decVal{}, fmt.Errorf("整数部分前导零非规范：%s.%s", ip, fp)
+	}
+	m, err := strconv.ParseInt(ip+fp, 10, 64)
+	if err != nil {
+		return decVal{}, fmt.Errorf("数值超出 int64：%s.%s", ip, fp)
+	}
+	return decVal{m: m, s: len(fp)}, nil
+}
+
+func validateDecCompare(inst *Instance) error {
+	stem, err := checkPublishedShape(inst)
+	if err != nil {
+		return err
+	}
+	ms := decTokenRe.FindAllStringSubmatch(stem.rendered, -1)
+	if len(ms) != 2 {
+		return consistf("题干应恰含两个小数，实得 %d 个", len(ms))
+	}
+	vals := make([]decVal, 0, 2)
+	for i, m := range ms {
+		d, perr := decFromParts(m[1], m[2])
+		if perr != nil || !d.canonical() {
+			return formatf("小数 %d 非母题规范域（s∈{1,2}，无尾零，值域内）：%q（%v）", i+1, m[0], perr)
+		}
+		vals = append(vals, d)
+	}
+	// 独立重算：补零对齐位数后比整数（与生成器的交叉相乘互为对照路径）。
+	// 补零渲染为验证器自持实现（数位切分补齐，非 decString——尾零必须保留）。
+	pad := vals[0].s
+	if vals[1].s > pad {
+		pad = vals[1].s
+	}
+	padFormOf := func(d decVal) string {
+		str := fmtInt(d.m)
+		if len(str) <= d.s {
+			str = strings.Repeat("0", d.s-len(str)+1) + str
+		}
+		fp := str[len(str)-d.s:]
+		for len(fp) < pad {
+			fp += "0"
+		}
+		return str[:len(str)-d.s] + "." + fp
+	}
+	// 值级比较键：补零后的整数读数（值 × 10^pad，值相等 ⇔ 键相等）
+	keyOf := func(d decVal) int64 { return d.m * int64(pow10(pad-d.s)) }
+	na, nb := keyOf(vals[0]), keyOf(vals[1])
+	if na == nb {
+		return consistf("两小数等值（%s），无比较意义", vals[0].display())
+	}
+	big, small := vals[0], vals[1]
+	if nb > na {
+		big, small = vals[1], vals[0]
+	}
+	bigStr := big.display()
+	bigPad := padFormOf(big)
+	smallPad := padFormOf(small)
+
+	answerValue := answerOf(inst, "value")
+	scAns, _ := inst.ScoringRef["scorer_params"].(map[string]any)["answer"].(string)
+	if answerValue != bigStr || scAns != bigStr {
+		return answerf("更大数应为 %s，content.answer=%q scoring_ref.answer=%q",
+			bigStr, answerValue, scAns)
+	}
+
+	opts, err := parseChoiceBlocks(inst, numOptionCnt)
+	if err != nil {
+		return err
+	}
+	seenVal := map[string]string{}
+	correct := make([]string, 0, 1)
+	for i, lab := range opts.labels {
+		om := decTokenRe.FindStringSubmatch(lab)
+		if om == nil || om[0] != lab {
+			return formatf("选项 %s 非纯小数标签：%q", opts.letters[i], lab)
+		}
+		d, perr := decFromParts(om[1], om[2])
+		if perr != nil || !d.canonical() {
+			return formatf("选项 %s 非规范小数：%q", opts.letters[i], lab)
+		}
+		// 值级键：规范化形态串（值域构造保证「规范化串 ↔ 值」双射，
+		// 等值 ⇔ 等串；不用按题干位数补零的整数键——选项位数可能超过题干）
+		if prev, dup := seenVal[d.display()]; dup {
+			return consistf("存在等值选项（多解）：%s 与 %s", prev, lab)
+		}
+		seenVal[d.display()] = lab
+		if d.display() == bigStr {
+			correct = append(correct, opts.letters[i])
+		}
+	}
+	if len(correct) != 1 {
+		return consistf("更大数的选项应有且仅有 1 个，实得 %d", len(correct))
+	}
+	if got := answerOf(inst, "letter"); got != correct[0] {
+		return answerf("answer.letter=%q 应指向更大数选项 %s", got, correct[0])
+	}
+	expl, _ := inst.Content["explanation"].(string)
+	if !strings.Contains(expl, bigPad) || !strings.Contains(expl, smallPad) ||
+		!strings.Contains(expl, bigStr) {
+		return consistf("解析缺对齐位数复核要素（%s / %s / %s）", bigPad, smallPad, bigStr)
+	}
+	if len(inst.ErrorBindings) != len(opts.labels)-1 {
+		return consistf("error_bindings 数量与干扰项数不一致")
+	}
+	return nil
+}
+
+// ────────────────────────────────────────────────────────────────
+// 母题⑦ 整数进位加/退位减 数值填空验证器
+//
+// 重算即定义（加减法），独立性落在：操作数重新提取 + 进/退位性质断言 +
+// 值域断言。op 判定优先级：算符符号 > 关键词锚点（一共/还剩），均缺即拒。
+// ────────────────────────────────────────────────────────────────
+
+func validateIntAddSub(inst *Instance) error {
+	stem, err := checkPublishedShape(inst)
+	if err != nil {
+		return err
+	}
+	interID, _ := inst.InteractionRef["interaction_id"].(string)
+	if interID != "numeric_blank" {
+		return shapef("interaction_id=%q，本模板应为 numeric_blank", interID)
+	}
+	hasAdd := strings.Contains(stem.rendered, "＋")
+	hasSub := strings.Contains(stem.rendered, "－")
+	if hasAdd && hasSub {
+		return shapef("题干同时含 ＋ 与 －，算符歧义：%q", stem.rendered)
+	}
+	var isAdd bool
+	switch {
+	case hasAdd:
+		isAdd = true
+	case hasSub:
+		isAdd = false
+	case strings.Contains(stem.rendered, "一共"):
+		isAdd = true
+	case strings.Contains(stem.rendered, "还剩"):
+		isAdd = false
+	default:
+		return shapef("题干无算符亦无关键词锚点（一共/还剩）：%q", stem.rendered)
+	}
+
+	tokens := intTokenRe.FindAllString(stem.rendered, -1)
+	if len(tokens) != 2 {
+		return consistf("题干应恰含两个操作数，实得 %d 个数字串", len(tokens))
+	}
+	a, e1 := strconv.ParseInt(tokens[0], 10, 64)
+	b, e2 := strconv.ParseInt(tokens[1], 10, 64)
+	if e1 != nil || e2 != nil {
+		return formatf("操作数解析失败：%v/%v", tokens[0], tokens[1])
+	}
+	if a < 100 || a > 999 {
+		return formatf("被操作数 %d 超出母题值域 [100,999]", a)
+	}
+	if b < 11 || b > 99 {
+		return formatf("操作数 %d 超出母题值域 [11,99]", b)
+	}
+	if isAdd {
+		if a%10+b%10 < 10 {
+			return consistf("个位 %d+%d=%d 无进位，不属进位加法空间", a%10, b%10, a%10+b%10)
+		}
+	} else {
+		if a <= b {
+			return consistf("减法 a=%d ≤ b=%d（差非正，超空间约束）", a, b)
+		}
+		if a%10 >= b%10 {
+			return consistf("个位 %d ≥ %d 无退位，不属退位减法空间", a%10, b%10)
+		}
+	}
+
+	// 独立重算（加减即定义）
+	var expected int64
+	if isAdd {
+		expected = a + b
+	} else {
+		expected = a - b
+	}
+
+	ansM, _ := inst.Content["answer"].(map[string]any)
+	gotVal, _ := ansM["value"].(string)
+	sp, _ := inst.ScoringRef["scorer_params"].(map[string]any)
+	scAns, _ := sp["answer"].(string)
+	if gotVal != fmtInt(expected) || scAns != fmtInt(expected) {
+		return answerf("结果应为 %s，content.answer=%q scoring_ref=%q",
+			fmtInt(expected), gotVal, scAns)
+	}
+	if blank, _ := ansM["blank_id"].(string); blank == "" {
+		return shapef("content.answer.blank_id 缺失")
+	}
+	if !strings.Contains(stem.rendered, "（") || !strings.Contains(stem.rendered, "）") {
+		return shapef("题干缺括号空位：%q", stem.rendered)
+	}
+	expl, _ := inst.Content["explanation"].(string)
+	if !strings.Contains(expl, fmtInt(a)) || !strings.Contains(expl, fmtInt(b)) ||
+		!strings.Contains(expl, fmtInt(expected)) {
+		return consistf("解析未含可复核要素（%d / %d / %s）", a, b, fmtInt(expected))
 	}
 	if inst.ErrorBindings[0]["subject"] != "blank:b1" {
 		return consistf("填空题错误绑定主体应为 blank:b1")

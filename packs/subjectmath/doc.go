@@ -1,4 +1,4 @@
-// Package subjectmath 是数学学科包的 Go 落地第一阶（issue #34 §七 W6「数学轮」）：
+// Package subjectmath 是数学学科包的 Go 落地（issue #34 §七 W6「数学轮」）：
 // 母题（A 线 item_template）→ 结构互异实例的**确定性生成管线**。
 //
 // 数学轮语义（§二目标状态 2「两个轮子一根轴」）：数学轮是函数库生成 +
@@ -12,6 +12,10 @@
 //   - int_mul.go      母题①整数乘法（单选）
 //   - frac_compare.go 母题②分数比较大小（单选）
 //   - unit_convert.go 母题③单位换算（数值填空）
+//   - int_round.go    母题④四舍五入求近似数（数值填空；round_half_up 语义）
+//   - frac_addsub.go  母题⑤同分母分数加减（单选；结果必化简）
+//   - dec_compare.go  母题⑥小数大小比较（单选；补零对齐/位数陷阱）
+//   - int_addsub.go   母题⑦整数进位加/退位减（数值填空）
 //   - validators.go   每母题的独立确定性 validator（与生成器零代码共享：
 //     只消费已发布形态的实例文本，重新计算答案再比对——禁止生成器自证）
 //   - distinct.go     结构互异判定：content 规范化摘要（键排序 sha256）+

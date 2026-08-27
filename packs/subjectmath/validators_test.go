@@ -54,6 +54,7 @@ func stemRendered(t *testing.T, in *Instance) string {
 func TestValidatorsAcceptGoodInstances(t *testing.T) {
 	for _, tc := range []struct{ id string }{
 		{idIntMul}, {idFracCmp}, {idUnitConv},
+		{idIntRound}, {idFracAddSub}, {idDecCmp}, {idIntAddSub},
 	} {
 		if err := Validate(firstValid(t, tc.id, 7)); err != nil {
 			t.Fatalf("好实例被误杀(%s): %v", tc.id, err)

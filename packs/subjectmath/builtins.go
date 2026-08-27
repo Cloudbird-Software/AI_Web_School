@@ -21,5 +21,25 @@ func init() {
 	} else {
 		builtins = append(builtins, g)
 	}
+	if g, err := newRoundGen(); err != nil {
+		panic(err)
+	} else {
+		builtins = append(builtins, g)
+	}
+	if g, err := newFracAddGen(); err != nil {
+		panic(err)
+	} else {
+		builtins = append(builtins, g)
+	}
+	if g, err := newDecGen(); err != nil {
+		panic(err)
+	} else {
+		builtins = append(builtins, g)
+	}
+	if g, err := newAddSubGen(); err != nil {
+		panic(err)
+	} else {
+		builtins = append(builtins, g)
+	}
 	builtinGenerators = builtins
 }

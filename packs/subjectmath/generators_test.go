@@ -2,6 +2,7 @@ package subjectmath
 
 import (
 	"fmt"
+	"strings"
 	"sync"
 	"testing"
 )
@@ -178,6 +179,63 @@ func TestStructuralDiversityWithinBatch(t *testing.T) {
 	}
 	if !kpSeen["math.nal.quantity.length"] || !kpSeen["math.nal.quantity.mass"] || !kpSeen["math.nal.quantity.money"] {
 		t.Fatalf("单位换算三量纲族未齐备：%v", kpSeen)
+	}
+
+	// 第二阶 4 母题：结构轴在批次内可见。
+	roundRecs, _, err := Run(Options{TemplateID: idIntRound, N: 40, Seed: 5})
+	if err != nil {
+		t.Fatalf("round 批次失败: %v", err)
+	}
+	places := map[string]bool{}
+	for _, r := range roundRecs {
+		p, _ := r.Lineage["params"].(map[string]any)["normalized"].(map[string]any)["place"].(string)
+		places[p] = true
+	}
+	if len(places) < 2 {
+		t.Fatalf("近似数位档多样性不足：%v", places)
+	}
+
+	addRecs, _, err := Run(Options{TemplateID: idIntAddSub, N: 40, Seed: 5})
+	if err != nil {
+		t.Fatalf("addsub 批次失败: %v", err)
+	}
+	ops := map[string]bool{}
+	for _, r := range addRecs {
+		op, _ := r.Lineage["params"].(map[string]any)["normalized"].(map[string]any)["op"].(string)
+		ops[op] = true
+	}
+	if !ops["+"] || !ops["-"] {
+		t.Fatalf("整数加减进/退位双向未齐备：%v", ops)
+	}
+
+	faRecs, _, err := Run(Options{TemplateID: idFracAddSub, N: 60, Seed: 5})
+	if err != nil {
+		t.Fatalf("frac-addsub 批次失败: %v", err)
+	}
+	faOps := map[string]bool{}
+	for _, r := range faRecs {
+		op, _ := r.Lineage["params"].(map[string]any)["normalized"].(map[string]any)["op"].(string)
+		faOps[op] = true
+	}
+	if !faOps["+"] || !faOps["-"] {
+		t.Fatalf("同分母分数加减双向未齐备：%v", faOps)
+	}
+
+	dcRecs, _, err := Run(Options{TemplateID: idDecCmp, N: 40, Seed: 5})
+	if err != nil {
+		t.Fatalf("dec-cmp 批次失败: %v", err)
+	}
+	crossScale := false
+	for _, r := range dcRecs {
+		norm := r.Lineage["params"].(map[string]any)["normalized"].(map[string]any)
+		x, _ := norm["x"].(string)
+		y, _ := norm["y"].(string)
+		if len(x)-strings.Index(x, ".") != len(y)-strings.Index(y, ".") {
+			crossScale = true // 位数陷阱结构（如 1.3 与 1.28）确实入批
+		}
+	}
+	if !crossScale {
+		t.Fatal("小数比较批次未出现跨位数结构对")
 	}
 }
 
