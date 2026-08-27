@@ -770,6 +770,7 @@ type ParentalConsent struct {
 	ValidUntil     pgtype.Timestamptz
 	Version        int32
 	CreatedAt      pgtype.Timestamptz
+	RecordedBy     string
 }
 
 type Passage struct {
