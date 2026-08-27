@@ -194,7 +194,7 @@ func TestDuplicateValidatorConcurrentPublishAndValidate(t *testing.T) {
 // 注册挂接：PlatformRegistry 复用 registry.Registry 形态——id 冲突报
 // ErrDuplicate，条目可 Get 回取（D4 门侧延伸）。
 func TestPlatformRegistryInstall(t *testing.T) {
-	r, err := PlatformRegistry(NewMemoryDigestSource())
+	r, err := PlatformRegistry(NewMemoryDigestSource(), NewMemoryFactSource(), nil)
 	if err != nil {
 		t.Fatalf("装配失败: %v", err)
 	}
@@ -205,10 +205,22 @@ func TestPlatformRegistryInstall(t *testing.T) {
 	if entry.Entry().ID != DuplicateValidatorID || entry.Entry().Version != DuplicateValidatorVersion {
 		t.Fatalf("条目身份漂移: %+v", entry.Entry())
 	}
-	if r.Len() != 1 {
+	// T-W5-021：语篇事实核查验证器同表挂接，id 沿用冻结策略矩阵的
+	// passage_fact_check，W6 策略链按此 id 取用。
+	fc, ok := r.Get(FactCheckValidatorID)
+	if !ok {
+		t.Fatalf("passage_fact_check 验证器应已注册")
+	}
+	if fc.Entry().ID != FactCheckValidatorID || fc.Entry().Version != FactCheckValidatorVersion {
+		t.Fatalf("条目身份漂移: %+v", fc.Entry())
+	}
+	if r.Len() != 2 {
 		t.Fatalf("平台通用注册表应只含已评审条目，实际 %d", r.Len())
 	}
 	if err := r.Register(DuplicateValidatorID, entry); !errors.Is(err, registry.ErrDuplicate) {
+		t.Fatalf("重复注册必须失败（ErrDuplicate），实得 %v", err)
+	}
+	if err := r.Register(FactCheckValidatorID, fc); !errors.Is(err, registry.ErrDuplicate) {
 		t.Fatalf("重复注册必须失败（ErrDuplicate），实得 %v", err)
 	}
 }
