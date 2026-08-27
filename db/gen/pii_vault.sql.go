@@ -66,7 +66,7 @@ type InsertStudentIdentityParams struct {
 
 // T-W5-012（SQL-2）：PII 保险库（pii_vault）读写与访问审计的语句面。
 // 事务纪律（D11）：本文件只声明「做什么」，事务边界由调用方持有——vault 业务
-// 读写走业务执行面（0030 后持 pii_vault_reader / pii_vault_writer 角色的连接），
+// 读写走业务执行面（0029 后持 pii_vault_reader / pii_vault_writer 角色的连接），
 // 访问审计写入走独立审计执行面（writer 角色连接上的独立事务，
 // core/compliance.VaultService 双 Executor 注入；审计失败不回滚业务、业务失败
 // 审计仍留痕）。append-only/不可改写纪律：本文件只有 INSERT/SELECT——
@@ -126,7 +126,7 @@ SELECT access_id, student_alias_id, accessor, accessed_at, purpose
  ORDER BY accessed_at ASC, access_id ASC
 `
 
-// 审计账只读投影（0030 后 reader 即可复核——审计完整性可验证），按时间升序
+// 审计账只读投影（0029 后 reader 即可复核——审计完整性可验证），按时间升序
 // 还原访问时间线；access_id 为同刻多行的确定性次序键。
 func (q *Queries) ListVaultAccessLog(ctx context.Context, studentAliasID pgtype.UUID) ([]PiiVaultAccessLog, error) {
 	rows, err := q.db.Query(ctx, listVaultAccessLog, studentAliasID)
