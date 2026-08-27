@@ -1,7 +1,7 @@
 -- T-W5-012（PII 保险库权限模型与审计独立事务，W5-R Go 重锚定）：vault 角色职责分离。
 -- 本文件未走 gen_migrations_from_alembic.py 在线捕获（生成机无 Docker/PG），
--- 语句为 alembic 镜像 0030（pii_vault_roles.py）upgrade 的原句，语义 parity 由
--- CI make migrate-go-check 复核。双源纪律：语义修改必须同时落 alembic 0030
+-- 语句为 alembic 镜像 0029（pii_vault_roles.py）upgrade 的原句，语义 parity 由
+-- CI make migrate-go-check 复核。双源纪律：语义修改必须同时落 alembic 0029
 -- 与本文件（SQL-1 成对进 gate）。
 --
 -- 缺陷事实（任务卡目标说明 + 0014 现状实读）：

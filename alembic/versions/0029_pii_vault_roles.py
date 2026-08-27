@@ -21,7 +21,7 @@ CREATE ROLE，零表结构变更、无 destructive DDL）：
 角色生命周期（#43 判例沿用）：downgrade 不 DROP 集群级角色——角色可能被同
 集群其他库的 ACL 依赖引用；只精确回收本迁移授予的授权。
 
-链序说明：down_revision 指 0028（main 现有最新）；编号取 0030（0029 留给并行
+链序说明：down_revision 指 0028（main 现有最新）；编号取 0029（0029 留给并行
 分支，golang-migrate 主源按版本号排序不受合入顺序影响）。
 可逆性（make migrate-go-check）：upgrade→downgrade→upgrade 全绿。
 """
@@ -32,7 +32,7 @@ from typing import Sequence, Union
 from alembic import op
 
 # revision identifiers, used by Alembic.
-revision: str = "0030"
+revision: str = "0029"
 down_revision = "0028"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
