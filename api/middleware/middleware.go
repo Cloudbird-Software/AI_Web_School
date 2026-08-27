@@ -1,6 +1,9 @@
 // Package middleware 承载 HTTP 中间件层（T-W5-005 重锚定落点：api/ 侧的
 // 认证框架半边；对应 Python 时代 src/api/auth 的依赖注入原语）。
 //
+// T-W5-008 起本包同时承载边界三件套：CORS 白名单（cors.go）、令牌桶限流
+// （ratelimit.go）、统一错误映射 + panic 防线 + 请求体上限（errmap.go）。
+//
 // 本包只提供"已认证主体"的通用装配：RequireAuth 完成认证 + 角色检查并
 // 把 Principal 注入 request context；AssertOwnsAlias 等 alias 归属判定
 // 仍在 core/auth，由业务 handler 取出主体后调用（全端点接线是 T-W5-006）。
@@ -10,20 +13,12 @@ package middleware
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
 	"strings"
 
 	"github.com/Cloudbird-Software/AI_Web_School/core/auth"
-)
-
-// 对外错误类语义。固定为粗粒度两值：不区分"签名错/过期/缺令牌"等
-// 内部分支——对外暴露的区别越细，给攻击者的校验反馈越多。
-const (
-	ErrorClassUnauthorized = "unauthorized"
-	ErrorClassForbidden    = "forbidden"
 )
 
 // ctxKey 是 context 存取主体键的私有类型：防止其他包用同名基础类型
@@ -95,7 +90,7 @@ func RequireAuth(signer *auth.Signer, roles ...auth.Role) func(http.Handler) htt
 					// 日志不携带 path/请求派生值（CodeQL go/log-injection 根除：
 					// access log 已有 path，此处只记固定语义字段）
 					log.Printf("auth denied class=forbidden reason_class=%s", errClass(auth.ErrRoleDenied))
-					writeError(w, http.StatusForbidden, ErrorClassForbidden)
+					WriteError(w, http.StatusForbidden, ErrorClassForbidden)
 					return
 				}
 			}
@@ -113,11 +108,11 @@ func RequireAuth(signer *auth.Signer, roles ...auth.Role) func(http.Handler) htt
 func WriteAuthErrorResponse(w http.ResponseWriter, err error) {
 	if auth.IsAuthorizationError(err) {
 		log.Printf("auth denied class=%q reason_class=%T", ErrorClassForbidden, err)
-		writeError(w, http.StatusForbidden, ErrorClassForbidden)
+		WriteError(w, http.StatusForbidden, ErrorClassForbidden)
 		return
 	}
 	log.Printf("auth denied class=%q reason_class=%T", ErrorClassUnauthorized, err)
-	writeError(w, http.StatusUnauthorized, ErrorClassUnauthorized)
+	WriteError(w, http.StatusUnauthorized, ErrorClassUnauthorized)
 }
 
 // writeUnauthorized 统一 401 输出：挑战头 + 单字段脱敏体 + 服务端日志
@@ -125,19 +120,5 @@ func WriteAuthErrorResponse(w http.ResponseWriter, err error) {
 func writeUnauthorized(w http.ResponseWriter, reason error) {
 	log.Printf("auth denied class=%q reason_class=%T", ErrorClassUnauthorized, reason)
 	w.Header().Set("WWW-Authenticate", `Bearer realm="school-api"`)
-	writeError(w, http.StatusUnauthorized, ErrorClassUnauthorized)
-}
-
-// errorResponse 是认证/授权失败的线上形态：单字段、零内部细节。
-type errorResponse struct {
-	ErrorClass string `json:"error_class"`
-}
-
-func writeError(w http.ResponseWriter, status int, class string) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(status)
-	// 响应编码失败已无可用降级通道：记日志留痕即可（对齐 api.go 惯例）。
-	if err := json.NewEncoder(w).Encode(errorResponse{ErrorClass: class}); err != nil {
-		log.Printf("auth error encode failure class=%T", err)
-	}
+	WriteError(w, http.StatusUnauthorized, ErrorClassUnauthorized)
 }

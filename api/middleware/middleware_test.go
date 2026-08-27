@@ -50,7 +50,7 @@ func (h *harness) studentApp(t *testing.T) http.Handler {
 		p, ok := FromContext(r.Context())
 		if !ok {
 			t.Error("受保护路由必须能取到主体")
-			writeError(w, http.StatusInternalServerError, "internal")
+			WriteError(w, http.StatusInternalServerError, "internal")
 			return
 		}
 		if err := auth.AssertOwnsAlias(p, r.PathValue("alias")); err != nil {

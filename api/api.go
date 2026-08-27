@@ -4,17 +4,21 @@
 // 业务语义全部下沉 core/；api 不出现任何学科概念（X6 同样适用于本层：
 // 学科差异经 registry 的条目参数表达，不经 if-subject 分支表达）。
 //
-// 认证接线（T-W5-006，宪法 D9/X13）：除 /healthz 存活探针外，每一条业务
+// 认证接线（T-W5-006，宪法 D9/X13）：除健康探针白名单外，每一条业务
 // 路由都经 middleware.RequireAuth 挂上已认证主体——不存在无主体端点；
 // 学生数据端点在 handler 内调 auth.AssertOwnsAlias 做主体↔alias 绑定校验
 // （铁律 D9：学生只能读写自身 student_alias_id 关联的数据）。骨架期尚无
 // 业务实现的路由显式返回 501 not_implemented 占位：认证先行、业务后补，
 // 绝不以"功能未实现"为由跳过认证。
 //
-// /healthz 语义对齐 T-W0-010：成功 200 {"status":"ok"}；异常路径只暴露
+// T-W5-008 边界加固：全部请求经固定链序的边界层（见 boundary.go 的顺序
+// 论证）——panic 收敛、CORS 白名单、IP 维度限流、请求体上限；健康探针
+// 豁免限流。与 006 的合流分工：路由表（route{shield}，全端点挂认证盾）
+// 构造 mux 内圈，边界层包外圈，NewRouter 对外返回 http.Handler。健康
+// 探针语义对齐 T-W0-010：成功 200 {"status":"ok"}；异常路径只暴露
 // error_class，堆栈与内部地址仅进服务端日志。契约中的 GET /health 与
 // /healthz 是同一存活探针语义（健康检查属 D9 明文豁免），对外统一路径
-// 在 T-W5-008 API 加固卡收口。
+// 在本卡收口（见 healthHandler）。
 package api
 
 import (
@@ -28,7 +32,7 @@ import (
 	"github.com/Cloudbird-Software/AI_Web_School/core/auth"
 )
 
-// healthResponse 是 /healthz 的响应体（字段最小化，脱敏原则同 Python 版）。
+// healthResponse 是健康探针的响应体（字段最小化，脱敏原则同 Python 版）。
 type healthResponse struct {
 	Status string `json:"status"`
 }
@@ -50,13 +54,23 @@ func errClass(err error) string {
 	return fmt.Sprintf("%T", err)
 }
 
-// route 是一条已接线的业务路由声明。shield 必须非 nil（本表不允许匿名
-// 路由，X13）；注册路径唯一经 NewRouter 遍历本表完成，新增端点漏加认证
-// 即无法登记（结构保证），匿名扫描测试再从冻结契约侧独立复核（P3）。
-type route struct {
-	pattern string // Go 方法+路径形态，通配段名与契约保持一致
-	shield  func(http.Handler) http.Handler
-	handle  http.HandlerFunc
+// healthHandler 是存活探针本体，无 DB 依赖、零业务触达。
+//
+// T-W5-006 遗留收口（本卡）：冻结契约（specs/contracts/api/openapi-v1.yaml）
+// 的探针路径是 GET /health，骨架期只挂了 /healthz——现以契约为对外统一
+// 路径；/healthz 保留为编排惯例别名，同一 handler 同一响应，语义零分叉。
+// 两路径同在限流豁免白名单（boundary.go scopeOf）。
+//
+// 白名单豁免理由（宪法 D9 明文，006 惯例保留）：编排器/负载均衡必须能在
+// 无凭证条件下探测进程存活——探针若要求认证，探活失败本身会被误判为
+// 服务不可用。它不触达任何业务数据，不构成 X13 的"无主体数据访问路径"。
+func healthHandler(w http.ResponseWriter, _ *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	// 写失败只记服务端日志，不向响应注入内部错误细节
+	if err := json.NewEncoder(w).Encode(healthResponse{Status: "ok"}); err != nil {
+		log.Printf("healthz encode error_class=%s", errClass(err))
+	}
 }
 
 // routes 返回契约 v1 的全部业务端点接线表（specs/contracts/api/openapi-v1.yaml，
@@ -70,6 +84,10 @@ type route struct {
 //     AssertOwnsAlias 强制 path 中 alias 与令牌主体一致（D9 机器强制）。
 //   - service 主体是内部作业调用方，API 业务面暂无其路由需求；不给默认放行，
 //     后续批量作业需要时按最小权限逐路由授权。
+//
+// route 类型与 shield 惯例见 boundary.go。注册路径唯一经 newRouterWithConfig
+// 遍历本表完成，新增端点漏加认证即无法登记（结构保证），匿名扫描测试再从
+// 冻结契约侧独立复核（P3）。
 func routes(signer *auth.Signer) []route {
 	staffOrOps := middleware.RequireAuth(signer, auth.RoleStaff, auth.RoleOps)
 	student := middleware.RequireAuth(signer, auth.RoleStudent)
@@ -91,29 +109,27 @@ func routes(signer *auth.Signer) []route {
 	}
 }
 
-// NewRouter 构造路由；独立函数便于 httptest 集成测试。signer 由入口进程
-// 装配期提供（core/auth.EnsureSigner），nil 属装配编程错误（fail fast 与
-// middleware.RequireAuth 同一纪律）。
-func NewRouter(signer *auth.Signer) *http.ServeMux {
+// NewRouter 生产装配：环境变量注入边界配置（见 boundary.go），006 的
+// routes(signer) 路由表构造 mux 内圈、008 的边界层包外圈（合流形态）。
+// signer 由入口进程装配期提供（core/auth.EnsureSigner），nil 属装配编程
+// 错误（fail fast，与 middleware.RequireAuth 同一纪律）。独立函数便于
+// httptest 集成测试。
+func NewRouter(signer *auth.Signer) http.Handler {
+	return newRouterWithConfig(BoundaryConfigFromEnv(getenv), routes(signer)...)
+}
+
+// newRouterWithConfig 构造带边界层的路由：注册健康探针与 extra 路由
+// （生产传 routes(signer) 全表，每条经 route.shield 挂认证盾——X13 的
+// 结构保证；测试可注入演示路由），再按固定链序包上边界层（withBoundary）。
+func newRouterWithConfig(cfg BoundaryConfig, extra ...route) http.Handler {
 	mux := http.NewServeMux()
-
-	// 唯一白名单：/healthz 存活探针。豁免理由（宪法 D9 明文）：编排器/
-	// 负载均衡必须能在无凭证条件下探测进程存活——探针若要求认证，探活
-	// 失败本身会被误判为服务不可用。它不触达任何业务数据，不构成
-	// X13 的"无主体数据访问路径"。
-	mux.HandleFunc("/healthz", func(w http.ResponseWriter, _ *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
-		// 写失败只记服务端日志，不向响应注入内部错误细节
-		if err := json.NewEncoder(w).Encode(healthResponse{Status: "ok"}); err != nil {
-			log.Printf("healthz encode error_class=%s", errClass(err))
-		}
-	})
-
-	for _, rt := range routes(signer) {
+	mux.HandleFunc("GET /health", healthHandler)
+	mux.HandleFunc("GET /healthz", healthHandler)
+	for _, rt := range extra {
 		mux.Handle(rt.pattern, rt.shield(rt.handle))
 	}
-	return mux
+	limiter := middleware.NewRateLimiter(cfg.Rate, nil)
+	return withBoundary(cfg, limiter, mux)
 }
 
 // notImplemented 是骨架期业务占位：认证与主体绑定已完成，业务实现未到位。
@@ -190,7 +206,7 @@ func createSession(w http.ResponseWriter, r *http.Request) {
 }
 
 // writeErrorClass 输出单字段脱敏 JSON 错误响应（body 编码失败无降级通道，
-// 记日志留痕，惯例同 /healthz 与 middleware.writeError）。
+// 记日志留痕，惯例同 /healthz 与 middleware.WriteError）。
 func writeErrorClass(w http.ResponseWriter, status int, class string) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
