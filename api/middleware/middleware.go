@@ -92,7 +92,9 @@ func RequireAuth(signer *auth.Signer, roles ...auth.Role) func(http.Handler) htt
 			}
 			if !allowAll {
 				if _, ok := allowed[p.Role]; !ok {
-					log.Printf("auth denied class=forbidden reason_class=%s path=%s", errClass(auth.ErrRoleDenied), r.URL.Path)
+					// 日志不携带 path/请求派生值（CodeQL go/log-injection 根除：
+					// access log 已有 path，此处只记固定语义字段）
+					log.Printf("auth denied class=forbidden reason_class=%s", errClass(auth.ErrRoleDenied))
 					writeError(w, http.StatusForbidden, ErrorClassForbidden)
 					return
 				}

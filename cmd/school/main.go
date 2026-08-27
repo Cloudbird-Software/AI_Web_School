@@ -22,19 +22,18 @@ func main() {
 		addr = ":8080"
 	}
 	// D9 fail-closed（T-W5-005 验收 #4）：生产模式缺 SCHOOL_AUTH_SECRET 必须
-	// 在启动期失败；开发模式的显式密钥在此处落告警日志。Signer 本体由
-	// T-W5-006 全端点接入时经 middleware.RequireAuth 挂载，本卡先固化
-	// "无密钥不启动"的装配语义。
-	if _, warnings, err := auth.EnsureSigner(os.Getenv(auth.EnvEnvironment), os.Getenv(auth.EnvVarAuthKey)); err != nil {
+	// 在启动期失败；开发模式的显式密钥在此处落告警日志。Signer 交给
+	// api.NewRouter（T-W5-006）：全部业务路由经 middleware.RequireAuth 挂载。
+	signer, warnings, err := auth.EnsureSigner(os.Getenv(auth.EnvEnvironment), os.Getenv(auth.EnvVarAuthKey))
+	if err != nil {
 		log.Fatalf("auth bootstrap failed: %v", err)
-	} else {
-		for _, w := range warnings {
-			log.Printf("%s", w)
-		}
+	}
+	for _, w := range warnings {
+		log.Printf("%s", w)
 	}
 	srv := &http.Server{
 		Addr:    addr,
-		Handler: api.NewRouter(),
+		Handler: api.NewRouter(signer),
 		// 基线超时（骨架级；SLO 细化在 W5-R S2 API 边界加固落地）
 		ReadHeaderTimeout: 10e9,
 	}
