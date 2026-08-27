@@ -524,9 +524,22 @@ type GateCertificate struct {
 	CreatedAt     pgtype.Timestamptz
 }
 
+type GateFailure struct {
+	FailureID        string
+	ArtifactType     string
+	ArtifactRef      string
+	ValidatorID      string
+	ValidatorVersion string
+	PolicyVersion    string
+	Reason           string
+	Evidence         []byte
+	FailedAt         pgtype.Timestamptz
+	CreatedAt        pgtype.Timestamptz
+}
+
 type GateRun struct {
 	RunID            string
-	CertificateID    string
+	CertificateID    pgtype.Text
 	PolicyVersion    string
 	ValidatorID      string
 	ValidatorVersion string
