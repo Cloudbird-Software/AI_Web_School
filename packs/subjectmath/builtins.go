@@ -41,5 +41,20 @@ func init() {
 	} else {
 		builtins = append(builtins, g)
 	}
+	if g, err := newMulDivGen(); err != nil {
+		panic(err)
+	} else {
+		builtins = append(builtins, g)
+	}
+	if g, err := newTimeGen(); err != nil {
+		panic(err)
+	} else {
+		builtins = append(builtins, g)
+	}
+	if g, err := newGeoGen(); err != nil {
+		panic(err)
+	} else {
+		builtins = append(builtins, g)
+	}
 	builtinGenerators = builtins
 }
