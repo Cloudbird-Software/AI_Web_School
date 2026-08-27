@@ -15,6 +15,7 @@ import (
 	"log"
 	"net/http"
 	"strings"
+	"unicode"
 
 	"github.com/Cloudbird-Software/AI_Web_School/core/auth"
 )
@@ -92,7 +93,15 @@ func RequireAuth(signer *auth.Signer, roles ...auth.Role) func(http.Handler) htt
 			}
 			if !allowAll {
 				if _, ok := allowed[p.Role]; !ok {
-					log.Printf("auth denied class=forbidden reason_class=%s path=%s", errClass(auth.ErrRoleDenied), r.URL.Path)
+					// 日志注入防护（CodeQL go/log-injection）：path 是不可信输入，
+					// 控制字符（含换行）替换为 ? 再入日志，防伪造日志行
+					safePath := strings.Map(func(r rune) rune {
+						if unicode.IsPrint(r) {
+							return r
+						}
+						return '?'
+					}, r.URL.Path)
+					log.Printf("auth denied class=forbidden reason_class=%s path=%s", errClass(auth.ErrRoleDenied), safePath)
 					writeError(w, http.StatusForbidden, ErrorClassForbidden)
 					return
 				}
