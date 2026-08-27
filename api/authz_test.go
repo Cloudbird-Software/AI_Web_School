@@ -208,8 +208,9 @@ func TestContractEndpoints_RequireAuthentication(t *testing.T) {
 		name := ep.method + " " + ep.path
 		t.Run(name, func(t *testing.T) {
 			if ep.path == "/health" {
-				// 契约 /health 即存活探针（D9 明文豁免匿名），Go 侧承载路径是
-				// /healthz（T-W5-031 既有决策），见 TestHealthz_StaysAnonymous。
+				// 契约 /health 即存活探针（D9 明文豁免匿名）；T-W5-008 起与
+				// /healthz 同 handler 对外（healthHandler），白名单回归见
+				// TestHealthz_StaysAnonymous。
 				return
 			}
 			// httptest.NewRequest 接受纯路径；契约路径本身以 / 开头。
