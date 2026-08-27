@@ -22,11 +22,19 @@ type Validator interface {
 	Validate(ctx context.Context, c Candidate) Result
 }
 
-// PlatformRegistry 构造并装入平台通用验证器注册表。src 为查重摘要登记源；
-// W6 由 DB 适配（*_version.content_digest 列）提供生产实现后传入同型接口。
-func PlatformRegistry(src DigestSource) (*registry.Registry[Validator], error) {
+// PlatformRegistry 构造并装入平台通用验证器注册表。src 为查重摘要登记源，
+// facts 为语篇事实核查登记源；两者允许为 nil（对应验证器一律 review 置信 0，
+// 不宣称已查证）。judge 为语篇事实核查的语义判定面（FactJudge，W6 接 BAML
+// harness 后注入；本卡不接任何 LLM 实现，传 nil 时语义事实落 review）。
+// W6 由 DB 适配（*_version.content_digest 列 / 事实登记表）提供登记源生产
+// 实现。阻断性不在本装配面——验证器只产出三值 verdict，链上阻断性由策略
+// 矩阵（W6 编排器读链配置）决定。
+func PlatformRegistry(src DigestSource, facts FactSource, judge FactJudge) (*registry.Registry[Validator], error) {
 	r := registry.New[Validator]()
 	if err := r.Register(DuplicateValidatorID, NewDuplicateValidator(src)); err != nil {
+		return nil, fmt.Errorf("validators: 登记平台验证器失败: %w", err)
+	}
+	if err := r.Register(FactCheckValidatorID, NewFactCheckValidator(facts, judge)); err != nil {
 		return nil, fmt.Errorf("validators: 登记平台验证器失败: %w", err)
 	}
 	return r, nil

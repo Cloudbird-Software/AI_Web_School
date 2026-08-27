@@ -23,4 +23,14 @@
 // 判定 fail-closed（X12）：空内容 / 非结构化根 / 哈希不可算一律 fail；
 // 摘要源基础设施故障一律 review（人工复核，不放行不静默通过）。
 // A5/X6：本包零学科特判，import 边界由 tools/go-lint/import-boundary 强制。
+//
+// T-W5-021 追加（core/gate/validators）：语篇事实核查验证器 FactCheckValidator——
+// 判定基于语篇来源可对账的事实（数字/日期断言与登记事实集合确定性对账，实体
+// 引用完整性核对，语义事实留 FactJudge 注入面、W6 接 BAML harness）。修正冻结
+// passage_fact_check 的两处缺陷：①规则全过仍 review、置信 0.5，而编排器对任何
+// review 都不签证书 → 正常语篇结构性过不了门（「永远失败的规则比没有规则更
+// 危险」）——本实现判定表显式逐条列出，干净语篇必须 pass；②`blocking=True`
+// 类属性把阻断性焊死在验证器里——本实现不携带阻断属性，阻断性由策略矩阵
+// （W6 编排器读链配置）决定。不确定不放行延续 #79 纪律：事实登记源未挂接/
+// 查询失败/集合非法/判定面故障一律 review 置信 0，不伪造 pass。
 package validators
