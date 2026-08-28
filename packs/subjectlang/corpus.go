@@ -101,7 +101,7 @@ func readLines(path string) ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer f.Close() //nolint:errcheck // 只读句柄，关闭失败无处理面
+	defer func() { _ = f.Close() }() // 只读句柄：关闭失败无处理面（errcheck 显式化）
 	var out []string
 	sc := bufio.NewScanner(f)
 	for sc.Scan() {
