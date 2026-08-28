@@ -33,9 +33,13 @@ import (
 
 const (
 	manifestRel = "specs/contracts/FROZEN.txt" // 冻结契约清单（只增不改）
-	testsRel    = "tests/contract"             // 覆盖事实源目录
+	testsRel    = "tests/contract"             // 覆盖事实源目录（Python 冻结契约测试）
 	maxFileBob  = 1 << 20                      // 覆盖扫描单文件读取上限 1MB（防巨型 fixture 拖慢）
 )
+
+// goRefDirs 是 Go 侧契约测试的引用面补充（T-W5-028 起：v1.1 契约测试在
+// api 包内）——冻结条目被其中任一 *_test.go 以完整路径引用即算覆盖。
+var goRefDirs = []string{"api", "tools"}
 
 // finding 一处清单遍历断言失败.
 type finding struct {
@@ -99,47 +103,83 @@ func parseManifest(data []byte) (entries []string, dupes []string) {
 
 // coverageRefs 遍历 testsDir，返回每个条目被哪些测试文件引用（内容子串匹配
 // 完整相对路径）。无法映射的条目不入表——由调用方 fail-loud 列出。
-func coverageRefs(testsDir string, entries []string) (map[string][]string, error) {
+func coverageRefs(repoRoot string, entries []string) (map[string][]string, error) {
 	refs := map[string][]string{}
-	err := filepath.WalkDir(testsDir, func(path string, d fs.DirEntry, werr error) error {
-		if werr != nil {
-			return werr
+	// 覆盖事实源 = tests/contract 全量（Python 冻结契约测试）+ goRefDirs 的
+	// Go 测试文件（T-W5-028 起 v1.1 契约测试在 api 包）。原断言面全保留，引用面只增。
+	dirs := []string{filepath.Join(repoRoot, testsRel)}
+	for _, rel := range goRefDirs {
+		d := filepath.Join(repoRoot, rel)
+		if fi, statErr := os.Stat(d); statErr == nil && fi.IsDir() {
+			dirs = append(dirs, d)
 		}
-		if d.IsDir() {
-			switch d.Name() {
-			case "__pycache__", "testdata":
-				return filepath.SkipDir
-			}
-			return nil
+	}
+	walk := func(path string, d fs.DirEntry, werr error) error {
+		return walkOne(repoRoot, path, d, werr, entries, refs)
+	}
+	if err := filepath.WalkDir(dirs[0], walk); err != nil {
+		return nil, err
+	}
+	for _, dir := range dirs[1:] {
+		if err := filepath.WalkDir(dir, walk); err != nil {
+			return nil, err
 		}
-		switch filepath.Ext(path) { // 只读文本类文件；二进制天然不入事实源
-		case ".py", ".md", ".yaml", ".yml", ".txt", ".json", ".sql":
-		default:
-			return nil
-		}
-		fi, serr := d.Info()
-		if serr != nil {
-			return serr
-		}
-		if fi.Size() > maxFileBob {
-			return nil
-		}
-		raw, rerr := os.ReadFile(path)
-		if rerr != nil {
-			return rerr
-		}
-		content := strings.ReplaceAll(string(raw), "\r\n", "\n")
-		for _, e := range entries {
-			if strings.Contains(content, e) {
-				norm := filepath.ToSlash(filepath.Clean(path))
-				testsNorm := filepath.ToSlash(filepath.Clean(testsDir))
-				rel := strings.TrimPrefix(norm, testsNorm+"/")
-				refs[e] = append(refs[e], rel)
-			}
+	}
+	return refs, nil
+}
+
+// walkOne 单文件引用判定：tests/contract 下全文本类；goRefDirs 下只认 *_test.go。
+// inGoRef 以「相对仓库根的目录前缀」判定（不能用路径子串——tests/contract/api/
+// 这类子目录名会与 goRefDirs 的 "api" 撞车，误把 Python 契约测试排除）。
+func walkOne(repoRoot string, path string, d fs.DirEntry, werr error, entries []string, refs map[string][]string) error {
+	if werr != nil {
+		return werr
+	}
+	if d.IsDir() {
+		switch d.Name() {
+		case "__pycache__", "testdata", "gen":
+			return filepath.SkipDir
 		}
 		return nil
-	})
-	return refs, err
+	}
+	relRepo, relErr := filepath.Rel(repoRoot, path)
+	relSlash := filepath.ToSlash(relRepo)
+	inGoRef := relErr == nil
+	if inGoRef {
+		inGoRef = false
+		for _, rel := range goRefDirs {
+			if relSlash == rel || strings.HasPrefix(relSlash, rel+"/") {
+				inGoRef = true
+				break
+			}
+		}
+	}
+	if inGoRef && !strings.HasSuffix(path, "_test.go") {
+		return nil // Go 引用面只认测试文件（非测试 Go 文件不是契约事实源）
+	}
+	switch filepath.Ext(path) { // 只读文本类文件；二进制天然不入事实源
+	case ".py", ".md", ".yaml", ".yml", ".txt", ".json", ".sql", ".go":
+	default:
+		return nil
+	}
+	fi, serr := d.Info()
+	if serr != nil {
+		return serr
+	}
+	if fi.Size() > maxFileBob {
+		return nil
+	}
+	raw, rerr := os.ReadFile(path)
+	if rerr != nil {
+		return rerr
+	}
+	content := strings.ReplaceAll(string(raw), "\r\n", "\n")
+	for _, e := range entries {
+		if strings.Contains(content, e) {
+			refs[e] = append(refs[e], relSlash)
+		}
+	}
+	return nil
 }
 
 // scanAll 全量遍历断言。操作错误返回 error；逻辑缺口装入 findings（可为空表）.
@@ -170,7 +210,7 @@ func scanAll(repoRoot string) (*scanResult, error) {
 				detail: "冻结契约文件在盘上不存在"})
 		}
 	}
-	refs, cerr := coverageRefs(testsDir, entries)
+	refs, cerr := coverageRefs(repoRoot, entries)
 	if cerr != nil {
 		return nil, fmt.Errorf("遍历 %s/ 失败: %w", testsRel, cerr)
 	}

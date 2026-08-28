@@ -1,6 +1,7 @@
 // Package api 的 v1.1 契约一致性测试（T-W5-028 验收 #3）。
 //
-// openapi-v1.1.yaml（ADR-0006 草案）与实际路由表的双向锁定：
+// 契约事实源：specs/contracts/api/openapi-v1.1.yaml（ADR-0006 草案）与实际路由表的双向锁定：
+// （上一行保留完整契约路径字面量——frozencontract 守卫的覆盖判定依据）
 // 路径+方法集合相等、业务端点均有 security 声明、/health 匿名、
 // StartSessionRequest 无 student_alias_id、additionalProperties: true 零出现。
 // v1 冻结文件零 diff 由 PR diff 保证（验收 #4），此处不重复断言。
