@@ -10,6 +10,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"log"
 	"net/http"
@@ -92,9 +93,17 @@ func MapError(err error) (int, string) {
 // 注意与 WriteAuthErrorResponse 的分野：后者面向认证/授权原语返回点，
 // 未知错误按"身份不可信"fail-closed 落 401；本函数面向一般 handler 错误，
 // 未知一律 500。两者的兜底语义不同且都不可互换。
+//
+// T-W5-007：日志出口统一 mask——reason 文本可能夹带已登记凭证值或敏感
+// 键值对形态（如底层驱动错误回显连接串），落日志前经 Mask 打码（X3/D9：
+// 凭证不进日志）；响应体仍只有固定 error_class 常量，零动态文本。
 func HandleError(w http.ResponseWriter, err error) {
 	status, class := MapError(err)
-	log.Printf("request error status=%d class=%q reason=%v", status, class, err)
+	detail := "<nil>"
+	if err != nil {
+		detail = Mask(err.Error())
+	}
+	log.Printf("request error status=%d class=%q reason=%s", status, class, detail)
 	WriteError(w, status, class)
 }
 
@@ -138,7 +147,9 @@ func Recover(next http.Handler) http.Handler {
 			if rec == nil {
 				return
 			}
-			log.Printf("panic recovered kind=%T err=%v\n%s", rec, rec, debug.Stack())
+			// T-W5-007：panic 值是任意动态文本（可能夹带凭证/敏感键值对），
+			// 落日志前经统一 mask 层打码；调用栈只含符号与地址，不设防。
+			log.Printf("panic recovered kind=%T err=%s\n%s", rec, Mask(fmt.Sprint(rec)), debug.Stack())
 			if !iw.wroteHeader {
 				WriteError(iw, http.StatusInternalServerError, ErrorClassInternal)
 				return
