@@ -110,10 +110,18 @@ func TestOpenAPIV11NoRequestAliasAndExplicitNext(t *testing.T) {
 			t.Error("NextItemResponse 不得为 additionalProperties: true（A4 显式化验收）")
 		}
 	}
-	for _, f := range []string{"placement_token", "source_ref", "item_version_id"} {
+	for _, f := range []string{"placement_token", "item_version_id"} {
 		if _, has := next["properties"].(map[string]interface{})[f]; !has {
 			t.Errorf("NextItemResponse 缺 A4 追溯字段 %q", f)
 		}
+	}
+	// source_ref 不在本响应声明（对抗审查 B2：域内为对象形态且属作答事件账，
+	// 红队判「契约发明了域内不存在的形态」）——A4 由 placement_token+item_version_id 承载
+	if _, has := next["properties"].(map[string]interface{})["source_ref"]; has {
+		t.Error("NextItemResponse 不应声明 source_ref（见 ADR-0006 修订记录）")
+	}
+	if done, has := next["properties"].(map[string]interface{})["done"]; !has || done == nil {
+		t.Fatal("NextItemResponse 缺 done（required 集合消解 done 互斥）")
 	}
 	// v1.1 全文不再新增 additionalProperties: true 相对 v1 的面孔（/next 的那处已除名）
 	raw, err := os.ReadFile(filepath.Join("..", "specs", "contracts", "api", "openapi-v1.1.yaml"))

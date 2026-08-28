@@ -11,12 +11,12 @@ info:
       不信任请求体——铁律 8 机器强制）。
     - /next 200 响应显式化 A4 追溯字段（placement_token/source_ref），
       取消 additionalProperties: true。
-    v1 冻结文件零改动；本文件经 FROZEN.txt 追加登记（只增）。
+    v1 冻结文件零改动。FROZEN.txt 登记由 owner 在 ADR-0006 签署时执行
+    （contract-drift 引擎对非 JSON 清单 fail-closed，追加动作升级 owner）。
   version: 1.1.0-draft
   x-frozen: false
   x-adr: ADR-0006
   x-supersedes: specs/contracts/api/openapi-v1.yaml
-  x-superseded: specs/contracts/api/openapi-v1.yaml
 paths:
   /items/{item_id}:
     get:
@@ -1624,28 +1624,24 @@ components:
     NextItemResponse:
       type: object
       title: NextItemResponse
-      description: '下一题载荷（A4 追溯字段显式化，取消 v1 的 additionalProperties: true）'
+      description: '下一题载荷。done=true 时仅含 done（会话完成）；否则携带题目与 A4 追溯字段。placement_token 实例池路径可为 null（core/session TopicOrderStore PlacementToken *string）；A4 的作答侧 source_ref 见 response_event 契约（对象形态），不在本响应重复声明'
       required:
-      - placement_token
-      - item_version_id
-      - item
+      - done
       properties:
         done:
           type: boolean
           title: Done
           description: 会话完成标记（true 时其余字段缺省）
         placement_token:
-          type: string
+          type:
+          - string
+          - 'null'
           title: Placement Token
-          description: A4 追溯：本次出题的题位令牌（卷序列/实例池序列定位）
+          description: A4 追溯：卷序列路径的题位令牌；实例池路径为 null
         item_version_id:
           type: string
           title: Item Version Id
           description: A4 追溯：出题实例版本 id
-        source_ref:
-          type: string
-          title: Source Ref
-          description: A4 追溯：出题来源引用（paper 序列项或实例池条目 id）
         item:
           type: object
           title: Item
@@ -1660,13 +1656,18 @@ components:
       properties:
         error_class:
           type: string
+          title: Error Class
+          description: '全集对齐 api/middleware/errmap.go 常量 + api.go 占位路由（not_implemented）；origin_forbidden 由 CORS 边界、payload_too_large/bad_request 由体限与解析、rate_limited 由限流、not_found/internal 由错误映射与 501 占位产出'
           enum:
           - unauthorized
           - forbidden
-          - not_implemented
-          - internal
+          - origin_forbidden
           - rate_limited
-          title: Error Class
+          - payload_too_large
+          - bad_request
+          - not_found
+          - internal
+          - not_implemented
       additionalProperties: false
   securitySchemes:
     bearerAuth:
