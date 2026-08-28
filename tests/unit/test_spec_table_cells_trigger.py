@@ -41,9 +41,10 @@ def test_debug_function_body_probe() -> None:
         try:
             fndef = await conn.fetchval(
                 "SELECT pg_get_functiondef('validate_spec_table_cells()'::regprocedure)")
-            print("PROBE_HAS_PAREN_FIX:", "(cell ->>" in fndef)
-            print("PROBE_HAS_BLOOM:", "cognitive_level" in fndef)
-            print("PROBE_LEN:", len(fndef))
+            paren = "(cell ->>" in fndef
+            bloom = "cognitive_level" in fndef
+            # 故意失败以暴露探针值（pytest 仅失败用例显示输出）
+            assert paren and bloom, f"PROBE paren={paren} bloom={bloom} len={len(fndef)}"
         finally:
             await conn.close()
 
