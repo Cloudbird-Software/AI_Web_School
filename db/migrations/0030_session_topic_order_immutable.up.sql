@@ -183,7 +183,8 @@ BEGIN
             RAISE EXCEPTION 'spec_table cells[%] difficulty window must satisfy 0 <= min <= max <= 1', i;
         END IF;
         total := total + (cell ->> 'target_count')::numeric;
-        key := cell ->> 'content_code' || '/' || cell ->> 'cognitive_level';
+        -- 显式括号：->> 与 || 同优先级左结合，链式裸写曾被 PG 解析为 text ->> unknown
+        key := (cell ->> 'content_code') || '/' || (cell ->> 'cognitive_level');
         IF key = ANY(identities) THEN
             RAISE EXCEPTION 'spec_table cells duplicate identity %: cell count must match declared identities', key
                 USING ERRCODE = '23505', CONSTRAINT = 'uq_spec_table_cells_identity';
