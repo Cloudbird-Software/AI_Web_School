@@ -13,3 +13,35 @@ SELECT * FROM item_version WHERE item_id = $1 ORDER BY created_at ASC;
 -- name: GetLatestPublication :one
 -- 当前生效发布（发布服务 T-W5-003 证书验真的入口查询）。
 SELECT * FROM publication WHERE item_id = $1 ORDER BY published_at DESC LIMIT 1;
+
+-- ── T-W5-003：发布事务写面（PublishService 专用）───────────────────────────
+-- 事务纪律（D11）：以下语句全部运行在调用方已 begin 的显式事务内，提交/回滚由
+-- 最外层调用方统一持有——状态前移、签发账与指针前移同进同退，本域不自 commit。
+-- item_version 的 UPDATE 仅限契约 §4 受控状态机字段（status/gate_certificate_id/
+-- published_at + rendered_snapshot 非空兜底）；内容六块永不 UPDATE（D1）——
+-- 0024 未对 item_version 挂整表 append-only 触发器，正是为本次合法前移留的面。
+
+-- name: UpdateItemVersionPublished :exec
+-- 状态前移 draft/quarantined → published：写门证书与发布时刻。rendered_snapshot
+-- 为空时补最小占位对象（冻结实现 writer.py 同款兜底，满足 0002
+-- ck_iv_quarantine_requires_rendered 对非 draft 状态的非空要求）。
+UPDATE item_version SET
+	status = 'published',
+	gate_certificate_id = $2,
+	published_at = $3,
+	rendered_snapshot = COALESCE(rendered_snapshot, '{"placeholder":true}'::jsonb)
+WHERE item_version_id = $1;
+
+-- name: InsertPublication :exec
+-- 签发账入账：publication 行（发布事件本体；FK 一致性由 0002/0028 的
+-- DEFERRABLE 外键在 COMMIT 边界统一验证，语句先后序自由）。
+INSERT INTO publication (
+	publication_id, item_id, item_version_id, gate_certificate_id,
+	published_by, published_at
+) VALUES ($1, $2, $3, $4, $5, $6);
+
+-- name: ForwardItemCurrentVersion :exec
+-- 前移 item.current_version_id 指针：0002 触发器只挂 AFTER INSERT，本路径以
+-- UPDATE 前移状态机字段、触发器不触发，须由应用层显式前移（冻结
+-- publication.py 同款动作；指针表不在三本账之列，UPDATE 不违 D1）。
+UPDATE item SET current_version_id = $2 WHERE item_id = $1;

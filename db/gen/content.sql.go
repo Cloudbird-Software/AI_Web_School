@@ -7,7 +7,26 @@ package dbgen
 
 import (
 	"context"
+
+	"github.com/jackc/pgx/v5/pgtype"
 )
+
+const forwardItemCurrentVersion = `-- name: ForwardItemCurrentVersion :exec
+UPDATE item SET current_version_id = $2 WHERE item_id = $1
+`
+
+type ForwardItemCurrentVersionParams struct {
+	ItemID           string
+	CurrentVersionID pgtype.Text
+}
+
+// 前移 item.current_version_id 指针：0002 触发器只挂 AFTER INSERT，本路径以
+// UPDATE 前移状态机字段、触发器不触发，须由应用层显式前移（冻结
+// publication.py 同款动作；指针表不在三本账之列，UPDATE 不违 D1）。
+func (q *Queries) ForwardItemCurrentVersion(ctx context.Context, arg ForwardItemCurrentVersionParams) error {
+	_, err := q.db.Exec(ctx, forwardItemCurrentVersion, arg.ItemID, arg.CurrentVersionID)
+	return err
+}
 
 const getItemVersion = `-- name: GetItemVersion :one
 
@@ -60,6 +79,36 @@ func (q *Queries) GetLatestPublication(ctx context.Context, itemID string) (Publ
 	return i, err
 }
 
+const insertPublication = `-- name: InsertPublication :exec
+INSERT INTO publication (
+	publication_id, item_id, item_version_id, gate_certificate_id,
+	published_by, published_at
+) VALUES ($1, $2, $3, $4, $5, $6)
+`
+
+type InsertPublicationParams struct {
+	PublicationID     string
+	ItemID            string
+	ItemVersionID     string
+	GateCertificateID pgtype.Text
+	PublishedBy       string
+	PublishedAt       pgtype.Timestamptz
+}
+
+// 签发账入账：publication 行（发布事件本体；FK 一致性由 0002/0028 的
+// DEFERRABLE 外键在 COMMIT 边界统一验证，语句先后序自由）。
+func (q *Queries) InsertPublication(ctx context.Context, arg InsertPublicationParams) error {
+	_, err := q.db.Exec(ctx, insertPublication,
+		arg.PublicationID,
+		arg.ItemID,
+		arg.ItemVersionID,
+		arg.GateCertificateID,
+		arg.PublishedBy,
+		arg.PublishedAt,
+	)
+	return err
+}
+
 const listItemVersionsByItem = `-- name: ListItemVersionsByItem :many
 SELECT item_version_id, item_id, status, objective, interaction_ref, content, scoring_ref, error_bindings, lineage, rendered_snapshot, gate_certificate_id, published_at, retired_at, created_at FROM item_version WHERE item_id = $1 ORDER BY created_at ASC
 `
@@ -98,4 +147,34 @@ func (q *Queries) ListItemVersionsByItem(ctx context.Context, itemID string) ([]
 		return nil, err
 	}
 	return items, nil
+}
+
+const updateItemVersionPublished = `-- name: UpdateItemVersionPublished :exec
+
+UPDATE item_version SET
+	status = 'published',
+	gate_certificate_id = $2,
+	published_at = $3,
+	rendered_snapshot = COALESCE(rendered_snapshot, '{"placeholder":true}'::jsonb)
+WHERE item_version_id = $1
+`
+
+type UpdateItemVersionPublishedParams struct {
+	ItemVersionID     string
+	GateCertificateID pgtype.Text
+	PublishedAt       pgtype.Timestamptz
+}
+
+// ── T-W5-003：发布事务写面（PublishService 专用）───────────────────────────
+// 事务纪律（D11）：以下语句全部运行在调用方已 begin 的显式事务内，提交/回滚由
+// 最外层调用方统一持有——状态前移、签发账与指针前移同进同退，本域不自 commit。
+// item_version 的 UPDATE 仅限契约 §4 受控状态机字段（status/gate_certificate_id/
+// published_at + rendered_snapshot 非空兜底）；内容六块永不 UPDATE（D1）——
+// 0024 未对 item_version 挂整表 append-only 触发器，正是为本次合法前移留的面。
+// 状态前移 draft/quarantined → published：写门证书与发布时刻。rendered_snapshot
+// 为空时补最小占位对象（冻结实现 writer.py 同款兜底，满足 0002
+// ck_iv_quarantine_requires_rendered 对非 draft 状态的非空要求）。
+func (q *Queries) UpdateItemVersionPublished(ctx context.Context, arg UpdateItemVersionPublishedParams) error {
+	_, err := q.db.Exec(ctx, updateItemVersionPublished, arg.ItemVersionID, arg.GateCertificateID, arg.PublishedAt)
+	return err
 }

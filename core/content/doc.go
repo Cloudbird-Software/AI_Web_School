@@ -13,6 +13,10 @@
 //   - item/item_template/material/corpus_asset 指针表：current_version_id 前
 //     移是合法 UPDATE，不在账表之列。
 //
-// W5-R 骨架期仅锚定包语义与依赖方向；表结构消费经 db 层（T-W5-032），
+// 发布入账唯一领域面：PublishService（T-W5-003）——发布事务里证书验真
+// （复用 core/gate.CertificateVerifier）与内容寻址（validators.ContentDigest
+// 重算对表）双双 fail-loud，状态前移 + publication 签发账 + 指针前移三写同
+// 事务、不自 commit（D11）。
+//
 // 学科差异经 registry 条目表达，本包零学科特判（X6）。
 package content
