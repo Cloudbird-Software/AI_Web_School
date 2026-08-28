@@ -9,8 +9,8 @@ info:
     - 401/403 响应显式化为单字段 error_class 形态（脱敏纪律）。
     - POST /sessions 请求体不再接受 student_alias_id（身份取自令牌，
       不信任请求体——铁律 8 机器强制）。
-    - /next 200 响应显式化 A4 追溯字段（placement_token/source_ref），
-      取消 additionalProperties: true。
+    - /next 200 响应显式化 A4 追溯字段（placement_token/item_version_id；
+      source_ref 归作答事件账契约），取消 additionalProperties: true。
     v1 冻结文件零改动。FROZEN.txt 登记由 owner 在 ADR-0006 签署时执行
     （contract-drift 引擎对非 JSON 清单 fail-closed，追加动作升级 owner）。
   version: 1.1.0-draft
