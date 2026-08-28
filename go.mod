@@ -19,7 +19,7 @@ require (
 	github.com/kisielk/errcheck v1.9.0 // indirect
 	github.com/kr/text v0.2.0 // indirect
 	github.com/lib/pq v1.12.3 // indirect
-	github.com/rogpeppe/go-internal v1.16.0 // indirect
+	github.com/rogpeppe/go-internal v1.12.0 // indirect
 	go.opentelemetry.io/otel/metric v1.39.0 // indirect
 	go.opentelemetry.io/otel/trace v1.39.0 // indirect
 	golang.org/x/mod v0.36.0 // indirect
