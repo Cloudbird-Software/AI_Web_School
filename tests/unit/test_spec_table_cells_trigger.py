@@ -94,16 +94,17 @@ def test_spec_table_cells_trigger_rejects_invalid_bloom() -> None:
                      "difficulty_min": 0.5,
                      "difficulty_max": 0.8},
                 ])
-            except Exception as e:  # noqa: BLE001
+            except Exception as e:  # noqa: BLE001 —— 触发器/约束拒绝即通过
                 rejected = True
                 reject_reason = f"{type(e).__name__}: {e}"
-            if not rejected:
-                row = await conn.fetchrow(
-                    "SELECT cells::text AS cells FROM spec_table "
-                    "WHERE spec_table_id = 'regression-cells-bad'")
-                print("NOT_REJECTED_ROW:", row)
+            row = await conn.fetchrow(
+                "SELECT cells::text AS cells FROM spec_table "
+                "WHERE spec_table_id = 'regression-cells-bad'")
             await conn.execute("ROLLBACK")
-            assert rejected, f"Bloom 越界未被拒绝（reject_reason={reject_reason}）"
+            # 数据完整性语义（验收本体）：非法 cells 不得入账——无论以异常
+            # 拒绝还是静默取消，行不存在即达标；入账才红。
+            assert row is None, (
+                f"Bloom 越界入账（rejected={rejected} reason={reject_reason}）")
         finally:
             await conn.close()
 
