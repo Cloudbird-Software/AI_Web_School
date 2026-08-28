@@ -10,6 +10,7 @@ spec_table INSERT 全量被拒。修复 = 显式括号（双源同步）。
 """
 from __future__ import annotations
 
+import asyncio
 import json
 import os
 
