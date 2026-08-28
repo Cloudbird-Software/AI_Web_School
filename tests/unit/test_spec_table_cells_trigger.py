@@ -86,11 +86,18 @@ def test_spec_table_cells_trigger_rejects_invalid_bloom() -> None:
                 print("=== rejected by:", type(e).__name__, e)
             if not rejected:
                 tg = await conn.fetch(
-                    "SELECT tgname FROM pg_trigger WHERE tgrelid = 'spec_table'::regclass")
+                    "SELECT tgname, pg_get_triggerdef(oid) AS def FROM pg_trigger "
+                    "WHERE tgrelid = 'spec_table'::regclass")
+                print("=== NOT REJECTED triggers ===")
+                for t in tg:
+                    print("TRG:", t["def"])
+                fndef = await conn.fetchval(
+                    "SELECT pg_get_functiondef('validate_spec_table_cells()'::regprocedure)")
+                print("FNDEF:", fndef)
                 row = await conn.fetchrow(
-                    "SELECT cognitive_level FROM spec_table "
+                    "SELECT cells::text AS cells FROM spec_table "
                     "WHERE spec_table_id = 'regression-cells-bad'")
-                print("=== NOT REJECTED === triggers:", tg, "row:", row)
+                print("ROW:", row)
             await conn.execute("ROLLBACK")
             assert rejected, "Bloom 越界未被 0030 触发器拒绝（见上方诊断输出）"
         finally:
