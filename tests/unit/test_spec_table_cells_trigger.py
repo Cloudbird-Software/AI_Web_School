@@ -94,7 +94,7 @@ def test_spec_table_cells_trigger_rejects_invalid_bloom() -> None:
                      "difficulty_min": 0.5,
                      "difficulty_max": 0.8},
                 ])
-            except Exception as e:  # noqa: BLE001 —— 触发器/约束拒绝即通过
+            except Exception as e:  # 触发器/约束拒绝即通过
                 rejected = True
                 reject_reason = f"{type(e).__name__}: {e}"
             row = await conn.fetchrow(
