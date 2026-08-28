@@ -31,6 +31,7 @@ func NewPGLedger(db dbgen.DBTX) *PGLedger {
 // Record 实现 Ledger：InsertAICallLedger 直插一行。
 // task_level/reason/artifact_ref/caller_name 的空值语义经 textNil 统一下探，
 // created_at 留零交列默认 now()——与冻结实现「未显式传时刻取当前 UTC」一致.
+// Payload 加性键 0026 无对应列，暂不入 PG 行（对齐不扩 schema；见 LedgerEntry.Payload）.
 func (p *PGLedger) Record(ctx context.Context, e LedgerEntry) error {
 	created := pgtype.Timestamptz{}
 	if !e.CreatedAt.IsZero() {

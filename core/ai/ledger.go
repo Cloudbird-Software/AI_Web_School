@@ -43,6 +43,12 @@ type LedgerEntry struct {
 	ArtifactRef   string
 	CallerName    string
 	CreatedAt     time.Time
+	// Payload 是调用方附加的台账加性键（T-W5-015：TTS 的 char_count /
+	// voice_fingerprint）。语义 = ai_call_ledger 的 JSONB payload（对齐冻结
+	// 实现 raw_meta 的「必要子集、禁止含 PII」约束），对齐不扩 DB 列：0026
+	// 暂无 payload 列，PG 实现暂不落库（W6 随 payload 列迁移接通），
+	// MemoryLedger 全量保留.
+	Payload map[string]string
 }
 
 // Ledger 是 AI 调用台账的存储契约。总线在交付产物前同步写败即调用失败

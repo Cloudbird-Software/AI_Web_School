@@ -16,4 +16,7 @@
 //   - budget.go  累计预算硬顶接口（W6 成本核算的前置骨架）;
 //   - ledger.go / ledger_pg.go 台账接口 + 内存与 PG 双实现（0026 ai_call_ledger，
 //     append-only 由 DB 触发器物理强制）。
+//   - tts/      TTS 合成统一服务面（T-W5-015）：TTSRequest 经 Bus.Call
+//     （ModalityTTS，PII 剥离 fail-closed 在总线内）、完整内容寻址产物 id +
+//     定容 LRU 缓存、台账 payload 加性键对齐。
 package ai
