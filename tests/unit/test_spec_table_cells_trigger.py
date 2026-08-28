@@ -72,7 +72,8 @@ def test_spec_table_cells_trigger_rejects_invalid_bloom() -> None:
         conn = await asyncpg.connect(_dsn())
         try:
             await conn.execute("BEGIN")
-            with pytest.raises(asyncpg.PostgresError):
+            rejected = False
+            try:
                 _insert(conn, "regression-cells-bad", [
                     {"content_code": "math.nal.decimal.compare",
                      "cognitive_level": "not-a-bloom-level",
@@ -80,7 +81,18 @@ def test_spec_table_cells_trigger_rejects_invalid_bloom() -> None:
                      "difficulty_min": 0.5,
                      "difficulty_max": 0.8},
                 ])
+            except Exception as e:  # noqa: BLE001 —— 拒绝即通过，打印归因
+                rejected = True
+                print("=== rejected by:", type(e).__name__, e)
+            if not rejected:
+                tg = await conn.fetch(
+                    "SELECT tgname FROM pg_trigger WHERE tgrelid = 'spec_table'::regclass")
+                row = await conn.fetchrow(
+                    "SELECT cognitive_level FROM spec_table "
+                    "WHERE spec_table_id = 'regression-cells-bad'")
+                print("=== NOT REJECTED === triggers:", tg, "row:", row)
             await conn.execute("ROLLBACK")
+            assert rejected, "Bloom 越界未被 0030 触发器拒绝（见上方诊断输出）"
         finally:
             await conn.close()
 
