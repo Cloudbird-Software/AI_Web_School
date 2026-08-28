@@ -226,6 +226,9 @@ type Request struct {
 	Prompt string
 	// MaxTokens 覆盖目标缺省路由参数；0 取目标缺省.
 	MaxTokens int
+	// Payload 为附加台账键（加性键值对，原样入账行 Payload，构造后不得再改写）：
+	// 只允许确定性非敏感键值（字符数/参数指纹等），PII 与凭证禁止入内（D7/X3）.
+	Payload map[string]string
 }
 
 // Response 是一次成功调用的交付结果（必然已有 ok 台账行对应）.
@@ -466,6 +469,7 @@ func (b *Bus) entry(callID string, t Target, req Request, start time.Time, statu
 		ArtifactRef:   req.ArtifactRef,
 		CallerName:    t.Name,
 		CreatedAt:     start.UTC(),
+		Payload:       req.Payload,
 	}
 }
 
