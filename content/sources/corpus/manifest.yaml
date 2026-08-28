@@ -1,0 +1,13 @@
+# W6 语文轮语料来源清单（演示管线样例——真实全量入库须 owner 逐源 license 审查）。
+# 三源分离（宪法铁律 5 延伸/issue #34 §五）：source=public，license 判定理由留痕。
+version: "1.0"
+corpora:
+  - source_id: demo-common-chars-v1
+    title: 常用汉字节选样表（演示管线用）
+    license: CC0-1.0
+    license_note: >
+      本表为演示语料：由开发会话手工节选的 120 个常用汉字（一/二/三…人/口/手…），
+      汉字本身是文字符号不构成著作权客体；节选编排为本仓原创，按 CC0-1.0 释出。
+      真实全量字表/词表入库前必须过 owner 逐源许可审查（issue #34 §五）。
+    chars_file: chars-demo-v1.txt
+    words_file: words-demo-v1.txt
