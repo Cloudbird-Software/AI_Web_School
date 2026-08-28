@@ -868,6 +868,15 @@ type ResponseEvent struct {
 	CreatedAt       pgtype.Timestamptz
 }
 
+type ResponseSubmission struct {
+	SessionID      pgtype.UUID
+	ItemVersionID  string
+	AnswerDigest   string
+	EventID        pgtype.UUID
+	EventCreatedAt pgtype.Timestamptz
+	CreatedAt      pgtype.Timestamptz
+}
+
 type ReviewPolicy struct {
 	PolicyID      string
 	PolicyVersion string
