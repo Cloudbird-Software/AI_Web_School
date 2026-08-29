@@ -27,12 +27,15 @@ import (
 // type 子集投影；作答载荷经 JSON 通道的常态形态）.
 type ParamKind string
 
-// 入参形态四值（与 params_schema type 词表同源）.
+// 入参形态五值（与 params_schema type 词表同源；any 用于契约未声明 type 的
+// 必备键——如 exact_match.answer 形态随交互类型，标量/数组/对象皆合法，
+// 具体形态纪律由评分器按契约自校，T-W5-016 PyR 评分域补全）.
 const (
 	KindObject ParamKind = "object" // JSON object → map[string]any
 	KindArray  ParamKind = "array"  // JSON array  → []any
 	KindString ParamKind = "string" // JSON string → string
 	KindNumber ParamKind = "number" // JSON number → float64（Go 字面量 int/int64 兼容）
+	KindAny    ParamKind = "any"    // 任意 JSON 形态（含 null；必备键存在性仍由 Runner 强制）
 )
 
 // ScorerSpec 是评分器条目自述的契约面（Contracted 准入与 Runner 入参校验的

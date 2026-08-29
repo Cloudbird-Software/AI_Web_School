@@ -162,6 +162,8 @@ func kindMatch(k registry.ParamKind, v any) bool {
 			return true
 		}
 		return false
+	case registry.KindAny:
+		return true // 任意形态——形态纪律由评分器按契约自校（必备键存在性已在上游强制）
 	default:
 		return false
 	}
@@ -199,6 +201,16 @@ func buildTrace(spec registry.ScorerSpec, res registry.ScoreResult, digest strin
 		trace["model"] = res.Model
 		trace["model_version"] = res.ModelVersion
 		trace["prompt_version"] = spec.PromptVersion
+	}
+	// 评分证据随行（加性键，契约 §3 只增不改）：命中判定明细/步骤明细/逐维
+	// 理由/错误推断——供审计与教研抽检；解码失败按原文随行（不吞证据）.
+	if res.EvidenceJSON != "" {
+		var ev any
+		if err := json.Unmarshal([]byte(res.EvidenceJSON), &ev); err == nil {
+			trace["evidence"] = ev
+		} else {
+			trace["evidence_raw"] = res.EvidenceJSON
+		}
 	}
 	return trace
 }
