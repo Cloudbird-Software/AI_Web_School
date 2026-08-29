@@ -39,3 +39,4 @@ ai_runner.ps1
 # T-W5-033 sqlc 钉扎二进制（版本+SHA256 见 Makefile）
 tools/bin/
 .sqlc_tmp/
+frozencontract.exe

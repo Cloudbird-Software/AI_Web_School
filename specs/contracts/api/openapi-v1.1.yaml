@@ -1,0 +1,1677 @@
+openapi: 3.1.0
+info:
+  title: muti-platform API v1.1
+  description: |
+    小学语数英个性化练习平台 API v1.1（认证引入草案，ADR-0006）。
+    相对 v1 的变更（详见 ADR-0006，状态=待批准，人类签署前不生效）：
+    - 全部业务端点要求 Bearer 认证（securitySchemes.bearerAuth）；
+      /health 保持匿名（存活探针，D9 明文豁免）。
+    - 401/403 响应显式化为单字段 error_class 形态（脱敏纪律）。
+    - POST /sessions 请求体不再接受 student_alias_id（身份取自令牌，
+      不信任请求体——铁律 8 机器强制）。
+    - /next 200 响应显式化 A4 追溯字段（placement_token/item_version_id；
+      source_ref 归作答事件账契约），取消 additionalProperties: true。
+    v1 冻结文件零改动。FROZEN.txt 登记由 owner 在 ADR-0006 签署时执行
+    （contract-drift 引擎对非 JSON 清单 fail-closed，追加动作升级 owner）。
+  version: 1.1.0-draft
+  x-frozen: false
+  x-adr: ADR-0006
+  x-supersedes: specs/contracts/api/openapi-v1.yaml
+paths:
+  /items/{item_id}:
+    get:
+      tags:
+      security:
+      - bearerAuth: []
+      - items
+      summary: 查询 item 身份与当前版本
+      description: '返回 item 不变身份 + current_version_id 指向的版本内容（若有）.
+
+
+        current_version 为 None 表示该 item 尚未发布任何版本。'
+      operationId: get_item_items__item_id__get
+      parameters:
+      - name: item_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Item Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ItemDetailResponse'
+        '404':
+          description: item_id 不存在
+        '401':
+          description: 未认证（缺令牌/过期/签名错/载荷矛盾）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorClass'
+        '403':
+          description: 已认证但角色不足或越权（alias 不归属）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorClass'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /item_versions/{item_version_id}:
+    get:
+      tags:
+      security:
+      - bearerAuth: []
+      - items
+      summary: 查询 item_version 内容与谱系
+      description: 返回 item_version 六大块 + 谱系 + 门证书引用（若已发布）.
+      operationId: get_item_version_item_versions__item_version_id__get
+      parameters:
+      - name: item_version_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Item Version Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ItemVersionPydantic'
+        '404':
+          description: item_version_id 不存在
+        '401':
+          description: 未认证（缺令牌/过期/签名错/载荷矛盾）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorClass'
+        '403':
+          description: 已认证但角色不足或越权（alias 不归属）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorClass'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /templates/{template_id}:
+    get:
+      tags:
+      security:
+      - bearerAuth: []
+      - items
+      summary: 查询母题身份与当前版本
+      description: 返回母题不变身份 + current_version_id 指向的母题版本（若有）.
+      operationId: get_template_templates__template_id__get
+      parameters:
+      - name: template_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Template Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TemplateDetailResponse'
+        '404':
+          description: template_id 不存在
+        '401':
+          description: 未认证（缺令牌/过期/签名错/载荷矛盾）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorClass'
+        '403':
+          description: 已认证但角色不足或越权（alias 不归属）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorClass'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /gate_certificates/{cert_id}:
+    get:
+      tags:
+      security:
+      - bearerAuth: []
+      - gate
+      summary: 查询门证书与运行记录
+      description: 返回门证书 + 关联的所有 gate_run（含 gate_verdict 明细）.
+      operationId: get_gate_certificate_gate_certificates__cert_id__get
+      parameters:
+      - name: cert_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Cert Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GateCertificateRead'
+        '404':
+          description: cert_id 不存在
+        '401':
+          description: 未认证（缺令牌/过期/签名错/载荷矛盾）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorClass'
+        '403':
+          description: 已认证但角色不足或越权（alias 不归属）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorClass'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /sessions:
+    post:
+      tags:
+      security:
+      - bearerAuth: []
+      - sessions
+      summary: 开始练习（静态卷或实例池序列快照）
+      description: 开始练习：快照题目序列创建会话（序列一经开始不变）.
+      operationId: create_session_sessions_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StartSessionRequest'
+        required: true
+      responses:
+        '201':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StartSessionResponse'
+        '401':
+          description: 未认证（缺令牌/过期/签名错/载荷矛盾）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorClass'
+        '403':
+          description: 已认证但角色不足或越权（alias 不归属）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorClass'
+        '422':
+          description: 参数互斥/题目未发布
+  /sessions/{session_id}:
+    get:
+      tags:
+      security:
+      - bearerAuth: []
+      - sessions
+      summary: 会话状态（进度/已用时长/时长保护余量）
+      description: 取会话状态.
+      operationId: read_session_state_sessions__session_id__get
+      parameters:
+      - name: session_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+          title: Session Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SessionState'
+        '404':
+          description: 会话不存在
+        '401':
+          description: 未认证（缺令牌/过期/签名错/载荷矛盾）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorClass'
+        '403':
+          description: 已认证但角色不足或越权（alias 不归属）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorClass'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /sessions/{session_id}/next:
+    get:
+      tags:
+      security:
+      - bearerAuth: []
+      - sessions
+      summary: 取下一题（主序列→错题回测）
+      description: '取下一题；会话完成返回 {"done": true}（并把会话置 completed）.'
+      operationId: read_next_item_sessions__session_id__next_get
+      parameters:
+      - name: session_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+          title: Session Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NextItemResponse'
+        '404':
+          description: 会话不存在
+        '409':
+          description: 时长保护触发（rest_required）/会话已放弃
+        '401':
+          description: 未认证（缺令牌/过期/签名错/载荷矛盾）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorClass'
+        '403':
+          description: 已认证但角色不足或越权（alias 不归属）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorClass'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /sessions/{session_id}/responses:
+    post:
+      tags:
+      security:
+      - bearerAuth: []
+      - sessions
+      summary: 提交作答（即时评分+按错误类型的反馈+落 response_event）
+      description: 提交当前应答题的作答：评分→落账→反馈→错题回测标记.
+      operationId: create_response_sessions__session_id__responses_post
+      parameters:
+      - name: session_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+          title: Session Id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SubmitResponseRequest'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Feedback'
+        '404':
+          description: 会话不存在
+        '409':
+          description: 时长保护触发/序列外作答/会话已结束
+        '401':
+          description: 未认证（缺令牌/过期/签名错/载荷矛盾）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorClass'
+        '403':
+          description: 已认证但角色不足或越权（alias 不归属）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorClass'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /sessions/{session_id}/resume:
+    post:
+      tags:
+      security:
+      - bearerAuth: []
+      - sessions
+      summary: 休息确认（时长保护解除，计时锚点重置）
+      description: 休息确认后继续作答.
+      operationId: resume_sessions__session_id__resume_post
+      parameters:
+      - name: session_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+          title: Session Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SessionState'
+        '404':
+          description: 会话不存在
+        '409':
+          description: 会话已结束
+        '401':
+          description: 未认证（缺令牌/过期/签名错/载荷矛盾）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorClass'
+        '403':
+          description: 已认证但角色不足或越权（alias 不归属）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorClass'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /sessions/{session_id}/abandon:
+    post:
+      tags:
+      security:
+      - bearerAuth: []
+      - sessions
+      summary: 放弃会话
+      description: 放弃会话（已作答事件保留在 response_event 账）.
+      operationId: abandon_sessions__session_id__abandon_post
+      parameters:
+      - name: session_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+          title: Session Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SessionState'
+        '404':
+          description: 会话不存在
+        '409':
+          description: 会话已完成
+        '401':
+          description: 未认证（缺令牌/过期/签名错/载荷矛盾）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorClass'
+        '403':
+          description: 已认证但角色不足或越权（alias 不归属）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorClass'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /health:
+    get:
+      tags:
+      - meta
+      summary: 健康检查
+      description: 健康检查端点（无需 DB 连接）.
+      operationId: health_health_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                additionalProperties:
+                  type: string
+                type: object
+                title: Response Health Health Get
+  /reports/weakness/{student_alias_id}:
+    get:
+      tags:
+      security:
+      - bearerAuth: []
+      - report
+      summary: 弱项报告 v1：错误类型归因 + 证据计数 + 贝叶斯置信度 + 针对性练习
+      description: '按 error_type 聚合该学生作答事件的错误推断，产出弱项报告.
+
+
+        证据达阈值的错误类型给出归因结论 + 后验置信度 + 5 题针对性小卷；
+
+        未达阈值输出「证据不足」（不给定论、不给推荐）。'
+      operationId: get_weakness_report_reports_weakness__student_alias_id__get
+      parameters:
+      - name: student_alias_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+          title: Student Alias Id
+      - name: scene
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - enum:
+            - practice
+            - diagnosis
+            - measurement
+            type: string
+          - type: 'null'
+          description: 取数场景（D5 分场景口径；缺省=跨场景汇总）
+          title: Scene
+        description: 取数场景（D5 分场景口径；缺省=跨场景汇总）
+      - name: min_evidence
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          description: 证据阈值：低于此数输出「证据不足」
+          default: 3
+          title: Min Evidence
+        description: 证据阈值：低于此数输出「证据不足」
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WeaknessReport'
+        '401':
+          description: 未认证（缺令牌/过期/签名错/载荷矛盾）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorClass'
+        '403':
+          description: 已认证但角色不足或越权（alias 不归属）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorClass'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /review/due/{student_alias_id}:
+    get:
+      tags:
+      security:
+      - bearerAuth: []
+      - report
+      summary: 复习到期取题（固定间隔策略 v1：1/3/7/21 天）
+      description: '返回该学生已到期的在队复习条目（最逾期优先）.
+
+
+        队列由 sync_review_queue 在作答评分后同步；本端点只读。'
+      operationId: get_due_review_items_review_due__student_alias_id__get
+      parameters:
+      - name: student_alias_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+          title: Student Alias Id
+      - name: now
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+            format: date-time
+          - type: 'null'
+          description: 判定基准时刻（缺省=当前 UTC）
+          title: Now
+        description: 判定基准时刻（缺省=当前 UTC）
+      - name: limit
+        in: query
+        required: false
+        schema:
+          type: integer
+          maximum: 100
+          minimum: 1
+          default: 20
+          title: Limit
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ReviewQueueEntryPydantic'
+                title: Response Get Due Review Items Review Due  Student Alias Id  Get
+        '401':
+          description: 未认证（缺令牌/过期/签名错/载荷矛盾）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorClass'
+        '403':
+          description: 已认证但角色不足或越权（alias 不归属）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorClass'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+components:
+  schemas:
+    Content:
+      properties:
+        blocks:
+          items:
+            additionalProperties: true
+            type: object
+          type: array
+          title: Blocks
+      additionalProperties: true
+      type: object
+      required:
+      - blocks
+      title: Content
+      description: '§2.2 content 块：题面语义 AST + 素材版本引用.
+
+
+        为什么 blocks 用 list[dict] 而非强类型：题面 AST 因交互类型而异（选择题/
+
+        填空题/拖拽题块结构各不相同），D4 注册表承载具体校验；本处保持 permissive
+
+        让所有交互类型都能通过，是契约 §5 未对 content 强制 JSON Schema 的体现。'
+    CorpusRef:
+      properties:
+        corpus_version_id:
+          type: string
+          title: Corpus Version Id
+        digest:
+          type: string
+          title: Digest
+      additionalProperties: false
+      type: object
+      required:
+      - corpus_version_id
+      - digest
+      title: CorpusRef
+      description: 语料库版本引用（lineage.corpus_refs 元素）。
+    ErrorBindings:
+      items:
+        additionalProperties: true
+        type: object
+      type: array
+      title: ErrorBindings
+      description: '§2.2 error_bindings 块：选项/评分维度 → 错误类型 + 置信规则（R-Q-06/07）.
+
+
+        为什么用 RootModel：error_bindings 在 JSONB 中顶层是数组（list[dict]），
+
+        每个元素是一个错误绑定；用 RootModel 让 Pydantic 模型直接对应数组，
+
+        而非 {bindings: [...]} 的包装对象，与 DB 存储结构对齐。
+
+        为什么元素是 permissive dict：契约 §5 未对 error_bindings 单元素结构
+
+        强制 JSON Schema，R-Q-06/07 的具体结构由错误类型注册表承载。'
+    Feedback:
+      properties:
+        event_id:
+          type: string
+          format: uuid
+          title: Event Id
+          description: response_event 事件 id
+        correct:
+          type: boolean
+          title: Correct
+        dimension_scores:
+          additionalProperties:
+            type: number
+          type: object
+          title: Dimension Scores
+        error_inferences:
+          items:
+            additionalProperties: true
+            type: object
+          type: array
+          title: Error Inferences
+        error_feedback:
+          items:
+            additionalProperties: true
+            type: object
+          type: array
+          title: Error Feedback
+          description: 按错误类型展示的反馈（error_type_id + 干扰项设计 label + 置信度）
+        explanation:
+          anyOf:
+          - items:
+              type: string
+            type: array
+          - type: 'null'
+          title: Explanation
+          description: 题目解析（content 中 explanation/solution/analysis 块）
+        progress:
+          additionalProperties:
+            type: integer
+          type: object
+          title: Progress
+        session_status:
+          type: string
+          title: Session Status
+      additionalProperties: false
+      type: object
+      required:
+      - event_id
+      - correct
+      - dimension_scores
+      - error_inferences
+      - progress
+      - session_status
+      title: Feedback
+      description: 提交作答的即时反馈（含按错误类型展示的解析）.
+    GateCertificateRead:
+      properties:
+        cert_id:
+          type: string
+          title: Cert Id
+        artifact_ref:
+          type: string
+          title: Artifact Ref
+        cert_type:
+          type: string
+          title: Cert Type
+        policy_version:
+          type: string
+          title: Policy Version
+        issued_by:
+          type: string
+          title: Issued By
+        issued_at:
+          anyOf:
+          - type: string
+            format: date-time
+          - type: 'null'
+          title: Issued At
+        created_at:
+          anyOf:
+          - type: string
+            format: date-time
+          - type: 'null'
+          title: Created At
+        runs:
+          items:
+            $ref: '#/components/schemas/GateRunRead'
+          type: array
+          title: Runs
+      additionalProperties: false
+      type: object
+      required:
+      - cert_id
+      - artifact_ref
+      - cert_type
+      - policy_version
+      - issued_by
+      title: GateCertificateRead
+      description: 门证书 + 关联 runs（GET /gate_certificates/{cert_id} 响应）.
+    GateRunRead:
+      properties:
+        run_id:
+          type: string
+          title: Run Id
+        certificate_id:
+          type: string
+          title: Certificate Id
+        policy_version:
+          type: string
+          title: Policy Version
+        validator_id:
+          type: string
+          title: Validator Id
+        validator_version:
+          type: string
+          title: Validator Version
+        verdict:
+          type: string
+          title: Verdict
+        evidence:
+          additionalProperties: true
+          type: object
+          title: Evidence
+        confidence:
+          type: string
+          pattern: ^(?!^[-+.]*$)[+-]?0*\d*\.?\d*$
+          title: Confidence
+        cost_ms:
+          type: integer
+          title: Cost Ms
+        cost_tokens:
+          type: integer
+          title: Cost Tokens
+        run_at:
+          anyOf:
+          - type: string
+            format: date-time
+          - type: 'null'
+          title: Run At
+        created_at:
+          anyOf:
+          - type: string
+            format: date-time
+          - type: 'null'
+          title: Created At
+        verdicts:
+          items:
+            $ref: '#/components/schemas/GateVerdictRead'
+          type: array
+          title: Verdicts
+      additionalProperties: false
+      type: object
+      required:
+      - run_id
+      - certificate_id
+      - policy_version
+      - validator_id
+      - validator_version
+      - verdict
+      - evidence
+      - confidence
+      - cost_ms
+      - cost_tokens
+      title: GateRunRead
+      description: 单次验证器运行记录（读取响应）.
+    GateVerdictRead:
+      properties:
+        verdict_id:
+          type: integer
+          title: Verdict Id
+        run_id:
+          type: string
+          title: Run Id
+        detail:
+          additionalProperties: true
+          type: object
+          title: Detail
+        created_at:
+          anyOf:
+          - type: string
+            format: date-time
+          - type: 'null'
+          title: Created At
+      additionalProperties: false
+      type: object
+      required:
+      - verdict_id
+      - run_id
+      - detail
+      title: GateVerdictRead
+      description: 门判定明细（读取响应）.
+    HTTPValidationError:
+      properties:
+        detail:
+          items:
+            $ref: '#/components/schemas/ValidationError'
+          type: array
+          title: Detail
+      type: object
+      title: HTTPValidationError
+    InteractionRef:
+      properties:
+        interaction_id:
+          type: string
+          title: Interaction Id
+        interaction_params:
+          additionalProperties: true
+          type: object
+          title: Interaction Params
+      additionalProperties: false
+      type: object
+      required:
+      - interaction_id
+      - interaction_params
+      title: InteractionRef
+      description: '§2.2 interaction_ref 块：交互类型 + 交互参数.
+
+
+        interaction_id 必须在 registries/interaction.yaml 注册（D4）；
+
+        interaction_params 的具体结构由交互类型决定，本处保持 dict 不细化。'
+    ItemDetailResponse:
+      properties:
+        item_id:
+          type: string
+          title: Item Id
+        pack_id:
+          type: string
+          title: Pack Id
+        tier:
+          type: string
+          enum:
+          - A
+          - B
+          - C
+          - D
+          title: Tier
+        template_version_id:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Template Version Id
+        current_version_id:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Current Version Id
+        created_at:
+          anyOf:
+          - type: string
+            format: date-time
+          - type: 'null'
+          title: Created At
+        current_version:
+          anyOf:
+          - $ref: '#/components/schemas/ItemVersionPydantic'
+          - type: 'null'
+      additionalProperties: false
+      type: object
+      required:
+      - item_id
+      - pack_id
+      - tier
+      title: ItemDetailResponse
+      description: 'GET /items/{item_id} 响应：item 身份 + current_version（若有）.
+
+
+        current_version 为 None 表示该 item 尚无已发布版本（current_version_id IS NULL）。'
+    ItemTemplateVersionPydantic:
+      properties:
+        template_version_id:
+          type: string
+          title: Template Version Id
+        template_id:
+          type: string
+          title: Template Id
+        dsl_version:
+          type: string
+          title: Dsl Version
+        spec:
+          additionalProperties: true
+          type: object
+          title: Spec
+        status:
+          type: string
+          enum:
+          - draft
+          - published
+          - retired
+          title: Status
+        created_at:
+          anyOf:
+          - type: string
+            format: date-time
+          - type: 'null'
+          title: Created At
+      additionalProperties: false
+      type: object
+      required:
+      - template_version_id
+      - template_id
+      - dsl_version
+      - spec
+      - status
+      title: ItemTemplateVersionPydantic
+      description: 'ItemTemplateVersion 的 Pydantic 表示.
+
+
+        spec 字段保持 dict 不细化：母题 DSL 结构随 DSL 版本演化，本处不强约束。'
+    ItemVersionPydantic:
+      properties:
+        item_version_id:
+          type: string
+          title: Item Version Id
+        item_id:
+          type: string
+          title: Item Id
+        status:
+          type: string
+          enum:
+          - draft
+          - quarantined
+          - published
+          - retired
+          title: Status
+        objective:
+          $ref: '#/components/schemas/Objective'
+        interaction_ref:
+          $ref: '#/components/schemas/InteractionRef'
+        content:
+          $ref: '#/components/schemas/Content'
+        scoring_ref:
+          $ref: '#/components/schemas/ScoringRef'
+        error_bindings:
+          $ref: '#/components/schemas/ErrorBindings'
+        lineage:
+          $ref: '#/components/schemas/Lineage'
+        rendered_snapshot:
+          anyOf:
+          - additionalProperties: true
+            type: object
+          - type: 'null'
+          title: Rendered Snapshot
+        gate_certificate_id:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Gate Certificate Id
+        published_at:
+          anyOf:
+          - type: string
+            format: date-time
+          - type: 'null'
+          title: Published At
+        retired_at:
+          anyOf:
+          - type: string
+            format: date-time
+          - type: 'null'
+          title: Retired At
+        created_at:
+          anyOf:
+          - type: string
+            format: date-time
+          - type: 'null'
+          title: Created At
+      additionalProperties: false
+      type: object
+      required:
+      - item_version_id
+      - item_id
+      - status
+      - objective
+      - interaction_ref
+      - content
+      - scoring_ref
+      - error_bindings
+      - lineage
+      title: ItemVersionPydantic
+      description: 'ItemVersion 的 Pydantic 表示（聚合六大块强类型子模型）.
+
+
+        用于 API 入参校验/序列化；created_at 等服务端填字段保持 Optional。'
+    KpRef:
+      properties:
+        dimension:
+          type: string
+          title: Dimension
+        code:
+          type: string
+          title: Code
+      additionalProperties: false
+      type: object
+      required:
+      - dimension
+      - code
+      title: KpRef
+      description: '知识点引用（契约 §2.2.1 kp_set 元素）.
+
+
+        dimension：知识维度（''kp'' 等，供图谱分面查询）。
+
+        code：知识点编码（如 ''math.nal.decimal.compare''）。'
+    Lineage:
+      properties:
+        tier:
+          type: string
+          enum:
+          - A
+          - B
+          - C
+          - D
+          title: Tier
+        pipeline:
+          $ref: '#/components/schemas/Pipeline'
+        template_version_id:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Template Version Id
+        params:
+          anyOf:
+          - additionalProperties: true
+            type: object
+          - type: 'null'
+          title: Params
+        seed:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: Seed
+        corpus_refs:
+          anyOf:
+          - items:
+              $ref: '#/components/schemas/CorpusRef'
+            type: array
+          - type: 'null'
+          title: Corpus Refs
+        ai_ledger_refs:
+          anyOf:
+          - items:
+              type: string
+            type: array
+          - type: 'null'
+          title: Ai Ledger Refs
+        signed_by:
+          type: string
+          title: Signed By
+        signed_at:
+          type: string
+          title: Signed At
+      additionalProperties: false
+      type: object
+      required:
+      - tier
+      - pipeline
+      - signed_by
+      - signed_at
+      title: Lineage
+      description: '§2.2.2 lineage 块：生产谱系（R-Q-22）.
+
+
+        对应契约 §5.2 机器可校验 JSON Schema；
+
+        required = [tier, pipeline, signed_by, signed_at]；
+
+        tier ∈ {A,B} 时 template_version_id 与 params 必填（应用层校验，schema 不强制）；
+
+        tier ∈ {C,D} 且经 AI 起草时 ai_ledger_refs 非空（同上）。'
+    Objective:
+      properties:
+        kp_set:
+          items:
+            $ref: '#/components/schemas/KpRef'
+          type: array
+          title: Kp Set
+        kp_set_mode:
+          type: string
+          enum:
+          - single
+          - all_required
+          - compensatory
+          title: Kp Set Mode
+        cognitive_level:
+          type: string
+          enum:
+          - remember
+          - understand
+          - apply
+          - analyze
+          - evaluate
+          - create
+          title: Cognitive Level
+        gradeband:
+          type: string
+          enum:
+          - L
+          - M
+          - H
+          title: Gradeband
+        graph_release:
+          type: string
+          title: Graph Release
+        steps:
+          anyOf:
+          - items:
+              $ref: '#/components/schemas/StepRef'
+            type: array
+          - type: 'null'
+          title: Steps
+      additionalProperties: false
+      type: object
+      required:
+      - kp_set
+      - kp_set_mode
+      - cognitive_level
+      - gradeband
+      - graph_release
+      title: Objective
+      description: '§2.2.1 objective 块：知识标注集 + 认知层级 + 学段 + 图谱版本.
+
+
+        对应契约 §5.1 机器可校验 JSON Schema；required 字段缺一即校验失败。'
+    Pipeline:
+      properties:
+        id:
+          type: string
+          title: Id
+        version:
+          type: string
+          title: Version
+      additionalProperties: false
+      type: object
+      required:
+      - id
+      - version
+      title: Pipeline
+      description: 生产线标识（lineage.pipeline）。
+    ScoringRef:
+      properties:
+        scorer_id:
+          type: string
+          title: Scorer Id
+        scorer_params:
+          additionalProperties: true
+          type: object
+          title: Scorer Params
+      additionalProperties: false
+      type: object
+      required:
+      - scorer_id
+      - scorer_params
+      title: ScoringRef
+      description: '§2.2 scoring_ref 块：评分器 + 评分参数.
+
+
+        scorer_id 必须在 registries/scorer.yaml 注册（D4）；
+
+        scorer_params 的结构由评分器决定，本处保持 dict 不细化。'
+    SessionState:
+      properties:
+        session_id:
+          type: string
+          format: uuid
+          title: Session Id
+        status:
+          type: string
+          title: Status
+        scene:
+          type: string
+          title: Scene
+        gradeband:
+          type: string
+          title: Gradeband
+        paper_id:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Paper Id
+        total:
+          type: integer
+          title: Total
+          description: 主序列题量
+        main_answered:
+          type: integer
+          title: Main Answered
+          description: 主序列已作答数（=current_index）
+        answered_count:
+          type: integer
+          title: Answered Count
+          description: 累计作答数（含回测轮）
+        correct_count:
+          type: integer
+          title: Correct Count
+        wrong_count:
+          type: integer
+          title: Wrong Count
+          description: 错题标记数
+        retest_pending:
+          type: integer
+          title: Retest Pending
+          description: 待回测错题数
+        elapsed_active_sec:
+          type: integer
+          title: Elapsed Active Sec
+          description: 距上次休息确认以来的连续作答秒数
+        time_limit_sec:
+          type: integer
+          title: Time Limit Sec
+        remaining_sec:
+          type: integer
+          title: Remaining Sec
+          description: 距时长保护触发的剩余秒数（可为负=已超）
+        started_at:
+          type: string
+          format: date-time
+          title: Started At
+        completed_at:
+          anyOf:
+          - type: string
+            format: date-time
+          - type: 'null'
+          title: Completed At
+      additionalProperties: false
+      type: object
+      required:
+      - session_id
+      - status
+      - scene
+      - gradeband
+      - total
+      - main_answered
+      - answered_count
+      - correct_count
+      - wrong_count
+      - retest_pending
+      - elapsed_active_sec
+      - time_limit_sec
+      - remaining_sec
+      - started_at
+      title: SessionState
+      description: 会话状态（进度/已用时长/时长保护余量）.
+    StartSessionRequest:
+      properties:
+        gradeband:
+          anyOf:
+          - type: string
+            enum:
+            - L
+            - M
+            - H
+          - type: 'null'
+          title: Gradeband
+          description: 学段；paper_id 会话缺省取 paper.gradeband
+        scene:
+          type: string
+          enum:
+          - practice
+          - diagnosis
+          title: Scene
+          default: practice
+        paper_id:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Paper Id
+        item_version_ids:
+          anyOf:
+          - items:
+              type: string
+            type: array
+          - type: 'null'
+          title: Item Version Ids
+        retest_wrong:
+          type: boolean
+          title: Retest Wrong
+          description: 主序列走完后是否对错题回测一轮
+          default: false
+      additionalProperties: false
+      type: object
+      required:
+      - student_alias_id
+      title: StartSessionRequest
+      description: POST /sessions 请求体（paper_id 与 item_version_ids 二选一）.
+    StartSessionResponse:
+      properties:
+        session_id:
+          type: string
+          format: uuid
+          title: Session Id
+        status:
+          type: string
+          title: Status
+        scene:
+          type: string
+          title: Scene
+        gradeband:
+          type: string
+          title: Gradeband
+        total:
+          type: integer
+          title: Total
+        time_limit_sec:
+          type: integer
+          title: Time Limit Sec
+      additionalProperties: false
+      type: object
+      required:
+      - session_id
+      - status
+      - scene
+      - gradeband
+      - total
+      - time_limit_sec
+      title: StartSessionResponse
+      description: POST /sessions 响应.
+    StepRef:
+      properties:
+        step_id:
+          type: string
+          title: Step Id
+        kp:
+          items:
+            type: string
+          type: array
+          title: Kp
+      additionalProperties: false
+      type: object
+      required:
+      - step_id
+      - kp
+      title: StepRef
+      description: 分步过程题的步骤级标注（R-Q-15）.
+    SubmitResponseRequest:
+      properties:
+        item_version_id:
+          type: string
+          title: Item Version Id
+        response:
+          additionalProperties: true
+          type: object
+          title: Response
+          description: 原始作答载荷（结构由交互类型 response_schema 保证）
+        duration_ms:
+          anyOf:
+          - type: integer
+            minimum: 0.0
+          - type: 'null'
+          title: Duration Ms
+          description: 作答耗时（毫秒）；NULL=未知，禁止填 0 冒充
+      additionalProperties: false
+      type: object
+      required:
+      - item_version_id
+      - response
+      title: SubmitResponseRequest
+      description: POST /sessions/{id}/responses 请求体.
+    TemplateDetailResponse:
+      properties:
+        template_id:
+          type: string
+          title: Template Id
+        pack_id:
+          type: string
+          title: Pack Id
+        current_version_id:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Current Version Id
+        created_at:
+          anyOf:
+          - type: string
+            format: date-time
+          - type: 'null'
+          title: Created At
+        current_version:
+          anyOf:
+          - $ref: '#/components/schemas/ItemTemplateVersionPydantic'
+          - type: 'null'
+      additionalProperties: false
+      type: object
+      required:
+      - template_id
+      - pack_id
+      title: TemplateDetailResponse
+      description: GET /templates/{template_id} 响应：母题身份 + current_version（若有）.
+    ValidationError:
+      properties:
+        loc:
+          items:
+            anyOf:
+            - type: string
+            - type: integer
+          type: array
+          title: Location
+        msg:
+          type: string
+          title: Message
+        type:
+          type: string
+          title: Error Type
+        input:
+          title: Input
+        ctx:
+          type: object
+          title: Context
+      type: object
+      required:
+      - loc
+      - msg
+      - type
+      title: ValidationError
+    ReviewQueueEntryPydantic:
+      properties:
+        entry_id:
+          type: string
+          format: uuid
+          title: Entry Id
+        student_alias_id:
+          type: string
+          format: uuid
+          title: Student Alias Id
+        item_version_id:
+          type: string
+          title: Item Version Id
+        policy_id:
+          type: string
+          title: Policy Id
+        policy_version:
+          type: string
+          title: Policy Version
+        stage:
+          type: integer
+          title: Stage
+        status:
+          type: string
+          title: Status
+        source_error_type_id:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Source Error Type Id
+        enqueued_at:
+          type: string
+          format: date-time
+          title: Enqueued At
+        due_at:
+          type: string
+          format: date-time
+          title: Due At
+      additionalProperties: false
+      type: object
+      required:
+      - entry_id
+      - student_alias_id
+      - item_version_id
+      - policy_id
+      - policy_version
+      - stage
+      - status
+      - enqueued_at
+      - due_at
+      title: ReviewQueueEntryPydantic
+      description: ReviewQueueEntry 的 Pydantic 表示（到期取题接口的响应元素）.
+    WeaknessItem:
+      properties:
+        error_type_id:
+          type: string
+          title: Error Type Id
+        status:
+          type: string
+          enum:
+          - concluded
+          - insufficient_evidence
+          title: Status
+        evidence_count:
+          type: integer
+          minimum: 0.0
+          title: Evidence Count
+        confidence:
+          type: number
+          maximum: 1.0
+          minimum: 0.0
+          title: Confidence
+        recommended_item_version_ids:
+          items:
+            type: string
+          type: array
+          title: Recommended Item Version Ids
+      additionalProperties: false
+      type: object
+      required:
+      - error_type_id
+      - status
+      - evidence_count
+      - confidence
+      title: WeaknessItem
+      description: "单错误类型的弱项条目.\n\nstatus：\n- concluded：证据达阈值，可归因（confidence 为贝叶斯后验）\n\
+        - insufficient_evidence：证据不足，不给定论（confidence 仍返回当前\n  后验供参考，但消费方不得当作结论呈现；§4.7\
+        \ 允许输出证据不足）\nrecommended_item_version_ids：针对性练习 5 题小卷（仅 concluded 时非空——\n\
+        没有定论的推荐是误导）；已剔除产生过该错误证据的题目版本。"
+    WeaknessReport:
+      properties:
+        student_alias_id:
+          type: string
+          format: uuid
+          title: Student Alias Id
+        scene:
+          anyOf:
+          - type: string
+            enum:
+            - practice
+            - diagnosis
+            - measurement
+          - type: 'null'
+          title: Scene
+        min_evidence:
+          type: integer
+          minimum: 1.0
+          title: Min Evidence
+        generated_at:
+          type: string
+          format: date-time
+          title: Generated At
+        items:
+          items:
+            $ref: '#/components/schemas/WeaknessItem'
+          type: array
+          title: Items
+      additionalProperties: false
+      type: object
+      required:
+      - student_alias_id
+      - min_evidence
+      - generated_at
+      - items
+      title: WeaknessReport
+      description: '弱项报告 v1：按错误类型聚合作答事件的归因报告.
+
+
+        scene：本报告的取数场景（None=未过滤，跨场景汇总）；D5 禁止混估——
+
+        需要分场景口径时调用方必须显式传 scene，报告如实回显取数口径。
+
+        items 按 evidence_count 降序、error_type_id 升序（确定性）。'
+    NextItemResponse:
+      type: object
+      title: NextItemResponse
+      description: '下一题载荷。done=true 时仅含 done（会话完成）；否则携带题目与 A4 追溯字段。placement_token 实例池路径可为 null（core/session TopicOrderStore PlacementToken *string）；A4 的作答侧 source_ref 见 response_event 契约（对象形态），不在本响应重复声明'
+      required:
+      - done
+      properties:
+        done:
+          type: boolean
+          title: Done
+          description: 会话完成标记（true 时其余字段缺省）
+        placement_token:
+          type:
+          - string
+          - 'null'
+          title: Placement Token
+          description: A4 追溯：卷序列路径的题位令牌；实例池路径为 null
+        item_version_id:
+          type: string
+          title: Item Version Id
+          description: A4 追溯：出题实例版本 id
+        item:
+          type: object
+          title: Item
+          description: 题目渲染载荷（结构由 interaction_ref 渲染契约约束）
+      additionalProperties: false
+    ErrorClass:
+      type: object
+      title: ErrorClass
+      description: 统一脱敏错误形态（仅 error_class 单字段，零内部细节）
+      required:
+      - error_class
+      properties:
+        error_class:
+          type: string
+          title: Error Class
+          description: '全集对齐 api/middleware/errmap.go 常量 + api.go 占位路由（not_implemented）；origin_forbidden 由 CORS 边界、payload_too_large/bad_request 由体限与解析、rate_limited 由限流、not_found/internal 由错误映射与 501 占位产出'
+          enum:
+          - unauthorized
+          - forbidden
+          - origin_forbidden
+          - rate_limited
+          - payload_too_large
+          - bad_request
+          - not_found
+          - internal
+          - not_implemented
+      additionalProperties: false
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: opaque-short-lived-token
+      description: 短期 HMAC 令牌（core/auth 签发；主体类型 student/staff/ops/service）
