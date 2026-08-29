@@ -40,3 +40,4 @@ ai_runner.ps1
 tools/bin/
 .sqlc_tmp/
 frozencontract.exe
+traceability.exe
