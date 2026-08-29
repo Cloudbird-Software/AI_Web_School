@@ -1,6 +1,6 @@
 module github.com/Cloudbird-Software/AI_Web_School
 
-go 1.26.0
+go 1.25.0
 
 require (
 	github.com/boundaryml/baml v0.226.1
