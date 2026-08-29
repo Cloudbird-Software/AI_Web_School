@@ -29,6 +29,13 @@ type ScoreResult struct {
 	Confidence   float64
 	Model        string // 模型标识（AI 评分必填，写入 scoring_trace）；确定性评分器为空
 	ModelVersion string // 模型版本（AI 评分必填，写入 scoring_trace）；确定性评分器为空
+	// EvidenceJSON 是评分证据的 canonical JSON 序列（scorer.yaml
+	// unified_contract.output_schema 必备输出 evidence + error_inferences 的
+	// 承载面；空串 = 本评分器无证据输出）。为什么是字符串而非 map：replay
+	// 断言对 Result 做 == 结构比较，map 字段使结构不可比较——证据以确定性
+	// JSON（encoding/json 对 map 键排序）随结果走，Runner 落 trace 时解码为
+	// 加性键 evidence（契约 §3：scoring_trace 可扩展只增不改）.
+	EvidenceJSON string
 }
 
 // Scorer 是评分器注册表接口。human_confirm 兜底的处置见 ADR-0005（申请中）。
