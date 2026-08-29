@@ -76,7 +76,7 @@
 
 | 条款 | 层级 | 实证路径 | 状态 |
 |---|---|---|---|
-| X1 | CI | .github/workflows/ci.yml::repo-gate 反测试削弱 + test-freeze（specs/test-freeze/MANIFEST.sha256 哈希冻结） | 已强制 |
+| X1 | CI | .github/workflows/ci.yml::repo-gate 反测试削弱 + specs/test-freeze/MANIFEST.sha256（哈希冻结清单） | 已强制 |
 | X2 | CI | org:.github/workflows/adversary-gate.yml（对抗审查，与 P2/P3 信号面联动） | 已强制（org 门；伪造成功的最终防线=人审） |
 | X3 | CI | .github/workflows/ci.yml::repo-gate 泄密扫描 + core/auth/credential.go::Registry.Mask（三出口屏蔽） | 已强制 |
 | X4 | 流程 | tasks/board.md（owner_module 互斥，tools/opc board 校验） | 仅纪律 |

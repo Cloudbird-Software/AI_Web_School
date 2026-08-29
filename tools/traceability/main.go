@@ -22,6 +22,10 @@ import (
 	"strings"
 )
 
+// matrixRelPath 是矩阵文件相对仓库根的路径（specs/ 根——引擎检测面外，
+// 载体差异记录见矩阵文件头注）。
+const matrixRelPath = "specs/traceability-matrix.md"
+
 // 宪法条款标题行的编号提取：**V1 …** / **A10 …** / **D3 …** / **P9 …** / **X13 …**
 var constitutionClauseRe = regexp.MustCompile(`\*\*([VADPX])(\d{1,2})\b`)
 
@@ -85,7 +89,7 @@ func run(root string) *runError {
 	if err != nil {
 		return &runError{[]violation{{clause: "constitution", reason: err.Error()}}}
 	}
-	covered, rows, err := parseMatrix(filepath.Join(root, "specs", "traceability-matrix.md"))
+	covered, rows, err := parseMatrix(filepath.Join(root, matrixRelPath))
 	if err != nil {
 		return &runError{[]violation{{clause: "matrix", reason: err.Error()}}}
 	}
@@ -97,21 +101,20 @@ func run(root string) *runError {
 		}
 	}
 
-	// 校验 2+3：已强制须有路径；路径文件须存在
+	// 校验 2+3：已强制须有可解析路径（fail-open 修复：—（注）/ -前缀 / #锚 等
+	// 一切解析为空的形态对「已强制」行一律红——红队审查 Major-1）；路径文件须存在
 	for _, row := range rows {
 		enforced := strings.Contains(row.status, "已强制")
-		if enforced && strings.TrimSpace(row.paths) == "" {
+		paths := splitPaths(row.paths)
+		if enforced && len(paths) == 0 {
 			violations = append(violations, violation{row.clause,
-				"状态为已强制但实证路径为空（P9：声称已强制但无实证=最高优先级）"})
+				"状态为已强制但无可解析实证路径（P9：声称已强制但无实证=最高优先级）"})
 			continue
 		}
-		if strings.TrimSpace(row.paths) == "" || strings.TrimSpace(row.paths) == "—" {
-			if enforced {
-				violations = append(violations, violation{row.clause, "已强制但路径为 —"})
-			}
+		if len(paths) == 0 {
 			continue
 		}
-		for _, p := range splitPaths(row.paths) {
+		for _, p := range paths {
 			if strings.HasPrefix(p, "org:") {
 				continue // org: 前缀=外部仓引用（.github/CI-Workflows），存在性由 org gate 承载
 			}
@@ -203,32 +206,51 @@ type matrixRow struct {
 	status string
 }
 
-// splitPaths 把路径列拆为纯文件路径条目：`;` 分隔；每条剥离全角括号注释
-// （（...）为人类可读说明，不参与存在性校验）与多余空白；`—` 开头表示
-// 明示无实证（返回空切片）。剥离后为空的条目跳过。
+// splitPaths 把路径列拆为纯文件路径条目：半角 `;` 与全角 `；` 以及 ` + `
+// 连接列表均作分隔（红队审查 Major-2：多路径行只查首段是假绿盲区）；
+// 每条剥离全角括号注释（（...）为人类可读说明）与多余空白；`—`/`-` 开头
+// 表示明示无实证（返回空切片，由调用方对「已强制」行报红）。
 func splitPaths(paths string) []string {
 	t := strings.TrimSpace(paths)
 	if t == "" || strings.HasPrefix(t, "—") || strings.HasPrefix(t, "-") {
 		return nil
 	}
+	// 括号注释先整列剥离（括号内可含 ；/+，先剥再拆——实矩阵五行曾被括号内
+	// 分号/加号误切出幽灵条目）；半角括号对同法处理。
+	t = removeParens(t, "（", "）")
+	t = removeParens(t, "(", ")")
+	t = strings.ReplaceAll(t, "；", ";")
 	var out []string
-	for _, p := range strings.Split(t, ";") {
-		p = stripParens(strings.TrimSpace(p))
-		p = strings.TrimSpace(strings.Trim(p, "+，, "))
-		if p != "" && p != "—" {
-			out = append(out, p)
+	for _, seg := range strings.Split(t, ";") {
+		for _, p := range strings.Split(seg, " + ") {
+			p = strings.TrimSpace(strings.Trim(p, "+，, "))
+			if p != "" && p != "—" {
+				out = append(out, p)
+			}
 		}
 	}
 	return out
 }
 
-// stripParens 去除首段文件路径后随的全角括号注释。
-func stripParens(s string) string {
-	if i := strings.Index(s, "（"); i >= 0 {
-		s = s[:i]
+// removeParens 成对剥离 open...close 段（非嵌套，单遍扫描）；close 位置
+// 留一个空格保分隔（剥 `（注）+ path` 粘连形态）。
+func removeParens(s, open, close string) string {
+	var b strings.Builder
+	depth := 0
+	for _, r := range s {
+		switch string(r) {
+		case open:
+			depth++
+		case close:
+			if depth > 0 {
+				depth--
+				b.WriteByte(' ')
+			}
+		default:
+			if depth == 0 {
+				b.WriteRune(r)
+			}
+		}
 	}
-	if i := strings.Index(s, "("); i >= 0 {
-		s = s[:i]
-	}
-	return strings.TrimSpace(s)
+	return b.String()
 }
