@@ -21,6 +21,7 @@
 package main
 
 import (
+	"encoding/json"
 	"flag"
 	"fmt"
 	"io"
@@ -81,9 +82,33 @@ func resolveRoot(flagVal string) (string, error) {
 	}
 }
 
-// parseManifest 解析 FROZEN.txt：每行一个路径；跳过空行与 # 注释行；
-// 返回条目列表与重复条目（重复即清单被污染，fail-loud）.
+// parseManifest 解析 FROZEN.txt：兼容两种格式——
+//  1. JSON 数组（T-W5-028 起：{"frozen_contracts": [...]}）——contract-check
+//     引擎按扩展名+内容双判定把 specs/contracts/** 下被触碰的非 JSON 文件
+//     一律按 JSON 解析（纯文本清单必红，main 实证），故清单本体升级为 JSON；
+//  2. v1 纯文本逐行格式（保持兼容，回退路径）。
+//
+// 两种形态语义一致：路径清单，只增不改；重复条目=清单被污染，fail-loud。
 func parseManifest(data []byte) (entries []string, dupes []string) {
+	var wrapper struct {
+		FrozenContracts []string `json:"frozen_contracts"`
+	}
+	if err := json.Unmarshal(data, &wrapper); err == nil && wrapper.FrozenContracts != nil {
+		seen := map[string]bool{}
+		for _, line := range wrapper.FrozenContracts {
+			line = strings.TrimSpace(filepath.ToSlash(line))
+			if line == "" {
+				continue
+			}
+			if seen[line] {
+				dupes = append(dupes, line)
+				continue
+			}
+			seen[line] = true
+			entries = append(entries, line)
+		}
+		return entries, dupes
+	}
 	seen := map[string]bool{}
 	for _, raw := range strings.Split(string(data), "\n") {
 		line := strings.TrimSpace(strings.TrimSuffix(raw, "\r"))
