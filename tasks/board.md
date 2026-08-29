@@ -22,6 +22,11 @@
 | T-W5-010 | #96（已合并） | 会话入口 fail-closed 授权门（nil 账=500 拒绝）+ 防 oracle 探测排序（越权判据先于授权门） |
 | T-W5-013 | #97（已合并） | 姓名脱敏边界修复 + Go 原生 fuzz（修复前 fuzz 即红、修复后 36 万 execs 零 crasher） |
 | W6-math 第二三阶 | #88+#95（已合并） | **数学轮 10/10 母题达成**（≈16.2 万参数点全域扫描、唯一率 100%、同 seed 逐字节可回放）；开发中抓到 2 个真换算 bug |
+| T-W5-028 | #105+#108 分支（已合并 #105；owner 补 FROZEN 登记与签署） | ADR-0006 待批准（openapi-v1.1.yaml 契约草案 + 契约测试三件）；红队两轮对抗审查闭环（B1/B2/M1 全修） |
+| T-W5-027 | #108 分支 task/wave7-027（00fc5bb，adversary 回写等待中） | 宪法 49 条实证矩阵 + traceability 机器校验器（实仓绿）；载体差异（specs/contracts 检测面 fail-closed）已记录为 A8 首条 |
+| W6-math 1-3 阶 | #84/#88/#95（已合并） | 数学 10/10 母题（≈16.2 万参数点全域验证） |
+| W6-lang 1-2 阶 | #106/#107（已合并） | 语文：语料管线+char_in_corpus+字辨认（20/20 互异）；句子重组半确定档（BAML+六条可解性校验） |
+| W6-eng 第一阶 | #110（已合并） | 英语：GSL 词表节选 + 词汇拼写/语法单选两母题（243 点全域互异、31 mutants） |
 | T-W5-019 | #72（已合并） | 0025 留痕迁移（activated_by）+ core/estimator 并发安全（64 goroutine -race 恰一活跃）；事实修正：0016 已有偏唯一索引，真缺陷是无锁+无留痕 |
 | T-W5-017 | #76（已合并） | core/events 事务显式传递（ErrNoTransaction fail-closed）+ go/parser 静态守卫（零 Commit/Rollback，红绿双向）+ fakeTx 回滚一致性 |
 | T-W5-014 | #75（已合并） | core/ai 总线：fail-closed 三路径（PII 剥离/台账/预算）+ 0026 ai_call_ledger（append-only 触发器）+ 出站 https 强制 + 零新依赖；W6 LLM harness 地基 |
