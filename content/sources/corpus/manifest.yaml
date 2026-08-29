@@ -11,3 +11,13 @@ corpora:
       真实全量字表/词表入库前必须过 owner 逐源许可审查（issue #34 §五）。
     chars_file: chars-demo-v1.txt
     words_file: words-demo-v1.txt
+  - source_id: eng-basic-vocab-v1
+    title: GSL 通用词表节选样例（英语确定性档用）
+    license: CC0-1.0
+    license_note: >
+      本表为英语轮演示语料：由开发会话从 General Service List（GSL, Michael West,
+      1953）人工节选的 119 个基础词（名词/动词/形容词）并配中文释义。GSL 为 1953 年
+      出版物，属公开领域；单词/释义本身是语言符号不构成著作权客体，节选编排为本仓
+      原创，按 CC0-1.0 释出。节选规模硬上限 ≤120 词（装载器 fail-closed 强制）；
+      真实全量词表入库前必须过 owner 逐源许可审查（issue #34 §五）。
+    words_file: words-eng-basic-v1.txt
