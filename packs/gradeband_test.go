@@ -10,9 +10,9 @@ import (
 // 维度：类型化承载」的接口面实证——T-W5-027 红队审查指认 TestGradeBandPack
 // 为虚构符号后补真）。
 type gradeBandStub struct {
-	id            registry.Entry
-	minGrade      int
-	maxGrade      int
+	id       registry.Entry
+	minGrade int
+	maxGrade int
 }
 
 func (s gradeBandStub) Entry() registry.Entry { return s.id }
