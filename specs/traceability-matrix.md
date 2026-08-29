@@ -34,7 +34,7 @@
 | A1 | DB+测试 | db/migrations/0024_content_ledger_append_only.up.sql; core/content/publish.go::PublishService | 已强制（单一内容资产域，发布经同一服务） |
 | A2 | DB+服务 | db/migrations/0028_gate_cert_fk_failure_trail.up.sql; core/gate/verifier.go::CertificateVerifier.Verify; core/content/publish.go（发布持证验真 fail-loud） | 已强制 |
 | A3 | DB+服务 | db/migrations/0024_content_ledger_append_only.up.sql; db/migrations/0029_pii_vault_roles.up.sql; db/migrations/0030_session_topic_order_immutable.up.sql（账表 append-only 触发器族）; core/estimator/pointer.go::ActivePointerStore（版本可切换历史可引用） | 已强制 |
-| A4 | 契约+服务 | specs/contracts/api/openapi-v1.1.yaml::NextItemResponse（T-W5-028 交付物）（placement_token/source_ref 显式化，ADR-0006 待批）; core/gate/validators/digest.go::ContentDigest | 已强制（服务面）；契约显式化随 ADR-0006 签署生效 |
+| A4 | 契约+服务 | specs/contracts/api/openapi-v1.1.json::NextItemResponse（T-W5-028 交付物）（placement_token/source_ref 显式化，ADR-0006 待批）; core/gate/validators/digest.go::ContentDigest | 已强制（服务面）；契约显式化随 ADR-0006 签署生效 |
 | A5 | CI | tools/go-lint/import-boundary（core 禁 import packs，X6 同源）; Makefile::check-go | 已强制 |
 | A6 | 测试 | packs/packs_test.go::TestGradeBandPack（学段包类型化承载框架） | 已强制（框架面）；学段差异内容 W6-W7 |
 | A7 | 服务 | core/content/publish.go::PublishService（统一入库服务/同一校验门） | 已强制 |

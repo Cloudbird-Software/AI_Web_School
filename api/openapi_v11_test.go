@@ -1,6 +1,6 @@
 // Package api 的 v1.1 契约一致性测试（T-W5-028 验收 #3）。
 //
-// 契约事实源：specs/contracts/api/openapi-v1.1.yaml（ADR-0006 草案）与实际路由表的双向锁定：
+// 契约事实源：specs/contracts/api/openapi-v1.1.json（ADR-0006 草案）与实际路由表的双向锁定：
 // （上一行保留完整契约路径字面量——frozencontract 守卫的覆盖判定依据）
 // 路径+方法集合相等、业务端点均有 security 声明、/health 匿名、
 // StartSessionRequest 无 student_alias_id、additionalProperties: true 零出现。
@@ -28,7 +28,7 @@ type v11Doc struct {
 func loadV11(t *testing.T) *v11Doc {
 	t.Helper()
 	// 测试文件在 api/ 下，仓库根为上两级
-	p := filepath.Join("..", "specs", "contracts", "api", "openapi-v1.1.yaml")
+	p := filepath.Join("..", "specs", "contracts", "api", "openapi-v1.1.json")
 	b, err := os.ReadFile(p)
 	if err != nil {
 		t.Fatalf("读 v1.1 契约失败: %v", err)
@@ -124,7 +124,7 @@ func TestOpenAPIV11NoRequestAliasAndExplicitNext(t *testing.T) {
 		t.Fatal("NextItemResponse 缺 done（required 集合消解 done 互斥）")
 	}
 	// v1.1 全文不再新增 additionalProperties: true 相对 v1 的面孔（/next 的那处已除名）
-	raw, err := os.ReadFile(filepath.Join("..", "specs", "contracts", "api", "openapi-v1.1.yaml"))
+	raw, err := os.ReadFile(filepath.Join("..", "specs", "contracts", "api", "openapi-v1.1.json"))
 	if err != nil {
 		t.Fatal(err)
 	}
