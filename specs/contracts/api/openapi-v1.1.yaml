@@ -13,8 +13,10 @@ info:
       source_ref 归作答事件账契约），取消 additionalProperties: true。
     v1 冻结文件零改动。FROZEN.txt 登记由 owner 在 ADR-0006 签署时执行
     （contract-drift 引擎对非 JSON 清单 fail-closed，追加动作升级 owner）。
-  version: 1.1.0-draft
-  x-frozen: false
+  version: 1.1.0-frozen
+  x-frozen: true
+  x-frozen-by: ADR-0006
+  x-frozen-at: 2026-08-29
   x-adr: ADR-0006
   x-supersedes: specs/contracts/api/openapi-v1.yaml
 paths:
