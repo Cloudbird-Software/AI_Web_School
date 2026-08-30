@@ -1,7 +1,8 @@
-// Command langgen 是语文轮实例批量生成入口（mathgen 同构）。
+// Command langgen 是语文轮实例批量生成入口（mathgen/enggen 同构）。
 //
 // 确定性档：langgen -n 20 -out out/langgen/
-// 每母题生成 n 个实例 → 全部过独立校验器 → 结构互异断言（唯一率 100%）
+// 四类确定性母题（字辨认/拼音选字/词义关系/偏旁归类）每母题生成 n 个实例
+// → 全部过独立校验器 → 结构互异断言（唯一率 100%）
 // → 写 JSONL（每行一实例，content 摘要含于字段）+ 汇总报告到 stdout。
 //
 // 半确定档（GO-RW-012/审计 #157 接线）：langgen -reorg 5
@@ -38,22 +39,24 @@ func main() {
 	modelVersion := flag.String("model-version", "2024-07-18", "D10 台账 ModelVersion")
 	flag.Parse()
 
-	corpus, err := subjectlang.LoadCorpus(
-		filepath.Join("content", "sources", "corpus", "manifest.yaml"),
-		"demo-common-chars-v1")
-	if err != nil {
-		fatal(err)
-	}
+	manifestPath := filepath.Join("content", "sources", "corpus", "manifest.yaml")
 
 	if *reorg > 0 {
+		corpus, err := subjectlang.LoadCorpus(manifestPath, subjectlang.SourceDemoChars)
+		if err != nil {
+			fatal(err)
+		}
 		runReorg(corpus, *reorg, *out, *target, *gradeband, *provider, *model, *modelVersion)
 		return
 	}
 
-	gens, err := subjectlang.BuiltinGenerators(corpus)
+	// 确定性档批量：全部母题（字辨认/拼音选字/词义关系/偏旁归类）+ 独立校验器
+	// 就地配齐（语料任一来源失配即整体失败，fail-closed）。
+	suite, err := subjectlang.BuildDeterministicSuite(manifestPath)
 	if err != nil {
 		fatal(err)
 	}
+	gens := suite.Generators
 	if err := os.MkdirAll(*out, 0o755); err != nil {
 		fatal(err)
 	}
@@ -63,10 +66,17 @@ func main() {
 	for _, g := range gens {
 		var sb strings.Builder
 		seen := map[string]bool{}
+		validate := suite.Validators[g.Entry().ID]
 		for i := 0; i < *n; i++ {
 			inst, err := g.Instance(i)
 			if err != nil {
 				fatal(fmt.Errorf("%s Instance(%d): %w", g.Entry().ID, i, err))
+			}
+			// 批量面真跑独立校验器（不是只在测试里跑）：按模板分派，逐实例重判。
+			if validate != nil {
+				if verr := validate(inst); verr != nil {
+					fatal(fmt.Errorf("%s Instance(%d) 校验器拒绝: %w", g.Entry().ID, i, verr))
+				}
 			}
 			digest, derr := subjectlang.InstanceDigest(inst)
 			if derr != nil {
