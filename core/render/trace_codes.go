@@ -40,8 +40,9 @@ const shortCodeLen = 6
 // 细分原因见 wrap 文本.
 var ErrInvalidCode = errors.New("render: 追溯码入参非法")
 
-// ErrQRSVGNotImplemented 是 QR SVG 生成的显式骨架哨兵（Python 侧 qrcode
-// 库的能力，Go 侧零新依赖约束下不引入；接线时替换实现，签名不变）.
+// ErrQRSVGNotImplemented 是 QR SVG 骨架期的历史哨兵（#152 已接线专用实现，
+// 本哨兵不再由 GenerateQRSVG 返回；保留仅为兼容 assembly 编排面遗留的
+// errors.Is 分支——err==nil 分支优先生效，见 core/assembly/orchestrator.go）.
 var ErrQRSVGNotImplemented = errors.New("render: QR SVG 生成未实现（零新依赖约束下的 IO 骨架，待接线专用实现）")
 
 // luhnChecksum 计算 data 字符串的 Luhn 校验位（0-9）。
@@ -203,15 +204,8 @@ func VerifyItemShortCode(code string) bool {
 	return luhnVerify(code)
 }
 
-// GenerateQRSVG 生成 QR 码 SVG 字符串（IO 骨架，显式留白）。
-//
-// Python 侧用 qrcode 库生成 SVG（位图 PNG 嵌入会模糊，SVG 适合嵌入
-// HTML/PDF）；Go 侧零新依赖约束（AGENTS 硬规则 3）不引入 QR 位图/矢量
-// 生成库，本函数保留签名占位并显式失败——调用方在接线专用实现前必须
-// 走 Python 出口或人工回卷贴码，不得静默降级。
-func GenerateQRSVG(payload string, boxSize, border int) (string, error) {
-	return "", fmt.Errorf("%w: payload=%q boxSize=%d border=%d", ErrQRSVGNotImplemented, payload, boxSize, border)
-}
+// GenerateQRSVG 的实现见 qr_svg.go（#152 接线：ISO 18004 编码器 +
+// SvgPathImage 形态 SVG 序列化，签名不变）。
 
 // TraceChain 是回溯链字典（短码 → 题版本 → 签发证书 → 签发人）的类型化形态，
 // 对应冻结实现 build_trace_chain 的返回 dict.

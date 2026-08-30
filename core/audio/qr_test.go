@@ -2,17 +2,17 @@ package audio
 
 import (
 	"errors"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
-
-	"github.com/Cloudbird-Software/AI_Web_School/core/render"
 )
 
 // qr_test.go：卷面贴码验收（冻结实现 qr_generator.py 跨语言黄金互验）。
 //   - 签名 URL 字节级黄金（Python 现算：HMAC-SHA256 前 32 hex + urlencode 序）；
 //   - 验签：正确/过期/篡改/错密钥/结构破损；
-//   - QR SVG 骨架面如实上抛（不静默降级）。
+//   - QR SVG 全量面与冻结实现逐字节互验（#152 接线）。
 
 // 黄金采样（Python datetime(2026,8,30,tzinfo=utc) + 24h）.
 const (
@@ -73,14 +73,22 @@ func TestGenerateSignedURLErrorAndDeterminism(t *testing.T) {
 	}
 }
 
-func TestGenerateQRSVGIsExplicitSkeleton(t *testing.T) {
-	// QR SVG 位图是 render.GenerateQRSVG 骨架面：如实上抛，不静默降级.
-	_, err := GenerateQR(goldenQRAudioID, goldenQRPaperID, QROptions{Secret: goldenQRSigSeed, Now: qrGoldenNow()})
-	if err == nil {
-		t.Fatal("骨架期 GenerateQR 必须显式失败")
+func TestGenerateQRMatchesFrozenSVG(t *testing.T) {
+	// QR SVG 位图已由 #152 接线：全量面（签名 URL + QR SVG）与冻结实现
+	// 逐字节互验（黄金 SVG 与签名 URL 黄金同源采样）.
+	u, err := GenerateQR(goldenQRAudioID, goldenQRPaperID, QROptions{Secret: goldenQRSigSeed, Now: qrGoldenNow()})
+	if err != nil {
+		t.Fatalf("GenerateQR: %v", err)
 	}
-	if !errors.Is(err, render.ErrQRSVGNotImplemented) {
-		t.Fatalf("必须透传 render 骨架哨兵：got=%v", err)
+	if u.QRSVG == "" {
+		t.Fatal("接线后 GenerateQR 必须产出 QR SVG，不得留白")
+	}
+	golden, err := os.ReadFile(filepath.FromSlash("../render/testdata/qrsvg/audio_golden_url.golden"))
+	if err != nil {
+		t.Fatalf("读黄金基准: %v", err)
+	}
+	if u.QRSVG != string(golden) {
+		t.Fatalf("QR SVG 与冻结实现逐字节分歧：got 长度 %d / want 长度 %d", len(u.QRSVG), len(golden))
 	}
 }
 
