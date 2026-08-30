@@ -81,3 +81,63 @@ func (c DraftInstance) Encode() (*cffi.HostValue, error) {
 func (c DraftInstance) BamlTypeName() string {
 	return "DraftInstance"
 }
+
+type SentenceReorg struct {
+	Sentence    *string  `json:"sentence"`
+	Answer      *string  `json:"answer"`
+	Distractors []string `json:"distractors"`
+	Explanation *string  `json:"explanation"`
+}
+
+func (c *SentenceReorg) Decode(holder *cffi.CFFIValueClass, typeMap baml.TypeMap) {
+	typeName := holder.Name
+	if typeName.Namespace != cffi.CFFITypeNamespace_STREAM_TYPES {
+		panic(fmt.Sprintf("expected cffi.CFFITypeNamespace_STREAM_TYPES, got %s", string(typeName.Namespace.String())))
+	}
+	if typeName.Name != "SentenceReorg" {
+		panic(fmt.Sprintf("expected SentenceReorg, got %s", typeName.Name))
+	}
+
+	for _, field := range holder.Fields {
+		key := field.Key
+		valueHolder := field.Value
+		switch key {
+
+		case "sentence":
+			c.Sentence = baml.Decode(valueHolder).Interface().(*string)
+
+		case "answer":
+			c.Answer = baml.Decode(valueHolder).Interface().(*string)
+
+		case "distractors":
+			c.Distractors = baml.Decode(valueHolder).Interface().([]string)
+
+		case "explanation":
+			c.Explanation = baml.Decode(valueHolder).Interface().(*string)
+
+		default:
+
+			panic(fmt.Sprintf("unexpected field: %s in class SentenceReorg", key))
+
+		}
+	}
+
+}
+
+func (c SentenceReorg) Encode() (*cffi.HostValue, error) {
+	fields := map[string]any{}
+
+	fields["sentence"] = c.Sentence
+
+	fields["answer"] = c.Answer
+
+	fields["distractors"] = c.Distractors
+
+	fields["explanation"] = c.Explanation
+
+	return baml.EncodeClass("SentenceReorg", fields, nil)
+}
+
+func (c SentenceReorg) BamlTypeName() string {
+	return "SentenceReorg"
+}

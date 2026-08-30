@@ -23,6 +23,8 @@ import (
 var typeMap = map[string]reflect.Type{
 	"TYPES.DraftInstance":        reflect.TypeOf(types.DraftInstance{}),
 	"STREAM_TYPES.DraftInstance": reflect.TypeOf(stream_types.DraftInstance{}),
+	"TYPES.SentenceReorg":        reflect.TypeOf(types.SentenceReorg{}),
+	"STREAM_TYPES.SentenceReorg": reflect.TypeOf(stream_types.SentenceReorg{}),
 
 	"TYPES.InteractionTier": reflect.TypeOf(types.InteractionTier("")),
 }
