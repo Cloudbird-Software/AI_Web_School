@@ -231,7 +231,10 @@ func contentRead[T any](idVar string, fetch func(ctx context.Context, id string)
 				writeErrorClass(w, http.StatusNotFound, middleware.ErrorClassNotFound)
 				return
 			}
-			log.Printf("content query failure path=%s error_class=%s", r.URL.Path, errClass(err))
+			// 日志只落 route pattern（服务端路由表常量）——r.URL.Path 是
+			// 请求方可控字节，落日志即注入面（CodeQL go/log-injection
+			// #29/#32/#33 的修法：请求派生值一律不入日志）。
+			log.Printf("content query failure route=%s error_class=%s", r.Pattern, errClass(err))
 			writeErrorClass(w, http.StatusInternalServerError, middleware.ErrorClassInternal)
 			return
 		}
@@ -288,7 +291,7 @@ func aliasBoundRead(aliasVar string) http.HandlerFunc {
 		if !ok {
 			// 纵深防御：中间件保证存在主体，到这里缺失说明装配被破坏，
 			// 按"身份不可信"处理（fail-closed），不当成可继续的业务态。
-			log.Printf("auth denied class=%q reason=principal-missing path=%s", middleware.ErrorClassUnauthorized, r.URL.Path)
+			log.Printf("auth denied class=%q reason=principal-missing route=%s", middleware.ErrorClassUnauthorized, r.Pattern) // route=服务端常量，禁落 r.URL.Path（go/log-injection）
 			writeErrorClass(w, http.StatusUnauthorized, middleware.ErrorClassUnauthorized)
 			return
 		}
@@ -326,7 +329,7 @@ func createSession(store compliance.ConsentStore) http.HandlerFunc {
 		p, ok := middleware.FromContext(r.Context())
 		if !ok {
 			// 纵深防御，同 aliasBoundRead。
-			log.Printf("auth denied class=%q reason=principal-missing path=%s", middleware.ErrorClassUnauthorized, r.URL.Path)
+			log.Printf("auth denied class=%q reason=principal-missing route=%s", middleware.ErrorClassUnauthorized, r.Pattern) // route=服务端常量，禁落 r.URL.Path（go/log-injection）
 			writeErrorClass(w, http.StatusUnauthorized, middleware.ErrorClassUnauthorized)
 			return
 		}
