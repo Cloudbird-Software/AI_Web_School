@@ -17,6 +17,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"html"
 	"strings"
 	"time"
 
@@ -212,16 +213,24 @@ func (rn *Runner) writeLedger(ctx context.Context, tx pgx.Tx, rec *subjectmath.R
 	if err != nil {
 		return err
 	}
+	// 渲染快照（#170/#171 联动）：发布前提 ErrRenderedSnapshotMissing 的供给
+	// 面。mathgen 各块的 rendered 文本即生成器侧渲染面，按块序确定性拼装；
+	// 深度 ItemToIR 接线属渲染编排波次（#147/#152）。
+	snapshot, err := jsonb("rendered_snapshot", renderedSnapshot(rec.Content))
+	if err != nil {
+		return err
+	}
 	if err := qs.InsertItemVersion(ctx, dbgen.InsertItemVersionParams{
-		ItemVersionID:  ivid,
-		ItemID:         ivid,
-		Status:         dbgen.ItemVersionStatusEnumDraft,
-		Objective:      objective,
-		InteractionRef: interactionRef,
-		Content:        contentJSON,
-		ScoringRef:     scoringRef,
-		ErrorBindings:  errorBindings,
-		Lineage:        lineageJSON,
+		ItemVersionID:    ivid,
+		ItemID:           ivid,
+		Status:           dbgen.ItemVersionStatusEnumDraft,
+		Objective:        objective,
+		InteractionRef:   interactionRef,
+		Content:          contentJSON,
+		ScoringRef:       scoringRef,
+		ErrorBindings:    errorBindings,
+		Lineage:          lineageJSON,
+		RenderedSnapshot: snapshot,
 	}); err != nil {
 		return fmt.Errorf("insert item_version: %w", err)
 	}
@@ -489,3 +498,31 @@ func jsonb(field string, v any) ([]byte, error) {
 // pgts/pgtext 收敛 pgtype 可空列构造（本文件内语句参数的统一形态）。
 func pgts(t time.Time) pgtype.Timestamptz { return pgtype.Timestamptz{Time: t, Valid: true} }
 func pgtext(s string) pgtype.Text         { return pgtype.Text{String: s, Valid: s != ""} }
+
+// renderedSnapshot 从 content.blocks 的 rendered 文本拼装渲染快照（确定性：
+// 块序即文档序；文本 HTML 转义防注入——快照是发布时的渲染面存档）.
+func renderedSnapshot(content map[string]any) map[string]any {
+	var sb strings.Builder
+	sb.WriteString(`<div class="item-rendered">`)
+	if blocks, ok := content["blocks"].([]any); ok {
+		for _, b := range blocks {
+			blk, ok := b.(map[string]any)
+			if !ok {
+				continue
+			}
+			rendered, _ := blk["rendered"].(string)
+			if rendered == "" {
+				text, _ := blk["text"].(string)
+				rendered = text
+			}
+			if rendered == "" {
+				continue
+			}
+			sb.WriteString("<p>")
+			sb.WriteString(html.EscapeString(rendered))
+			sb.WriteString("</p>")
+		}
+	}
+	sb.WriteString("</div>")
+	return map[string]any{"html": sb.String()}
+}
