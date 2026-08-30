@@ -63,3 +63,41 @@ INSERT INTO publication (
 -- UPDATE 前移状态机字段、触发器不触发，须由应用层显式前移（冻结
 -- publication.py 同款动作；指针表不在三本账之列，UPDATE 不违 D1）。
 UPDATE item SET current_version_id = $2 WHERE item_id = $1;
+
+-- ── #156（内容入账链路）：item / item_version 写面（cmd/ingest 专用）────────
+-- 事务纪律（D11 / 铁律 9）：全部语句运行在调用方已 begin 的同一显式事务内，
+-- COMMIT/ROLLBACK 归最外层 cmd 持有；门不过即整体回滚，失败留痕走独立事务。
+-- item / item_template / item_template_version 是身份/指针表（非三本账），
+-- INSERT 不违 D1；item_version 是不可变内容快照账，本语句面只有 INSERT。
+
+-- name: UpsertItemTemplate :exec
+-- 母题身份行就位（fk_itv_template 的被引用面）。DO NOTHING：母题身份是内容
+-- 寻址前的稳定 id，重放同批 JSONL 时身份行已存在即幂等跳过（不改既有行）。
+INSERT INTO item_template (template_id, pack_id)
+VALUES ($1, $2)
+ON CONFLICT (template_id) DO NOTHING;
+
+-- name: UpsertItemTemplateVersion :exec
+-- 母题版本行就位（item.template_version_id 非延迟外键的被引用面——0002 直挂
+-- fk_item_template_version，语句先后序必须先版本后实例）。template_version_id
+-- = sha256(canonical(spec)) 内容寻址（packs mustTemplateVersionID 同口径），
+-- 碰撞即同内容，DO NOTHING 幂等；状态 draft：入账链路不代行母题发布签发。
+INSERT INTO item_template_version (template_version_id, template_id, dsl_version, spec, status)
+VALUES ($1, $2, $3, $4, $5)
+ON CONFLICT (template_version_id) DO NOTHING;
+
+-- name: InsertItem :exec
+-- 不变身份行入账：A/B 级 item_id = item_version_id（自引用，冻结
+-- instantiation engine.py 同款：item_id = item_version_id）。重放同批撞 PK
+-- 即天然幂等屏障（账行身份由调用方定型，不 DO NOTHING——重复入账必须显形）。
+INSERT INTO item (item_id, pack_id, tier, template_version_id)
+VALUES ($1, $2, $3, $4);
+
+-- name: InsertItemVersion :exec
+-- 不可变内容快照 draft 入账：契约 §2.2 六块 JSONB + lineage 全写
+-- （lineage 携带 template_id/source/operator/pack_id/corpus_version_id 与
+-- pack_digest/engine_digest——发布事务重算公式一的证据链，审计卡 #156 点名）。
+INSERT INTO item_version (
+	item_version_id, item_id, status,
+	objective, interaction_ref, content, scoring_ref, error_bindings, lineage
+) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9);

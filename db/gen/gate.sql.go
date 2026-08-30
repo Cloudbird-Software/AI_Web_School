@@ -39,6 +39,39 @@ func (q *Queries) GetGateCertificate(ctx context.Context, certID string) (GateCe
 	return i, err
 }
 
+const insertGateCertificate = `-- name: InsertGateCertificate :exec
+
+INSERT INTO gate_certificate (
+	cert_id, artifact_ref, cert_type, policy_version, issued_by, issued_at
+) VALUES ($1, $2, $3, $4, $5, $6)
+`
+
+type InsertGateCertificateParams struct {
+	CertID        string
+	ArtifactRef   string
+	CertType      string
+	PolicyVersion string
+	IssuedBy      string
+	IssuedAt      pgtype.Timestamptz
+}
+
+// ── #156（内容入账链路）：门签发写面（cmd/ingest 专用）──────────────────────
+// 与 certifier 冻结基线同序：先 INSERT gate_certificate，再以同一 cert_id 关联
+// 每 validator 一行 gate_run（D1 只增不改：不存在「先占位后 UPDATE 关联」路径）。
+// 事务纪律（D11）：运行在调用方已 begin 的显式事务内，COMMIT 归最外层 cmd。
+// 门证书入账：cert_type='publish'、artifact_ref=item_version_id（验真绑定面）。
+func (q *Queries) InsertGateCertificate(ctx context.Context, arg InsertGateCertificateParams) error {
+	_, err := q.db.Exec(ctx, insertGateCertificate,
+		arg.CertID,
+		arg.ArtifactRef,
+		arg.CertType,
+		arg.PolicyVersion,
+		arg.IssuedBy,
+		arg.IssuedAt,
+	)
+	return err
+}
+
 const insertGateFailure = `-- name: InsertGateFailure :exec
 INSERT INTO gate_failure (
 	failure_id, artifact_type, artifact_ref,
@@ -70,6 +103,47 @@ func (q *Queries) InsertGateFailure(ctx context.Context, arg InsertGateFailurePa
 		arg.Reason,
 		arg.Evidence,
 		arg.FailedAt,
+	)
+	return err
+}
+
+const insertGateRun = `-- name: InsertGateRun :exec
+INSERT INTO gate_run (
+	run_id, certificate_id, policy_version, validator_id, validator_version,
+	verdict, evidence, confidence, cost_ms, cost_tokens, run_at
+) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+`
+
+type InsertGateRunParams struct {
+	RunID            string
+	CertificateID    pgtype.Text
+	PolicyVersion    string
+	ValidatorID      string
+	ValidatorVersion string
+	Verdict          GateRunVerdictEnum
+	Evidence         []byte
+	Confidence       pgtype.Numeric
+	CostMs           int32
+	CostTokens       int32
+	RunAt            pgtype.Timestamptz
+}
+
+// 每 validator 一行运行记录（含 pass）：verdict 三值、evidence 结构化证据、
+// confidence NUMERIC(4,3)（确定性路径 1.000）、cost_ms/cost_tokens 非负
+// （0004 ck_gr_confidence_range / ck_gr_cost_nonneg 物理兜底）。
+func (q *Queries) InsertGateRun(ctx context.Context, arg InsertGateRunParams) error {
+	_, err := q.db.Exec(ctx, insertGateRun,
+		arg.RunID,
+		arg.CertificateID,
+		arg.PolicyVersion,
+		arg.ValidatorID,
+		arg.ValidatorVersion,
+		arg.Verdict,
+		arg.Evidence,
+		arg.Confidence,
+		arg.CostMs,
+		arg.CostTokens,
+		arg.RunAt,
 	)
 	return err
 }

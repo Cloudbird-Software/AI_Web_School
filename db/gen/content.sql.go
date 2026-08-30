@@ -140,6 +140,68 @@ func (q *Queries) GetLatestPublication(ctx context.Context, itemID string) (Publ
 	return i, err
 }
 
+const insertItem = `-- name: InsertItem :exec
+INSERT INTO item (item_id, pack_id, tier, template_version_id)
+VALUES ($1, $2, $3, $4)
+`
+
+type InsertItemParams struct {
+	ItemID            string
+	PackID            string
+	Tier              ItemTierEnum
+	TemplateVersionID pgtype.Text
+}
+
+// 不变身份行入账：A/B 级 item_id = item_version_id（自引用，冻结
+// instantiation engine.py 同款：item_id = item_version_id）。重放同批撞 PK
+// 即天然幂等屏障（账行身份由调用方定型，不 DO NOTHING——重复入账必须显形）。
+func (q *Queries) InsertItem(ctx context.Context, arg InsertItemParams) error {
+	_, err := q.db.Exec(ctx, insertItem,
+		arg.ItemID,
+		arg.PackID,
+		arg.Tier,
+		arg.TemplateVersionID,
+	)
+	return err
+}
+
+const insertItemVersion = `-- name: InsertItemVersion :exec
+INSERT INTO item_version (
+	item_version_id, item_id, status,
+	objective, interaction_ref, content, scoring_ref, error_bindings, lineage
+) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+`
+
+type InsertItemVersionParams struct {
+	ItemVersionID  string
+	ItemID         string
+	Status         ItemVersionStatusEnum
+	Objective      []byte
+	InteractionRef []byte
+	Content        []byte
+	ScoringRef     []byte
+	ErrorBindings  []byte
+	Lineage        []byte
+}
+
+// 不可变内容快照 draft 入账：契约 §2.2 六块 JSONB + lineage 全写
+// （lineage 携带 template_id/source/operator/pack_id/corpus_version_id 与
+// pack_digest/engine_digest——发布事务重算公式一的证据链，审计卡 #156 点名）。
+func (q *Queries) InsertItemVersion(ctx context.Context, arg InsertItemVersionParams) error {
+	_, err := q.db.Exec(ctx, insertItemVersion,
+		arg.ItemVersionID,
+		arg.ItemID,
+		arg.Status,
+		arg.Objective,
+		arg.InteractionRef,
+		arg.Content,
+		arg.ScoringRef,
+		arg.ErrorBindings,
+		arg.Lineage,
+	)
+	return err
+}
+
 const insertPublication = `-- name: InsertPublication :exec
 INSERT INTO publication (
 	publication_id, item_id, item_version_id, gate_certificate_id,
@@ -237,5 +299,58 @@ type UpdateItemVersionPublishedParams struct {
 // （ErrRenderedSnapshotMissing，fail-loud），0002 非空 CHECK 兜底防线保留。
 func (q *Queries) UpdateItemVersionPublished(ctx context.Context, arg UpdateItemVersionPublishedParams) error {
 	_, err := q.db.Exec(ctx, updateItemVersionPublished, arg.ItemVersionID, arg.GateCertificateID, arg.PublishedAt)
+	return err
+}
+
+const upsertItemTemplate = `-- name: UpsertItemTemplate :exec
+
+INSERT INTO item_template (template_id, pack_id)
+VALUES ($1, $2)
+ON CONFLICT (template_id) DO NOTHING
+`
+
+type UpsertItemTemplateParams struct {
+	TemplateID string
+	PackID     string
+}
+
+// ── #156（内容入账链路）：item / item_version 写面（cmd/ingest 专用）────────
+// 事务纪律（D11 / 铁律 9）：全部语句运行在调用方已 begin 的同一显式事务内，
+// COMMIT/ROLLBACK 归最外层 cmd 持有；门不过即整体回滚，失败留痕走独立事务。
+// item / item_template / item_template_version 是身份/指针表（非三本账），
+// INSERT 不违 D1；item_version 是不可变内容快照账，本语句面只有 INSERT。
+// 母题身份行就位（fk_itv_template 的被引用面）。DO NOTHING：母题身份是内容
+// 寻址前的稳定 id，重放同批 JSONL 时身份行已存在即幂等跳过（不改既有行）。
+func (q *Queries) UpsertItemTemplate(ctx context.Context, arg UpsertItemTemplateParams) error {
+	_, err := q.db.Exec(ctx, upsertItemTemplate, arg.TemplateID, arg.PackID)
+	return err
+}
+
+const upsertItemTemplateVersion = `-- name: UpsertItemTemplateVersion :exec
+INSERT INTO item_template_version (template_version_id, template_id, dsl_version, spec, status)
+VALUES ($1, $2, $3, $4, $5)
+ON CONFLICT (template_version_id) DO NOTHING
+`
+
+type UpsertItemTemplateVersionParams struct {
+	TemplateVersionID string
+	TemplateID        string
+	DslVersion        string
+	Spec              []byte
+	Status            ItemTemplateVersionStatusEnum
+}
+
+// 母题版本行就位（item.template_version_id 非延迟外键的被引用面——0002 直挂
+// fk_item_template_version，语句先后序必须先版本后实例）。template_version_id
+// = sha256(canonical(spec)) 内容寻址（packs mustTemplateVersionID 同口径），
+// 碰撞即同内容，DO NOTHING 幂等；状态 draft：入账链路不代行母题发布签发。
+func (q *Queries) UpsertItemTemplateVersion(ctx context.Context, arg UpsertItemTemplateVersionParams) error {
+	_, err := q.db.Exec(ctx, upsertItemTemplateVersion,
+		arg.TemplateVersionID,
+		arg.TemplateID,
+		arg.DslVersion,
+		arg.Spec,
+		arg.Status,
+	)
 	return err
 }

@@ -33,3 +33,23 @@ INSERT INTO gate_failure (
 	validator_id, validator_version, policy_version,
 	reason, evidence, failed_at
 ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9);
+
+-- ── #156（内容入账链路）：门签发写面（cmd/ingest 专用）──────────────────────
+-- 与 certifier 冻结基线同序：先 INSERT gate_certificate，再以同一 cert_id 关联
+-- 每 validator 一行 gate_run（D1 只增不改：不存在「先占位后 UPDATE 关联」路径）。
+-- 事务纪律（D11）：运行在调用方已 begin 的显式事务内，COMMIT 归最外层 cmd。
+
+-- name: InsertGateCertificate :exec
+-- 门证书入账：cert_type='publish'、artifact_ref=item_version_id（验真绑定面）。
+INSERT INTO gate_certificate (
+	cert_id, artifact_ref, cert_type, policy_version, issued_by, issued_at
+) VALUES ($1, $2, $3, $4, $5, $6);
+
+-- name: InsertGateRun :exec
+-- 每 validator 一行运行记录（含 pass）：verdict 三值、evidence 结构化证据、
+-- confidence NUMERIC(4,3)（确定性路径 1.000）、cost_ms/cost_tokens 非负
+-- （0004 ck_gr_confidence_range / ck_gr_cost_nonneg 物理兜底）。
+INSERT INTO gate_run (
+	run_id, certificate_id, policy_version, validator_id, validator_version,
+	verdict, evidence, confidence, cost_ms, cost_tokens, run_at
+) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11);
