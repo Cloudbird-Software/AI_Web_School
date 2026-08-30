@@ -11,6 +11,9 @@ import (
 type Generator = subjectmathGenerator
 type Instance = subjectmathInstance
 
+// TplCharRecognize 是「字辨认」母题 id（语文确定性档第一题）。
+const TplCharRecognize = "tpl-sl-char-rec-sc"
+
 // genCharRecognize 是「字辨认」单选母题（语文确定性档第一题）：
 // 目标字 + 3 个同表干扰字 → 选出正确的字。校验器独立重判：
 // 渲染文本重提四选项，答案必须在语料表内且与目标一致。
@@ -34,7 +37,7 @@ func newCharRecognizeGen(corpus *Corpus) (Generator, error) {
 		return nil, fmt.Errorf("字表 %d 字的四选项组合空间不足", n)
 	}
 	g := &genCharRecognize{
-		entry:  registry.Entry{ID: "tpl-sl-char-rec-sc", Version: "1.0.0"},
+		entry:  registry.Entry{ID: TplCharRecognize, Version: "1.0.0"},
 		corpus: corpus,
 		size:   size,
 	}
@@ -144,28 +147,13 @@ func comb3(n int) int {
 }
 
 // kthComb3 字典序第 k 个三元组合（k ∈ [0,C(n,3))）。
+// 历史缺陷（#150 审计发现）：块大小误用 C(n-1-a,3)（应为 C(n-1-a,2)），
+// k ≥ n-2 时枚举耗尽报错、下游批量越界。修复=委托 combKth3Idx 规范
+// unrank（与 pinyin/radical 生成器同一实现，双射性质有测试覆盖）。
 func kthComb3(items []string, k int) (string, string, string, error) {
-	n := len(items)
-	if k < 0 || k >= comb3(n) {
-		return "", "", "", fmt.Errorf("组合序 %d 超出 [0,%d)", k, comb3(n))
+	idx, err := combKth3Idx(len(items), k)
+	if err != nil {
+		return "", "", "", err
 	}
-	// 字典序组合枚举：首位 a 固定后的块大小 = C(n-1-a, 2)；逐级分解索引。
-	_ = k
-	idx := k
-	for a := 0; a < n-2; a++ {
-		block := comb3(n - 1 - a)
-		if idx >= block {
-			idx -= block
-			continue
-		}
-		for b := a + 1; b < n-1; b++ {
-			block2 := comb3(n - 1 - b)
-			if idx >= block2 {
-				idx -= block2
-				continue
-			}
-			return items[a], items[b], items[b+1+idx], nil
-		}
-	}
-	return "", "", "", fmt.Errorf("组合序枚举耗尽（k=%d）", k)
+	return items[idx[0]], items[idx[1]], items[idx[2]], nil
 }

@@ -11,6 +11,26 @@ corpora:
       真实全量字表/词表入库前必须过 owner 逐源许可审查（issue #34 §五）。
     chars_file: chars-demo-v1.txt
     words_file: words-demo-v1.txt
+  - source_id: lang-pinyin-chars-v1
+    title: 常用汉字节选·拼音标注（语文确定性档「拼音选字」判定域）
+    license: CC0-1.0
+    license_note: >
+      本表为语文轮确定性档语料：按义务教育语文课程标准（2022 年版）附录常用字表
+      公开口径节选的 988 个常用汉字并标注拼音（registry.yaml lic-kebiao-chinese-2022
+      已登记 approved，事实引用）。汉字与拼音是语言符号/事实信息，不构成著作权客体；
+      节选编排为本仓原创，按 CC0-1.0 释出。规模下限 ≥300 字（装载器 fail-closed 强制）；
+      真实全量字表入库前必须过 owner 逐源许可审查（issue #34 §五）。
+    pinyin_file: lang-pinyin-chars-v1.txt
+  - source_id: lang-word-rel-v1
+    title: 常用双字词近义/反义关系表（语文确定性档「词义关系」判定域）
+    license: CC0-1.0
+    license_note: >
+      本表为语文轮确定性档语料：105 对常用双字词的近义/反义关系（公开语言事实，
+      词与词义关系不构成著作权客体）；节选编排为本仓原创，按 CC0-1.0 释出。
+      编排纪律：近义族/反义族词集互不重叠、同关系内每词至多出现一次（杜绝关系链
+      造成多正确答案），装载器 fail-closed 强制规模 ≥100 对；真实全量词表入库前
+      必须过 owner 逐源许可审查（issue #34 §五）。
+    wordrel_file: lang-word-rel-v1.txt
   - source_id: eng-basic-vocab-v1
     title: GSL 通用词表节选样例（英语确定性档用）
     license: CC0-1.0
