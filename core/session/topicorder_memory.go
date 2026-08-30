@@ -48,6 +48,12 @@ func NewMemoryStore() *MemoryStore {
 // Create 实现 TopicOrderStore：前置校验（与 PG 实现共用 prepareStart，非法输入
 // 必然同一条哨兵错误）→ 已固化则语义比对（相同=幂等成功返回存量，不同=
 // ErrTopicOrderConflict）→ 未固化则入账.
+//
+// GO-RW-002 服务域注记：practice_session 在 PG 是一行双职（题序列 + 运行态列），
+// 内存投影因 T-W5-004/018 两波分账（orders/sessions 两张 map）；本面在题序固化
+// 的同一临界区内补运行态开立（provision-if-absent——幂等重放不覆写已推进的
+// 运行态），使 Create 与冻结 start_session 的 INSERT 形态对齐：一次调用即得
+// 「带运行态的会话」，服务域无须感知内存分账的实现细节.
 func (m *MemoryStore) Create(_ context.Context, _ Executor, in StartInput) (*TopicOrder, error) {
 	prepared, err := prepareStart(in, time.Now)
 	if err != nil {
@@ -55,6 +61,7 @@ func (m *MemoryStore) Create(_ context.Context, _ Executor, in StartInput) (*Top
 	}
 	m.mu.Lock()
 	defer m.mu.Unlock()
+	m.initSubmitState()
 	if existing, ok := m.orders[prepared.sessionID]; ok {
 		if !equalEntries(existing, prepared.entries) {
 			return nil, fmt.Errorf("%w: session_id=%s", ErrTopicOrderConflict, prepared.sessionID)
@@ -62,7 +69,42 @@ func (m *MemoryStore) Create(_ context.Context, _ Executor, in StartInput) (*Top
 		return &TopicOrder{SessionID: prepared.sessionID, Entries: cloneEntries(existing)}, nil
 	}
 	m.orders[prepared.sessionID] = cloneEntries(prepared.entries)
+	m.provisionRuntimeLocked(prepared, in.PaperID)
 	return &TopicOrder{SessionID: prepared.sessionID, Entries: cloneEntries(prepared.entries)}, nil
+}
+
+// provisionRuntimeLocked 在题序固化成功后开立内存运行态行（调用方持锁；
+// prepared 的身份/题序/时长已过 prepareStart 校验，此处按冻结 INSERT 形态
+// 直取：status='active'、进度清零、三时刻同源）.
+func (m *MemoryStore) provisionRuntimeLocked(prepared *preparedStart, paperID *string) {
+	if _, exists := m.sessions[prepared.sessionID]; exists {
+		return
+	}
+	p := prepared.params
+	m.sessions[prepared.sessionID] = &memorySession{
+		sessionID:      prepared.sessionID,
+		studentAliasID: formatUUID(p.StudentAliasID.Bytes),
+		scene:          p.Scene,
+		gradeband:      p.Gradeband,
+		paperID:        cloneStringPtr(paperID),
+		status:         p.Status,
+		sequence:       sequenceOf(prepared.entries),
+		retestWrong:    p.RetestWrong,
+		timeLimitSec:   int(p.TimeLimitSec),
+		startedAt:      p.StartedAt.Time,
+		lastResumeAt:   p.LastResumeAt.Time,
+		lastActivityAt: p.LastActivityAt.Time,
+	}
+}
+
+// sequenceOf 从题序条目抽取主序列（item_version_id 按 Seq 升序——entries 已
+// canonical）.
+func sequenceOf(entries []TopicEntry) []string {
+	out := make([]string, len(entries))
+	for i := range entries {
+		out[i] = entries[i].ItemVersionID
+	}
+	return out
 }
 
 // Read 实现 TopicOrderStore：按 Seq 升序稳定读出（内部账恒 canonical，出账深拷贝）；

@@ -61,3 +61,31 @@ WHERE session_id = $1;
 -- 时长保护置位（Python _check_time_protection 同语义）：拒绝提交但留下
 -- rest_prompted 状态（resume 重置计时后恢复作答）。只动状态列，零事件写入.
 UPDATE practice_session SET status = 'rest_prompted' WHERE session_id = $1;
+
+-- name: GetPracticeSessionRuntime :one
+-- 会话运行态读取面（GO-RW-002 服务域）：状态投影、归属断言与取题判定的取数
+-- 前提。普通读（不锁行）：写路径的互斥由各自语句面承担（提交=advisory+行锁；
+-- resume/abandon=下方 UPDATE），读取不参与锁序。
+SELECT * FROM practice_session WHERE session_id = $1;
+
+-- name: ResumeSessionAfterRest :one
+-- 休息确认（Python resume_session 同语义）：rest_prompted/active → active，
+-- 计时锚点（last_resume_at）与活动时刻重置为同一确认时刻。RETURNING * 供
+-- 服务域就地装配状态投影，免二次读。completed/abandoned 的拒绝由服务域在
+-- 读取态判定（本语句不带状态谓词——拒绝发生在写之前，不在写中半途失败）。
+UPDATE practice_session SET
+	status = 'active',
+	last_resume_at = $2,
+	last_activity_at = $2
+WHERE session_id = $1
+RETURNING *;
+
+-- name: AbandonSessionByID :one
+-- 放弃会话（Python abandon_session 同语义）：状态置 abandoned + 活动时刻；
+-- 已作答事件保留在 response_event 账（零删除——append-only 无 DELETE 面）。
+-- completed 的拒绝同上：服务域在写之前判定。
+UPDATE practice_session SET
+	status = 'abandoned',
+	last_activity_at = $2
+WHERE session_id = $1
+RETURNING *;

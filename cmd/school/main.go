@@ -1,26 +1,42 @@
-// Package main 是 W5-R Go 模块化单体的入口（T-W5-031 骨架）。
+// Package main 是 W5-R Go 模块化单体的入口（T-W5-031 骨架；GO-RW-002 起
+// 会话域生产装配就位）。
 //
 // 分层（ADR-0004 §三）：cmd/ 入口 · core/ 六边形核心域（零学科特判，X6/GO-3
 // 由 tools/go-lint 强制） · api/ 路由 · packs/ 学科与学段包 · registry/ 双注册表
 // （D4：作答交互 + 评分器）。
 //
-// main 只做装配：读环境、构造 server、挂 api.NewRouter()。
+// main 只做装配：读环境、构造 server、挂 api 路由。会话全链路依赖在装配期
+// 显式接线（GO-RW-002）：pgxpool（SCHOOL_DATABASE_URL）→ compliance.PGStore
+// （家长授权账）+ session.PGStore（题序/提交/运行态三面同账）+ poolTxRunner
+// （显式事务执行面）+ dbResponseScorer（评分桥）→ api.NewRouterWithSessions。
 package main
 
 import (
+	"context"
 	"log"
 	"net/http"
 	"os"
+	"time"
 
 	"github.com/Cloudbird-Software/AI_Web_School/api"
 	"github.com/Cloudbird-Software/AI_Web_School/api/middleware"
 	"github.com/Cloudbird-Software/AI_Web_School/core/auth"
+	"github.com/Cloudbird-Software/AI_Web_School/core/compliance"
+	"github.com/Cloudbird-Software/AI_Web_School/core/scoring"
+	"github.com/Cloudbird-Software/AI_Web_School/core/session"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 // envVarLLMGatewayKey 是 LLM 网关角色 key 的环境变量名（docs/secrets.md §2：
 // 业务进程只持角色虚拟 key，供应商真实 key 不出网关）。凭证属于 ClassLLM：
 // 缺失不阻断启动，但调用期被显式拒绝。
 const envVarLLMGatewayKey = "LITELLM_ROLE_KEY"
+
+// envVarDatabaseURL 是会话域生产装配的连接串环境变量（连接串不进仓库，
+// 硬规则 4；命名随 SCHOOL_* 入口惯例）。缺失即启动期硬失败：会话入口的
+// 生产装配以账本存在为前提——没有账本的会话服务就是违宪装配（fail fast，
+// 与 auth bootstrap 同一纪律）.
+const envVarDatabaseURL = "SCHOOL_DATABASE_URL"
 
 // envLoader 把环境变量读取闭包成登记面 Loader（map 闭包形态留给测试）。
 func envLoader(key string) auth.Loader {
@@ -82,17 +98,54 @@ func main() {
 	}
 	// T-W5-007 凭证治理：集中登记面 + 两级校验（auth 缺失硬失败/LLM 缺失
 	// 告警）+ 注入 middleware 日志出口的统一 mask 层。
-	registry, credWarnings, err := credentialRegistry()
+	registryCreds, credWarnings, err := credentialRegistry()
 	if err != nil {
 		log.Fatalf("credential registry failed: %v", err)
 	}
 	for _, w := range credWarnings {
 		log.Printf("%s", w)
 	}
-	middleware.SetCredentialRegistry(registry)
+	middleware.SetCredentialRegistry(registryCreds)
+
+	// GO-RW-002 会话全链路生产装配（顺序即依赖方向：池 → 账本/事务面 →
+	// 评分桥 → 服务 → 路由）。任一环缺失即启动期失败，绝不带病装配.
+	pool, err := pgxpool.New(context.Background(), os.Getenv(envVarDatabaseURL))
+	if err != nil {
+		log.Fatalf("session store bootstrap failed: %v", err)
+	}
+	defer pool.Close()
+	pingCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	if err := pool.Ping(pingCtx); err != nil {
+		log.Fatalf("session store unreachable: %v", err)
+	}
+	consents := compliance.NewPGStore()
+	accounts := session.NewPGStore() // 题序/提交/运行态三面同一 practice_session 账
+	txRunner := &poolTxRunner{pool: pool}
+	scorerTable, err := newDeterministicScorerTable()
+	if err != nil {
+		log.Fatalf("scorer registry bootstrap failed: %v", err)
+	}
+	scoringRunner, err := scoring.NewRunner(scorerTable)
+	if err != nil {
+		log.Fatalf("scoring runner bootstrap failed: %v", err)
+	}
+	scorer := &dbResponseScorer{pool: pool, runner: scoringRunner}
+	svc, err := session.NewService(session.Deps{
+		Consents:    consents,
+		Orders:      accounts,
+		Submissions: accounts,
+		Accounts:    accounts,
+		Runner:      txRunner,
+		Reader:      pool,
+	})
+	if err != nil {
+		log.Fatalf("session service bootstrap failed: %v", err)
+	}
+
 	srv := &http.Server{
 		Addr:    addr,
-		Handler: api.NewRouter(signer),
+		Handler: api.NewRouterWithSessions(signer, consents, svc, scorer),
 		// 基线超时（骨架级；SLO 细化在 W5-R S2 API 边界加固落地）
 		ReadHeaderTimeout: 10e9,
 	}

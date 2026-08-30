@@ -31,6 +31,11 @@
 // 账语义），本层只做装配与错误映射。授权账经 NewRouterWithConsent 以
 // compliance.ConsentStore 接口注入；未注入（nil）时授权门 fail-closed
 // 500——线上没有授权账就绝不发在线会话，宁可拒服务不可降级（X12）。
+//
+// GO-RW-002 会话全链路业务接线：sessions 族路由在 NewRouterWithSessions
+// 装配下从占位升级为 core/session.Service 的真实行为（契约 v1.1 JSON），
+// 会话归属断言（D9 第二道校验）随服务面落地；svc 未注入的调用方保留
+// 501 兼容形态。处理序与错误映射见 api/sessions.go.
 package api
 
 import (
@@ -38,7 +43,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"log"
 	"net/http"
 
@@ -128,14 +132,14 @@ func healthHandler(w http.ResponseWriter, _ *http.Request) {
 // 它们在任何数据读取前就 501，无可泄露面；作答提交的二次校验（卡验收 #2）
 // 以会话归属读取为前提，属业务波次落地项（sessionScoped 留痕）。
 func routes(signer *auth.Signer) []route {
-	return routesWithConsent(signer, nil, nil)
+	return routesWithConsent(signer, nil, nil, nil, nil)
 }
 
-// routesWithConsent 在 routes 之上注入家长授权账与内容只读查询面：仅
-// POST /sessions 的 handler 捕获 store（闭包接缝），四条内容只读端点经
-// contentRead 捕获 queries；queries 为 nil 时四端点保持 501 占位（查询面
-// 未接线的装配语义，认证盾照挂），非 nil 即真实取证返回。
-func routesWithConsent(signer *auth.Signer, store compliance.ConsentStore, queries ContentQueries) []route {
+// routesWithConsent 在 routes 之上注入家长授权账、内容只读查询面与会话
+// 全链路服务面：POST /sessions 的 handler 捕获 store（闭包接缝），四条内容
+// 只读端点经 contentRead 捕获 queries，sessions 族经 svc 捕获 SessionService；
+// queries/svc 为 nil 时对应端点保持 501 占位（装配语义，认证盾照挂）。
+func routesWithConsent(signer *auth.Signer, store compliance.ConsentStore, queries ContentQueries, svc *session.Service, scorer ResponseScorer) []route {
 	staffOrOps := middleware.RequireAuth(signer, auth.RoleStaff, auth.RoleOps)
 	student := middleware.RequireAuth(signer, auth.RoleStudent)
 	itemHandle, itemVersionHandle := notImplemented, notImplemented
@@ -152,16 +156,24 @@ func routesWithConsent(signer *auth.Signer, store compliance.ConsentStore, queri
 		{pattern: "GET /templates/{template_id}", shield: staffOrOps, handle: templateHandle},
 		{pattern: "GET /gate_certificates/{cert_id}", shield: staffOrOps, handle: certHandle},
 
-		{pattern: "POST /sessions", shield: student, handle: createSession(store)},
-		{pattern: "GET /sessions/{session_id}", shield: student, handle: sessionScoped},
-		{pattern: "GET /sessions/{session_id}/next", shield: student, handle: sessionScoped},
-		{pattern: "POST /sessions/{session_id}/responses", shield: student, handle: sessionScoped},
-		{pattern: "POST /sessions/{session_id}/resume", shield: student, handle: sessionScoped},
-		{pattern: "POST /sessions/{session_id}/abandon", shield: student, handle: sessionScoped},
+		{pattern: "POST /sessions", shield: student, handle: createSession(store, svc)},
+		{pattern: "GET /sessions/{session_id}", shield: student, handle: sessionState(svc)},
+		{pattern: "GET /sessions/{session_id}/next", shield: student, handle: sessionNext(svc)},
+		{pattern: "POST /sessions/{session_id}/responses", shield: student, handle: sessionSubmit(svc, scorer)},
+		{pattern: "POST /sessions/{session_id}/resume", shield: student, handle: sessionResume(svc)},
+		{pattern: "POST /sessions/{session_id}/abandon", shield: student, handle: sessionAbandon(svc)},
 
 		{pattern: "GET /reports/weakness/{student_alias_id}", shield: student, handle: aliasBoundRead("student_alias_id")},
 		{pattern: "GET /review/due/{student_alias_id}", shield: student, handle: aliasBoundRead("student_alias_id")},
 	}
+}
+
+// NewRouterWithSessions 是 GO-RW-002 的生产装配接缝：在 NewRouterWithConsent
+// 之上注入会话全链路服务（core/session.Service）与作答评分桥，sessions 族
+// 路由返回契约 v1.1 JSON。授权门前置不变；svc 为 nil 时等价于
+// NewRouterWithConsent（501 兼容形态）.
+func NewRouterWithSessions(signer *auth.Signer, store compliance.ConsentStore, svc *session.Service, scorer ResponseScorer) http.Handler {
+	return newRouterWithConfig(BoundaryConfigFromEnv(getenv), routesWithConsent(signer, store, nil, svc, scorer)...)
 }
 
 // NewRouter 生产装配：环境变量注入边界配置（见 boundary.go），006 的
@@ -192,7 +204,7 @@ func NewRouterWithConsent(signer *auth.Signer, store compliance.ConsentStore) ht
 // 为 nil 等价 NewRouterWithConsent——四条只读端点保持 501 占位（查询面未
 // 接线绝不回伪造/空数据，fail-closed 同 X12 纪律）。
 func NewRouterWithQueries(signer *auth.Signer, store compliance.ConsentStore, queries ContentQueries) http.Handler {
-	return newRouterWithConfig(BoundaryConfigFromEnv(getenv), routesWithConsent(signer, store, queries)...)
+	return newRouterWithConfig(BoundaryConfigFromEnv(getenv), routesWithConsent(signer, store, queries, nil, nil)...)
 }
 
 // newRouterWithConfig 构造带边界层的路由：注册健康探针与 extra 路由
@@ -303,74 +315,9 @@ func aliasBoundRead(aliasVar string) http.HandlerFunc {
 	}
 }
 
-// createSession 是 POST /sessions 的骨架占位（T-W5-010 起带家长授权门）。
-// 铁律（T-W5-006 验收 #3）：会话相关端点从令牌主体取 student_alias_id，
-// **不信任请求体传入的 alias** 作为授权输入。
-//
-// 请求处理序（顺序即安全论证，不得重排）：
-//
-//		认证（盾）→ 越权判据（请求体 alias 冒用）→ 家长授权门 → 业务占位
-//
-//	 1. 越权判据必须在授权门**之前**：授权门只查令牌主体自身 alias 的授权
-//	    状态；若先查门，攻击者可用「他人 alias」的请求体借 403/501 差异
-//	    探测任意学生的授权状态（consent oracle）。先拒绝冒用，请求永远只
-//	    能反映调用者自己的授权面；
-//	 2. 授权门（T-W5-010）：core/session.RequireOnlinePracticeConsent 按
-//	    令牌主体 alias 查 PurposeOnlinePractice 授权链，非 granted 一律 403；
-//	    账本未装配/读取失败 fail-closed 500，绝不放行（X12）；
-//	 3. 业务未落地期间显式 501 而不是回伪造数据——fail-closed。
-//
-// 对外错误保持粗粒度：三种授权拒绝态与越权冒用同为 {"error_class":
-// "forbidden"} 单字段；missing/revoked/expired 的细分（授权门审计行
-// reason=consent_<state>）只进服务端日志——给客户端细分等于开放他人
-// 授权状态的探测通道。store 故障类（非授权语义）落 500 internal.
-func createSession(store compliance.ConsentStore) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		p, ok := middleware.FromContext(r.Context())
-		if !ok {
-			// 纵深防御，同 aliasBoundRead。
-			log.Printf("auth denied class=%q reason=principal-missing route=%s", middleware.ErrorClassUnauthorized, r.Pattern) // route=服务端常量，禁落 r.URL.Path（go/log-injection）
-			writeErrorClass(w, http.StatusUnauthorized, middleware.ErrorClassUnauthorized)
-			return
-		}
-		var req struct {
-			StudentAliasID string `json:"student_alias_id"`
-		}
-		body, err := io.ReadAll(io.LimitReader(r.Body, maxPlaceholderBodyBytes+1))
-		if err == nil && len(body) <= maxPlaceholderBodyBytes {
-			// 解析失败/字段缺省留给业务层的契约校验（T-W5-008 错误映射统一）；
-			// 此处只关心"能确凿读出的 alias 是否冒用他人身份"。
-			if jerr := json.Unmarshal(body, &req); jerr == nil && req.StudentAliasID != "" {
-				if aerr := auth.AssertOwnsAlias(p, req.StudentAliasID); aerr != nil {
-					middleware.WriteAuthErrorResponse(w, aerr)
-					return
-				}
-			}
-		} else if err != nil {
-			log.Printf("create_session body read error_class=%s", errClass(err))
-		}
-		// 家长授权门（T-W5-010）：只认令牌主体 alias——请求体字段绝不作为
-		// 授权输入。失败一律拒绝，分型映射见 middleware.MapError。
-		if cerr := session.RequireOnlinePracticeConsent(r.Context(), store, p.AliasID); cerr != nil {
-			var consentErr *compliance.ConsentRequiredError
-			if errors.As(cerr, &consentErr) {
-				// 审计行（验收 #4）：细分 reason 令牌 + Error() 载荷
-				// （alias 已 Quote 防日志注入、purpose/state 为域内定值，
-				// 均不可被请求方注入；时间取 log 包时间戳）。细分仅落本
-				// 日志，响应体仍为粗粒度 403.
-				log.Printf("consent denied class=%q reason=consent_%s %s",
-					middleware.ErrorClassForbidden, consentErr.State, consentErr.Error())
-			} else {
-				// 账本未装配或读取失败：基础设施故障语义（500），同样不放行。
-				log.Printf("consent gate unavailable class=%q reason_class=%T fail_closed=denied",
-					middleware.ErrorClassInternal, cerr)
-			}
-			middleware.HandleError(w, cerr)
-			return
-		}
-		notImplemented(w, r)
-	}
-}
+// createSession（POST /sessions）已随 GO-RW-002 升级为业务接线，本体与
+// 处理序注释移至 api/sessions.go（认证 → 越权判据 → 授权门 → SessionService，
+// 顺序即安全论证，不得重排）。
 
 // writeErrorClass 输出单字段脱敏 JSON 错误响应（body 编码失败无降级通道，
 // 记日志留痕，惯例同 /healthz 与 middleware.WriteError）。

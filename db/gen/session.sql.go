@@ -11,6 +11,48 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const abandonSessionByID = `-- name: AbandonSessionByID :one
+UPDATE practice_session SET
+	status = 'abandoned',
+	last_activity_at = $2
+WHERE session_id = $1
+RETURNING session_id, student_alias_id, scene, gradeband, status, paper_id, item_sequence, current_index, retest_wrong, wrong_marks, time_limit_sec, answered_count, correct_count, started_at, last_resume_at, last_activity_at, completed_at, created_at
+`
+
+type AbandonSessionByIDParams struct {
+	SessionID      pgtype.UUID
+	LastActivityAt pgtype.Timestamptz
+}
+
+// 放弃会话（Python abandon_session 同语义）：状态置 abandoned + 活动时刻；
+// 已作答事件保留在 response_event 账（零删除——append-only 无 DELETE 面）。
+// completed 的拒绝同上：服务域在写之前判定。
+func (q *Queries) AbandonSessionByID(ctx context.Context, arg AbandonSessionByIDParams) (PracticeSession, error) {
+	row := q.db.QueryRow(ctx, abandonSessionByID, arg.SessionID, arg.LastActivityAt)
+	var i PracticeSession
+	err := row.Scan(
+		&i.SessionID,
+		&i.StudentAliasID,
+		&i.Scene,
+		&i.Gradeband,
+		&i.Status,
+		&i.PaperID,
+		&i.ItemSequence,
+		&i.CurrentIndex,
+		&i.RetestWrong,
+		&i.WrongMarks,
+		&i.TimeLimitSec,
+		&i.AnsweredCount,
+		&i.CorrectCount,
+		&i.StartedAt,
+		&i.LastResumeAt,
+		&i.LastActivityAt,
+		&i.CompletedAt,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
 const advanceSessionAfterSubmit = `-- name: AdvanceSessionAfterSubmit :exec
 UPDATE practice_session SET
 	current_index = current_index + 1,
@@ -41,6 +83,39 @@ type AdvanceSessionAfterSubmitParams struct {
 func (q *Queries) AdvanceSessionAfterSubmit(ctx context.Context, arg AdvanceSessionAfterSubmitParams) error {
 	_, err := q.db.Exec(ctx, advanceSessionAfterSubmit, arg.SessionID, arg.LastActivityAt)
 	return err
+}
+
+const getPracticeSessionRuntime = `-- name: GetPracticeSessionRuntime :one
+SELECT session_id, student_alias_id, scene, gradeband, status, paper_id, item_sequence, current_index, retest_wrong, wrong_marks, time_limit_sec, answered_count, correct_count, started_at, last_resume_at, last_activity_at, completed_at, created_at FROM practice_session WHERE session_id = $1
+`
+
+// 会话运行态读取面（GO-RW-002 服务域）：状态投影、归属断言与取题判定的取数
+// 前提。普通读（不锁行）：写路径的互斥由各自语句面承担（提交=advisory+行锁；
+// resume/abandon=下方 UPDATE），读取不参与锁序。
+func (q *Queries) GetPracticeSessionRuntime(ctx context.Context, sessionID pgtype.UUID) (PracticeSession, error) {
+	row := q.db.QueryRow(ctx, getPracticeSessionRuntime, sessionID)
+	var i PracticeSession
+	err := row.Scan(
+		&i.SessionID,
+		&i.StudentAliasID,
+		&i.Scene,
+		&i.Gradeband,
+		&i.Status,
+		&i.PaperID,
+		&i.ItemSequence,
+		&i.CurrentIndex,
+		&i.RetestWrong,
+		&i.WrongMarks,
+		&i.TimeLimitSec,
+		&i.AnsweredCount,
+		&i.CorrectCount,
+		&i.StartedAt,
+		&i.LastResumeAt,
+		&i.LastActivityAt,
+		&i.CompletedAt,
+		&i.CreatedAt,
+	)
+	return i, err
 }
 
 const getSessionForSubmit = `-- name: GetSessionForSubmit :one
@@ -166,4 +241,48 @@ UPDATE practice_session SET status = 'rest_prompted' WHERE session_id = $1
 func (q *Queries) MarkSessionRestPrompted(ctx context.Context, sessionID pgtype.UUID) error {
 	_, err := q.db.Exec(ctx, markSessionRestPrompted, sessionID)
 	return err
+}
+
+const resumeSessionAfterRest = `-- name: ResumeSessionAfterRest :one
+UPDATE practice_session SET
+	status = 'active',
+	last_resume_at = $2,
+	last_activity_at = $2
+WHERE session_id = $1
+RETURNING session_id, student_alias_id, scene, gradeband, status, paper_id, item_sequence, current_index, retest_wrong, wrong_marks, time_limit_sec, answered_count, correct_count, started_at, last_resume_at, last_activity_at, completed_at, created_at
+`
+
+type ResumeSessionAfterRestParams struct {
+	SessionID    pgtype.UUID
+	LastResumeAt pgtype.Timestamptz
+}
+
+// 休息确认（Python resume_session 同语义）：rest_prompted/active → active，
+// 计时锚点（last_resume_at）与活动时刻重置为同一确认时刻。RETURNING * 供
+// 服务域就地装配状态投影，免二次读。completed/abandoned 的拒绝由服务域在
+// 读取态判定（本语句不带状态谓词——拒绝发生在写之前，不在写中半途失败）。
+func (q *Queries) ResumeSessionAfterRest(ctx context.Context, arg ResumeSessionAfterRestParams) (PracticeSession, error) {
+	row := q.db.QueryRow(ctx, resumeSessionAfterRest, arg.SessionID, arg.LastResumeAt)
+	var i PracticeSession
+	err := row.Scan(
+		&i.SessionID,
+		&i.StudentAliasID,
+		&i.Scene,
+		&i.Gradeband,
+		&i.Status,
+		&i.PaperID,
+		&i.ItemSequence,
+		&i.CurrentIndex,
+		&i.RetestWrong,
+		&i.WrongMarks,
+		&i.TimeLimitSec,
+		&i.AnsweredCount,
+		&i.CorrectCount,
+		&i.StartedAt,
+		&i.LastResumeAt,
+		&i.LastActivityAt,
+		&i.CompletedAt,
+		&i.CreatedAt,
+	)
+	return i, err
 }

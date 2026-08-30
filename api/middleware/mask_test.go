@@ -172,6 +172,15 @@ func TestResponseModelsContainNoCredentialFields(t *testing.T) {
 		filepath.Dir(thisFile),                      // api/middleware/ 边界响应体
 	}
 	reCredentialField := regexp.MustCompile(`(?i)(secret|password|token|api[_-]?key|credential)`)
+	// contractMandatedTokenFields 是「冻结契约明文声明、名字含 token 词根但
+	// 非凭证」的精确豁免表（结构体名 → json 字段名）。唯一条目 placement_token
+	// 是 A4 追溯锚——卷序列题位令牌（specs/contracts/api/openapi-v1.1.json
+	// NextItemResponse.placement_token，GO-RW-002 随 /next 业务接线引入）；
+	// API 契约是字段面的更高事实源，守卫对它做精确豁免而非词根放宽——
+	// 其余任何 token 字段仍一律拒绝.
+	contractMandatedTokenFields := map[string]string{
+		"nextItemResponse": "placement_token",
+	}
 	fset := token.NewFileSet()
 	for _, dir := range dirs {
 		err := filepath.WalkDir(dir, func(path string, d fs.DirEntry, err error) error {
@@ -216,6 +225,9 @@ func TestResponseModelsContainNoCredentialFields(t *testing.T) {
 							continue
 						}
 						jsonName := strings.Split(strings.Trim(name[1], `"`), ",")[0]
+						if contractMandatedTokenFields[ts.Name.Name] == jsonName {
+							continue // 冻结契约明文声明的非凭证字段（见上方豁免表）
+						}
 						if reCredentialField.MatchString(jsonName) {
 							t.Errorf("%s: %s 响应字段 %q 含凭证类词根（D9：凭证不经 API 回传）",
 								filepath.Base(path), ts.Name.Name, jsonName)
