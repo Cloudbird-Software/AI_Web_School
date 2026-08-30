@@ -67,6 +67,8 @@ setup: ; pip install --require-hashes -r requirements-dev.txt -r requirements.tx
 ## T-W5-030/031：Go 工具链进 check（GO-1/GO-4 局部：gofmt/vet/test-race + X6 边界 lint + BAML-1 golden）
 ## T-W5-032：migrate-go-check 进 check（验收 #5：SQL 迁移 parity/可逆/append-only 在 PR 阶段拦截）
 ## PyR-RETIRE/ADR-0007：src-freeze 进 check（src/ 退役冻结归档，增/删/改即红）
+## 双轨口径（审计 #161）：本 target 的 pytest/alembic/python 胶水 = 门禁基础设施
+## （冻结契约黄金锚 + DB schema 治理），非业务服务；Go 化另行立项。
 check:
 	@[ -f .env ] || cp .env.example .env
 	docker compose up -d --wait db

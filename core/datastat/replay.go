@@ -571,8 +571,12 @@ type ScoreRunSink interface {
 // （AGENTS 规则 3）下不引入 parquet 库；写入面（PARQUET_SCHEMA 14 字段对齐 /
 // snappy 压缩 / .tmp+replace 原子写 / manifest 内容哈希幂等）留待服务化波次
 // 另行报批依赖后实现。本波仅交付纯命名/区间/去重/规范化助手。
+// 处置声明（审计 #161）：**明确降级**——本接口当前无实现（未实现面，调用
+// 即编译期不可达）；归档替代路径 = 既有 CSV/JSONL 导出助手（见本文件导出
+// 函数与 core/datastat 覆盖度导出），parquet 待依赖审批立项后落地。
 
-// ParquetExporter 是 response_event 每日增量归档面（未实现——见上）.
+// ParquetExporter 是 response_event 每日增量归档面（**未实现**——处置声明见上：
+// 降级为 CSV/JSONL 归档 + parquet 待立项，接口保留契约形状）.
 type ParquetExporter interface {
 	// ExportScene 导出单场景单日增量（对应冻结实现 export_scene；幂等：manifest
 	// 内容哈希匹配则跳过重写，不重写文件 = 不动归档存储）。

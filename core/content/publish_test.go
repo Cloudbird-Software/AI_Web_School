@@ -591,6 +591,24 @@ func TestPublishUnknownVersionIsRejected(t *testing.T) {
 	}
 }
 
+// TestPublishMissingRenderedSnapshotIsRejected 审计 #161：渲染快照缺失 →
+// fail-loud 拒绝（占位快照兜底已废除——假快照不得进内容账），且零写入.
+func TestPublishMissingRenderedSnapshotIsRejected(t *testing.T) {
+	tx := &fakePublishTx{
+		versionRow: cLineRow(func(v *dbgen.ItemVersion) { v.RenderedSnapshot = nil }),
+		certRow:    publishCertRow(nil),
+	}
+	_, err := NewPublishService(tx).Publish(context.Background(), sampleRequest(nil))
+	if !errors.Is(err, ErrRenderedSnapshotMissing) {
+		t.Fatalf("err = %v, want ErrRenderedSnapshotMissing", err)
+	}
+	for _, k := range []stmtKind{kindInsertPub, kindForwardPtr} {
+		if n := tx.count(t, k); n != 0 {
+			t.Fatalf("拒绝后不得写入 %s: %d 条", k, n)
+		}
+	}
+}
+
 // TestPublishWithoutExplicitTransactionIsRejected 是 fail-closed 面：三种「无
 // 显式事务执行面」形态的全部发布调用都直接 ErrNoTransaction.
 func TestPublishWithoutExplicitTransactionIsRejected(t *testing.T) {
