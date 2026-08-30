@@ -194,7 +194,7 @@ func (rn *Runner) runBatch(ctx context.Context, out io.Writer, files []string) *
 	for _, file := range files {
 		n, err := rn.runFile(ctx, out, file, sum)
 		if err != nil {
-			fmt.Fprintf(out, "✘ %s 在第 %d 行后中止: %v\n", file, n, err)
+			_, _ = fmt.Fprintf(out, "✘ %s 在第 %d 行后中止: %v\n", file, n, err) // stderr 汇总面：写失败无降级通道（GO-2 显式弃错）
 			return sum
 		}
 	}
@@ -207,7 +207,7 @@ func (rn *Runner) runFile(ctx context.Context, out io.Writer, file string, sum *
 	if err != nil {
 		return 0, fmt.Errorf("打开 %s 失败: %w", file, err)
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }() // GO-2 显式弃错
 
 	sc := bufio.NewScanner(f)
 	sc.Buffer(make([]byte, 0, 64*1024), 16*1024*1024) // 单行含六块内容，放大缓冲
@@ -237,7 +237,7 @@ func (rn *Runner) runFile(ctx context.Context, out io.Writer, file string, sum *
 		if detail != "" {
 			detail = "（" + detail + "）"
 		}
-		fmt.Fprintf(out, "  %s %s:%d%s\n", mark, filepath.Base(file), lineNo, detail)
+		_, _ = fmt.Fprintf(out, "  %s %s:%d%s\n", mark, filepath.Base(file), lineNo, detail) // GO-2 显式弃错
 	}
 	if err := sc.Err(); err != nil {
 		return lineNo, fmt.Errorf("扫描 %s 失败: %w", file, err)
