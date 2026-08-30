@@ -235,6 +235,13 @@ type sessionView struct {
 	LastResumeAt   time.Time
 }
 
+// restPromptMessage 是休息提示文案（§4.8 用眼保护；提交与取题两个触发点
+// 共用同一文案源——文案分叉即用户体验与审计口径的漂移面）.
+func restPromptMessage(timeLimitSec int) string {
+	minutes := timeLimitSec / 60
+	return fmt.Sprintf("已连续作答超过 %d 分钟，该休息了——站起来活动一下、看看远处，休息好后回来继续。", minutes)
+}
+
 // validateSubmitAgainstSession 是提交前置校验的纯函数核（Python 冻结实现
 // submit_answer 校验序的同义移植，顺序即语义、不得重排）：
 //
@@ -258,11 +265,10 @@ func validateSubmitAgainstSession(v sessionView, p *preparedSubmit) (string, err
 			elapsed = 0
 		}
 		if elapsed > v.TimeLimitSec {
-			minutes := v.TimeLimitSec / 60
 			return "", &RestRequiredError{
 				ElapsedSec:   elapsed,
 				TimeLimitSec: v.TimeLimitSec,
-				message:      fmt.Sprintf("已连续作答超过 %d 分钟，该休息了——站起来活动一下、看看远处，休息好后回来继续。", minutes),
+				message:      restPromptMessage(v.TimeLimitSec),
 			}
 		}
 	default:

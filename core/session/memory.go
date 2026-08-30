@@ -62,14 +62,19 @@ type memorySession struct {
 	sessionID      string
 	studentAliasID string
 	scene          string
+	gradeband      string
+	paperID        *string
 	status         string
 	sequence       []string
 	retestWrong    bool
 	currentIndex   int
 	timeLimitSec   int
+	startedAt      time.Time
 	lastResumeAt   time.Time
 	lastActivityAt time.Time
 	answeredCount  int
+	correctCount   int
+	wrongMarks     []map[string]any
 	completedAt    *time.Time
 }
 
@@ -86,6 +91,12 @@ type SeedInput struct {
 	TimeLimitSec int32
 	// Status 初始状态；零值回落 active.
 	Status string
+	// Gradeband 学段（L/M/H；状态投影与冻结 start_session 的落列同源）.
+	Gradeband string
+	// PaperID 静态卷 id（可空——实例池会话 NULL，0011 同形）.
+	PaperID *string
+	// StartedAt 开始时刻（started_at 列投影）；零值回落开立时刻.
+	StartedAt time.Time
 	// RetestWrong 回测开关；true 时序列走完不自动完结（回测轮未在本卡范围，
 	// 与 PG 推进语句的完结条件严格同构——避免内存/PG 终态漂移）.
 	RetestWrong bool
@@ -149,6 +160,10 @@ func (m *MemoryStore) SeedSession(in SeedInput) error {
 	if resume.IsZero() {
 		resume = m.nowFn()()
 	}
+	started := in.StartedAt
+	if started.IsZero() {
+		started = resume
+	}
 
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -160,11 +175,14 @@ func (m *MemoryStore) SeedSession(in SeedInput) error {
 		sessionID:      in.SessionID,
 		studentAliasID: in.StudentAliasID,
 		scene:          in.Scene,
+		gradeband:      in.Gradeband,
+		paperID:        cloneStringPtr(in.PaperID),
 		status:         status,
 		sequence:       append([]string(nil), in.Sequence...),
 		retestWrong:    in.RetestWrong,
 		currentIndex:   in.CurrentIndex,
 		timeLimitSec:   int(in.TimeLimitSec),
+		startedAt:      started,
 		lastResumeAt:   resume,
 		lastActivityAt: resume,
 	}
@@ -213,6 +231,16 @@ func (m *MemoryStore) SubmitAnswer(_ context.Context, _ Executor, in SubmitInput
 	}
 	m.ledger = append(m.ledger, newEventRecord(p, s, eventID))
 	m.submissions[key] = submissionRecord{EventID: eventID, EventCreatedAt: p.at}
+	// 对错记账（Python submit_answer 同构：correct_count 只在显式判对时累加；
+	// 错题标记 retest_status=pending/off——off=未开回测仅标记）。评分轨迹不含
+	// process.correct（非契约 §3 形态）时两账都不动，不猜对错.
+	if explicit, correct := traceCorrect(p.trace); explicit {
+		if correct {
+			s.correctCount++
+		} else {
+			s.wrongMarks = append(s.wrongMarks, newWrongMark(p, s))
+		}
+	}
 	s.currentIndex++
 	s.answeredCount++
 	s.lastActivityAt = p.at

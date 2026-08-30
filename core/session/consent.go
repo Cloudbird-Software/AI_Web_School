@@ -2,8 +2,6 @@ package session
 
 import (
 	"context"
-	"errors"
-	"fmt"
 
 	"github.com/Cloudbird-Software/AI_Web_School/core/compliance"
 )
@@ -30,12 +28,5 @@ import (
 // 接线）；MemoryStore 不需要执行面，PGStore 收到 nil 会以 ErrNoTransaction
 // fail-closed——生产在 W6 前不可能出现「账本存在却绕过校验」的中间态.
 func RequireOnlinePracticeConsent(ctx context.Context, store compliance.ConsentStore, studentAliasID string) error {
-	if store == nil {
-		return errors.New("session: 家长授权账未装配（装配错误，在线入口 fail-closed）")
-	}
-	status, err := store.CheckConsent(ctx, nil, studentAliasID, compliance.PurposeOnlinePractice, nil)
-	if err != nil {
-		return fmt.Errorf("session: 授权账读取失败（fail-closed，不放行）: %w", err)
-	}
-	return compliance.RequireGranted(status, err)
+	return requireOnlinePracticeConsentExec(ctx, store, nil, studentAliasID)
 }
