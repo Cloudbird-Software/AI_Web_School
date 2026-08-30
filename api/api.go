@@ -132,14 +132,15 @@ func healthHandler(w http.ResponseWriter, _ *http.Request) {
 // 它们在任何数据读取前就 501，无可泄露面；作答提交的二次校验（卡验收 #2）
 // 以会话归属读取为前提，属业务波次落地项（sessionScoped 留痕）。
 func routes(signer *auth.Signer) []route {
-	return routesWithConsent(signer, nil, nil, nil, nil)
+	return routesWithConsent(signer, nil, nil, nil, nil, LearnerReads{})
 }
 
-// routesWithConsent 在 routes 之上注入家长授权账、内容只读查询面与会话
-// 全链路服务面：POST /sessions 的 handler 捕获 store（闭包接缝），四条内容
-// 只读端点经 contentRead 捕获 queries，sessions 族经 svc 捕获 SessionService；
-// queries/svc 为 nil 时对应端点保持 501 占位（装配语义，认证盾照挂）。
-func routesWithConsent(signer *auth.Signer, store compliance.ConsentStore, queries ContentQueries, svc *session.Service, scorer ResponseScorer) []route {
+// routesWithConsent 在 routes 之上注入家长授权账、内容只读查询面、会话
+// 全链路服务面与学生只读面：POST /sessions 的 handler 捕获 store（闭包接缝），
+// 四条内容只读端点经 contentRead 捕获 queries，sessions 族经 svc 捕获
+// SessionService，reports/review 两条学生只读端点经 reads 捕获查询面；
+// queries/svc/reads 字段为 nil 时对应端点保持 501 占位（装配语义，认证盾照挂）。
+func routesWithConsent(signer *auth.Signer, store compliance.ConsentStore, queries ContentQueries, svc *session.Service, scorer ResponseScorer, reads LearnerReads) []route {
 	staffOrOps := middleware.RequireAuth(signer, auth.RoleStaff, auth.RoleOps)
 	student := middleware.RequireAuth(signer, auth.RoleStudent)
 	itemHandle, itemVersionHandle := notImplemented, notImplemented
@@ -149,6 +150,15 @@ func routesWithConsent(signer *auth.Signer, store compliance.ConsentStore, queri
 		itemVersionHandle = contentRead("item_version_id", queries.GetItemVersion)
 		templateHandle = contentRead("template_id", queries.GetTemplate)
 		certHandle = contentRead("cert_id", queries.GetGateCertificate)
+	}
+	// 未注入查询面时保持 aliasBoundRead：归属断言（D9）照常执行后才落 501
+	// 占位——骨架语义不因装配降级而弱化主体↔alias 绑定.
+	learnerWeaknessHandle, learnerDueHandle := aliasBoundRead("student_alias_id"), aliasBoundRead("student_alias_id")
+	if reads.Reports != nil {
+		learnerWeaknessHandle = reportsWeakness(reads)
+	}
+	if reads.Review != nil {
+		learnerDueHandle = reviewDue(reads)
 	}
 	return []route{
 		{pattern: "GET /items/{item_id}", shield: staffOrOps, handle: itemHandle},
@@ -163,8 +173,8 @@ func routesWithConsent(signer *auth.Signer, store compliance.ConsentStore, queri
 		{pattern: "POST /sessions/{session_id}/resume", shield: student, handle: sessionResume(svc)},
 		{pattern: "POST /sessions/{session_id}/abandon", shield: student, handle: sessionAbandon(svc)},
 
-		{pattern: "GET /reports/weakness/{student_alias_id}", shield: student, handle: aliasBoundRead("student_alias_id")},
-		{pattern: "GET /review/due/{student_alias_id}", shield: student, handle: aliasBoundRead("student_alias_id")},
+		{pattern: "GET /reports/weakness/{student_alias_id}", shield: student, handle: learnerWeaknessHandle},
+		{pattern: "GET /review/due/{student_alias_id}", shield: student, handle: learnerDueHandle},
 	}
 }
 
@@ -173,7 +183,14 @@ func routesWithConsent(signer *auth.Signer, store compliance.ConsentStore, queri
 // 路由返回契约 v1.1 JSON。授权门前置不变；svc 为 nil 时等价于
 // NewRouterWithConsent（501 兼容形态）.
 func NewRouterWithSessions(signer *auth.Signer, store compliance.ConsentStore, svc *session.Service, scorer ResponseScorer) http.Handler {
-	return newRouterWithConfig(BoundaryConfigFromEnv(getenv), routesWithConsent(signer, store, nil, svc, scorer)...)
+	return newRouterWithConfig(BoundaryConfigFromEnv(getenv), routesWithConsent(signer, store, nil, svc, scorer, LearnerReads{})...)
+}
+
+// NewRouterWithLearnerReads 是学生只读面（弱项报告/复习到期）的生产装配
+// 接缝：在 NewRouterWithSessions 之上注入 reads。reads 各字段为 nil 时对应
+// 端点保持 501 占位（fail-closed：查询面未接线绝不回伪造/空数据）。
+func NewRouterWithLearnerReads(signer *auth.Signer, store compliance.ConsentStore, svc *session.Service, scorer ResponseScorer, queries ContentQueries, reads LearnerReads) http.Handler {
+	return newRouterWithConfig(BoundaryConfigFromEnv(getenv), routesWithConsent(signer, store, queries, svc, scorer, reads)...)
 }
 
 // NewRouter 生产装配：环境变量注入边界配置（见 boundary.go），006 的
@@ -204,7 +221,7 @@ func NewRouterWithConsent(signer *auth.Signer, store compliance.ConsentStore) ht
 // 为 nil 等价 NewRouterWithConsent——四条只读端点保持 501 占位（查询面未
 // 接线绝不回伪造/空数据，fail-closed 同 X12 纪律）。
 func NewRouterWithQueries(signer *auth.Signer, store compliance.ConsentStore, queries ContentQueries) http.Handler {
-	return newRouterWithConfig(BoundaryConfigFromEnv(getenv), routesWithConsent(signer, store, queries, nil, nil)...)
+	return newRouterWithConfig(BoundaryConfigFromEnv(getenv), routesWithConsent(signer, store, queries, nil, nil, LearnerReads{})...)
 }
 
 // newRouterWithConfig 构造带边界层的路由：注册健康探针与 extra 路由
