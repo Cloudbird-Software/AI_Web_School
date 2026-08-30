@@ -16,7 +16,8 @@ make demo-w0           # W0 出口验收
 - `specs/` 规格库（constitution.md=最高约束；contracts/ 冻结契约；modules/ 模块规格；adr/ 决策记录）
 - `tasks/` 任务卡与任务板
 - `.agent/` DevOS：roles/ 角色 prompt、rules/ 规则源、routing.yaml、telemetry/ 遥测
-- `src/` 平台代码（core/ 核心域 + packs/ 学科与学段包 + registry/ 注册表 + workbench/）
+- `src/` **已退役只读冻结归档**（Python 服务运行时，ADR-0007；取证保留，禁改禁增）
+- `core/`(28 包)+`api/`+`cmd/`+`packs/`+`registry/`+`db/` Go 1.25 平台运行时（唯一应用运行时；50 包 `-race` 门禁）
 - `tests/` contract（契约）/ golden（黄金数据集）/ golden-path（黄金路径）/ model-bench（模型基准赛，私有）
 - `tools/` opc CLI、sync_rules.sh、make_accept.sh
 - `content/` 内容资产与引入管线（sources/=来源许可登记）
