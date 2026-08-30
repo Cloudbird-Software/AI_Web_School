@@ -191,7 +191,7 @@ func TestListeningPipelineStaticArtifacts(t *testing.T) {
 	p, _ := newTestProducer(t, eng)
 
 	res, err := RunListeningPipeline(context.Background(), p, passGate{}, pipelineSpecs()[:1], PipelineOptions{
-		GradeBand: tts.BandM, RenderMode: RenderStatic, QRSecret: goldenQRSecret, PaperID: "paper-e2e",
+		GradeBand: tts.BandM, RenderMode: RenderStatic, QRSecret: goldenQRSigSeed, PaperID: "paper-e2e",
 	})
 	if err != nil {
 		t.Fatalf("RunListeningPipeline: %v", err)
@@ -204,7 +204,7 @@ func TestListeningPipelineStaticArtifacts(t *testing.T) {
 		t.Fatal("静态卷必须承载签名 URL（QR 载荷面）")
 	}
 	// 签发用真实时钟（Now 零值），24h 内当下必可验签.
-	if !VerifyQRURL(a.SignedURL, goldenQRSecret, time.Now()) {
+	if !VerifyQRURL(a.SignedURL, goldenQRSigSeed, time.Now()) {
 		t.Fatalf("签名 URL 必须当下可验签：%s", a.SignedURL)
 	}
 	if a.QRSVG != "" {

@@ -18,7 +18,7 @@ import (
 const (
 	goldenQRAudioID  = "2641629083fc4dbe8ab7e6a0355b1ba2"
 	goldenQRPaperID  = "paper-e2e"
-	goldenQRSecret   = "e2e-default-secret"
+	goldenQRSigSeed  = "e2e-default-secret"
 	goldenQRExpTS    = 1788134400
 	goldenQRSig      = "73e97478d113ecf05295d8f2d258eddf"
 	goldenQRFullURL  = "http://localhost:9000/audio-listening/2641629083fc4dbe8ab7e6a0355b1ba2.mp3?paper=paper-e2e&exp=1788134400&sig=73e97478d113ecf05295d8f2d258eddf"
@@ -29,7 +29,7 @@ func qrGoldenNow() time.Time { return time.Unix(qrGoldenNowEpoch, 0).UTC() }
 
 func TestGenerateSignedURLMatchesFrozen(t *testing.T) {
 	u, err := GenerateSignedURL(goldenQRAudioID, goldenQRPaperID, QROptions{
-		Secret: goldenQRSecret,
+		Secret: goldenQRSigSeed,
 		Now:    qrGoldenNow(),
 	})
 	if err != nil {
@@ -75,7 +75,7 @@ func TestGenerateSignedURLErrorAndDeterminism(t *testing.T) {
 
 func TestGenerateQRSVGIsExplicitSkeleton(t *testing.T) {
 	// QR SVG 位图是 render.GenerateQRSVG 骨架面：如实上抛，不静默降级.
-	_, err := GenerateQR(goldenQRAudioID, goldenQRPaperID, QROptions{Secret: goldenQRSecret, Now: qrGoldenNow()})
+	_, err := GenerateQR(goldenQRAudioID, goldenQRPaperID, QROptions{Secret: goldenQRSigSeed, Now: qrGoldenNow()})
 	if err == nil {
 		t.Fatal("骨架期 GenerateQR 必须显式失败")
 	}
@@ -85,15 +85,15 @@ func TestGenerateQRSVGIsExplicitSkeleton(t *testing.T) {
 }
 
 func TestVerifyQRURLGolden(t *testing.T) {
-	if !VerifyQRURL(goldenQRFullURL, goldenQRSecret, qrGoldenNow()) {
+	if !VerifyQRURL(goldenQRFullURL, goldenQRSigSeed, qrGoldenNow()) {
 		t.Fatal("黄金 URL 在有效期内必须验证通过")
 	}
 	// 边界：恰好到过期秒 → 有效（冻结实现 > 判据同语义）.
-	if !VerifyQRURL(goldenQRFullURL, goldenQRSecret, time.Unix(goldenQRExpTS, 0).UTC()) {
+	if !VerifyQRURL(goldenQRFullURL, goldenQRSigSeed, time.Unix(goldenQRExpTS, 0).UTC()) {
 		t.Fatal("exp 秒上必须仍有效")
 	}
 	// 过期 1 秒 → 无效.
-	if VerifyQRURL(goldenQRFullURL, goldenQRSecret, time.Unix(goldenQRExpTS+1, 0).UTC()) {
+	if VerifyQRURL(goldenQRFullURL, goldenQRSigSeed, time.Unix(goldenQRExpTS+1, 0).UTC()) {
 		t.Fatal("过期 URL 必须无效")
 	}
 	// 错密钥 → 无效.
