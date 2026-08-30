@@ -128,9 +128,10 @@ func TestTraceCodesErrors(t *testing.T) {
 	if _, err := GenerateItemShortCode(""); !errors.Is(err, ErrInvalidCode) {
 		t.Fatalf("空 paper_item_id 应锚定 ErrInvalidCode: %v", err)
 	}
-	// QR SVG 为显式 IO 骨架：必须显式失败，不得静默降级
-	if _, err := GenerateQRSVG("spec-0014", 4, 1); !errors.Is(err, ErrQRSVGNotImplemented) {
-		t.Fatalf("QR SVG 骨架应锚定 ErrQRSVGNotImplemented: %v", err)
+	// QR SVG 已接线（#152）：参数非法必须显式失败（fail-loud 语义不变）；
+	// 正常路径的逐字节黄金锁定见 qr_svg_test.go（spec_alnum9 等 14 例）
+	if _, err := GenerateQRSVG("spec-0014", 0, 1); !errors.Is(err, ErrInvalidCode) {
+		t.Fatalf("QR SVG 非法 boxSize 应锚定 ErrInvalidCode: %v", err)
 	}
 }
 

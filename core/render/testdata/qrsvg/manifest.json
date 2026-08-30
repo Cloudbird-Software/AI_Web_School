@@ -1,0 +1,72 @@
+{
+ "alnum21_v1": {
+  "mask": null,
+  "modules": 25,
+  "version": 2
+ },
+ "alnum22_v2": {
+  "mask": null,
+  "modules": 25,
+  "version": 2
+ },
+ "audio_golden_url": {
+  "mask": null,
+  "modules": 49,
+  "version": 8
+ },
+ "byte183_v10": {
+  "mask": null,
+  "modules": 57,
+  "version": 10
+ },
+ "byte_2331_v40": {
+  "mask": null,
+  "modules": 177,
+  "version": 40
+ },
+ "cjk_box7_border3": {
+  "mask": null,
+  "modules": 33,
+  "version": 4
+ },
+ "cjk_utf8": {
+  "mask": null,
+  "modules": 33,
+  "version": 4
+ },
+ "iso_box1_border0": {
+  "mask": null,
+  "modules": 21,
+  "version": 1
+ },
+ "iso_numeric8": {
+  "mask": null,
+  "modules": 21,
+  "version": 1
+ },
+ "mixed_modes": {
+  "mask": null,
+  "modules": 29,
+  "version": 3
+ },
+ "numeric41": {
+  "mask": null,
+  "modules": 25,
+  "version": 2
+ },
+ "paper_alnum20": {
+  "mask": null,
+  "modules": 21,
+  "version": 1
+ },
+ "spec_alnum9": {
+  "mask": null,
+  "modules": 21,
+  "version": 1
+ },
+ "spec_box10_border4": {
+  "mask": null,
+  "modules": 21,
+  "version": 1
+ }
+}
