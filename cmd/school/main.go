@@ -8,7 +8,8 @@
 // main 只做装配：读环境、构造 server、挂 api 路由。会话全链路依赖在装配期
 // 显式接线（GO-RW-002）：pgxpool（SCHOOL_DATABASE_URL）→ compliance.PGStore
 // （家长授权账）+ session.PGStore（题序/提交/运行态三面同账）+ poolTxRunner
-// （显式事务执行面）+ dbResponseScorer（评分桥）→ api.NewRouterWithSessions。
+// （显式事务执行面）+ dbResponseScorer（评分桥）→ api.NewRouterWithLearnerReads
+// （含 ContentQueries 与学生只读面）。
 package main
 
 import (
@@ -22,6 +23,9 @@ import (
 	"github.com/Cloudbird-Software/AI_Web_School/api/middleware"
 	"github.com/Cloudbird-Software/AI_Web_School/core/auth"
 	"github.com/Cloudbird-Software/AI_Web_School/core/compliance"
+	"github.com/Cloudbird-Software/AI_Web_School/core/content"
+	"github.com/Cloudbird-Software/AI_Web_School/core/report"
+	"github.com/Cloudbird-Software/AI_Web_School/core/review"
 	"github.com/Cloudbird-Software/AI_Web_School/core/scoring"
 	"github.com/Cloudbird-Software/AI_Web_School/core/session"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -143,9 +147,17 @@ func main() {
 		log.Fatalf("session service bootstrap failed: %v", err)
 	}
 
+	// 学生只读面 + 内容取证面（审计 #155 收口）：同一池的只读查询服务，
+	// 13 条业务路由自此全部业务接线（零 501 生产形态）。
+	reads := api.LearnerReads{
+		Reports: report.NewWeaknessQueryService(pool),
+		Review:  review.NewDueQueryService(pool),
+	}
+	contentQueries := content.NewContentQueryService(pool)
+
 	srv := &http.Server{
 		Addr:    addr,
-		Handler: api.NewRouterWithSessions(signer, consents, svc, scorer),
+		Handler: api.NewRouterWithLearnerReads(signer, consents, svc, scorer, contentQueries, reads),
 		// 基线超时（骨架级；SLO 细化在 W5-R S2 API 边界加固落地）
 		ReadHeaderTimeout: 10e9,
 	}
