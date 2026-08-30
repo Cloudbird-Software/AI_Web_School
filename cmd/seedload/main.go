@@ -80,8 +80,8 @@ func run(args []string, getenv func(string) string, out io.Writer) error {
 		mode = "dry-run"
 	}
 
-	fmt.Fprintf(out, "════════ seedload · 知识图谱种子装载（#149/#159） ════════\n")
-	fmt.Fprintf(out, "mode=%s  dimension=%s  files=%d\n\n", mode, seedDimension, len(seeds))
+	_, _ = fmt.Fprintf(out, "════════ seedload · 知识图谱种子装载（#149/#159） ════════\n")
+	_, _ = fmt.Fprintf(out, "mode=%s  dimension=%s  files=%d\n\n", mode, seedDimension, len(seeds))
 
 	total := &seedTotals{}
 	for _, path := range seeds {
@@ -108,10 +108,10 @@ func run(args []string, getenv func(string) string, out io.Writer) error {
 
 // printFileStats 单文件装载统计（added/skipped 即幂等重跑证据面）.
 func printFileStats(out io.Writer, path string, s *knowledge.SeedLoadStats) {
-	fmt.Fprintf(out, "── %s（%s @ %s）\n", path, s.PackID, s.GraphReleaseID)
-	fmt.Fprintf(out, "   relation_types: added=%d skipped=%d\n", s.RelationTypesAdded, s.RelationTypesSkipped)
-	fmt.Fprintf(out, "   nodes:          added=%d skipped=%d\n", s.NodesAdded, s.NodesSkipped)
-	fmt.Fprintf(out, "   edges:          added=%d skipped=%d  missing-node=%d\n", s.EdgesAdded, s.EdgesSkipped, s.EdgesMissingNode)
+	_, _ = fmt.Fprintf(out, "── %s（%s @ %s）\n", path, s.PackID, s.GraphReleaseID)
+	_, _ = fmt.Fprintf(out, "   relation_types: added=%d skipped=%d\n", s.RelationTypesAdded, s.RelationTypesSkipped)
+	_, _ = fmt.Fprintf(out, "   nodes:          added=%d skipped=%d\n", s.NodesAdded, s.NodesSkipped)
+	_, _ = fmt.Fprintf(out, "   edges:          added=%d skipped=%d  missing-node=%d\n", s.EdgesAdded, s.EdgesSkipped, s.EdgesMissingNode)
 }
 
 // seedTotals 全批汇总（跨文件累计）.
@@ -143,8 +143,8 @@ func (t *seedTotals) print(out io.Writer, mode string) {
 	if mode == "dry-run" {
 		label = "would-add"
 	}
-	fmt.Fprintf(out, "\n──────── 汇总（%d 个种子文件）────────\n", t.files)
-	fmt.Fprintf(out, "relation_types: %s=%d skipped=%d\n", label, t.relAdded, t.relSkipped)
-	fmt.Fprintf(out, "nodes:          %s=%d skipped=%d\n", label, t.nodeAdded, t.nodeSkip)
-	fmt.Fprintf(out, "edges:          %s=%d skipped=%d  missing-node=%d\n", label, t.edgeAdded, t.edgeSkipped, t.missing)
+	_, _ = fmt.Fprintf(out, "\n──────── 汇总（%d 个种子文件）────────\n", t.files)
+	_, _ = fmt.Fprintf(out, "relation_types: %s=%d skipped=%d\n", label, t.relAdded, t.relSkipped)
+	_, _ = fmt.Fprintf(out, "nodes:          %s=%d skipped=%d\n", label, t.nodeAdded, t.nodeSkip)
+	_, _ = fmt.Fprintf(out, "edges:          %s=%d skipped=%d  missing-node=%d\n", label, t.edgeAdded, t.edgeSkipped, t.missing)
 }
