@@ -1,0 +1,192 @@
+# 数学 1-2 年级知识图谱种子数据（审计卡 #149 知识点种子补齐）
+#
+# 锚定课标：义务教育数学课程标准（2022 年版）第一学段（1-2 年级）。
+# 覆盖四大领域代表性知识点：数与代数 / 图形与几何 / 统计与概率 / 综合与实践。
+#
+# 节点编码命名约定（对齐 math_kp_3-4.yaml）：math.{domain}.{topic}.{subtopic}
+#   domain ∈ {nal 数与代数, geo 图形与几何, sp 统计与概率, cp 综合与实践}
+#   全部 dimension=kp，pack_id=subject-math，gradeband=L（第一学段，显式标注）
+#   code 在同 pack 内全局唯一（uq_kp_node_pack_dim_code 不分学段）——与
+#   math_kp_3-4.yaml 既有 code 逐一避让，跨学段共性节点只落一处。
+#
+# 课标常识红线：先加减后乘除（乘法由同数连加引入，除法是乘法的逆运算）；
+# 第一学段数与运算止于 100 以内加减法与表内乘除；统计只到分类整理与
+# 象形统计图/简单统计表（可能性与条形统计图是第二学段内容，不入本文件）。
+#
+# 边类型（与 relation_type 表一致）：
+#   prerequisite 先修（transitive=true，方向，acyclic）
+#   confusable   易混淆（对称，非传递）
+#   composes     组成（A 是 B 的子部分）
+#
+# 幂等约定：seed_loader 按 (pack_id, dimension, code) 查重节点，
+#           按 (src_node_id, dst_node_id, rel_type) 查重边；
+#           重复导入 = skip，不抛错。
+
+version: "1.0"
+pack_id: subject-math
+graph_release_id: "2026.1.math-1-2"
+
+relation_types:
+  - rel_type: prerequisite
+    directed: true
+    transitive: true
+    acyclic: true
+    symmetric: false
+    description: 先修关系（传递闭包展开）
+  - rel_type: confusable
+    directed: false
+    transitive: false
+    acyclic: false
+    symmetric: true
+    description: 易混淆关系（对称，非传递）
+  - rel_type: composes
+    directed: true
+    transitive: true
+    acyclic: true
+    symmetric: false
+    description: 组成关系（A 是 B 的子部分）
+
+# ────────────────────────────────────────────────────────────────────
+# 节点：1-2 年级数学知识点（dimension=kp，gradeband=L 固定）
+# ────────────────────────────────────────────────────────────────────
+nodes:
+
+  # ─── 数与代数 nal ───
+  # 20 以内数
+  - {code: math.nal.number_twenty.recognize, title: 20 以内数的认识, std_anchor: 课标2022.nal.1-2.1, gradeband: L}
+  - {code: math.nal.number_twenty.read_write, title: 20 以内数的读写, std_anchor: 课标2022.nal.1-2.1, gradeband: L}
+  - {code: math.nal.number_twenty.compare, title: 20 以内数的大小比较, std_anchor: 课标2022.nal.1-2.1, gradeband: L}
+  - {code: math.nal.number_twenty.compose_decompose, title: 20 以内数的组成与分解, std_anchor: 课标2022.nal.1-2.1, gradeband: L}
+
+  # 100 以内数
+  - {code: math.nal.number_hundred.recognize, title: 100 以内数的认识, std_anchor: 课标2022.nal.1-2.1, gradeband: L}
+  - {code: math.nal.number_hundred.read_write, title: 100 以内数的读写, std_anchor: 课标2022.nal.1-2.1, gradeband: L}
+  - {code: math.nal.number_hundred.compare, title: 100 以内数的大小比较, std_anchor: 课标2022.nal.1-2.1, gradeband: L}
+
+  # 加减法（先学）
+  - {code: math.nal.add_sub_twenty.basic, title: 20 以内加减法, std_anchor: 课标2022.nal.1-2.2, gradeband: L}
+  - {code: math.nal.add_sub_twenty.carry, title: 20 以内进位加法与退位减法, std_anchor: 课标2022.nal.1-2.2, gradeband: L}
+  - {code: math.nal.add_sub_hundred.basic, title: 100 以内加减法, std_anchor: 课标2022.nal.1-2.2, gradeband: L}
+  - {code: math.nal.add_sub_hundred.vertical, title: 100 以内竖式计算, std_anchor: 课标2022.nal.1-2.2, gradeband: L}
+
+  # 乘除法（后学：由同数连加引入乘法，除法是乘法的逆运算）
+  - {code: math.nal.mul.meaning, title: 乘法的初步认识, std_anchor: 课标2022.nal.1-2.2, gradeband: L}
+  - {code: math.nal.mul.table, title: 表内乘法（乘法口诀）, std_anchor: 课标2022.nal.1-2.2, gradeband: L}
+  - {code: math.nal.div.meaning, title: 除法的初步认识, std_anchor: 课标2022.nal.1-2.2, gradeband: L}
+  - {code: math.nal.div.table, title: 表内除法, std_anchor: 课标2022.nal.1-2.2, gradeband: L}
+
+  # 量与计量
+  - {code: math.nal.money.recognize, title: 认识人民币, std_anchor: 课标2022.nal.1-2.3, gradeband: L}
+  - {code: math.nal.quantity.clock, title: 认识钟表（整时与半时）, std_anchor: 课标2022.nal.1-2.3, gradeband: L}
+  - {code: math.nal.quantity.length_cm, title: 认识厘米和米, std_anchor: 课标2022.nal.1-2.3, gradeband: L}
+
+  # 问题解决
+  - {code: math.nal.problem.quantity_relation, title: 数量关系（部分数与总数）, std_anchor: 课标2022.nal.1-2.4, gradeband: L}
+  - {code: math.nal.problem.word_problem, title: 用加减法解决简单实际问题, std_anchor: 课标2022.nal.1-2.4, gradeband: L}
+
+  # ─── 图形与几何 geo ───
+  - {code: math.geo.shape_three_d.recognize, title: 认识立体图形（长方体、正方体、圆柱、球）, std_anchor: 课标2022.geo.1-2.1, gradeband: L}
+  - {code: math.geo.shape_two_d.recognize, title: 认识平面图形（长方形、正方形、三角形、圆）, std_anchor: 课标2022.geo.1-2.1, gradeband: L}
+  - {code: math.geo.shape_two_d.compose, title: 图形的拼组与分割, std_anchor: 课标2022.geo.1-2.1, gradeband: L}
+  - {code: math.geo.shape_two_d.tangram, title: 七巧板拼图, std_anchor: 课标2022.geo.1-2.1, gradeband: L}
+  - {code: math.geo.line.segment, title: 认识线段, std_anchor: 课标2022.geo.1-2.1, gradeband: L}
+  - {code: math.geo.angle.right, title: 认识角与直角、锐角、钝角, std_anchor: 课标2022.geo.1-2.1, gradeband: L}
+  - {code: math.geo.position.words, title: 位置与顺序（上下、前后、左右）, std_anchor: 课标2022.geo.1-2.2, gradeband: L}
+  - {code: math.geo.direction.east, title: 认识东、南、西、北, std_anchor: 课标2022.geo.1-2.2, gradeband: L}
+  - {code: math.geo.transform.motion, title: 平移与旋转现象, std_anchor: 课标2022.geo.1-2.3, gradeband: L}
+  - {code: math.geo.transform.axis_symmetry, title: 轴对称现象的直观认识, std_anchor: 课标2022.geo.1-2.3, gradeband: L}
+
+  # ─── 统计与概率 sp ───
+  - {code: math.sp.data.classify, title: 按标准分类与整理, std_anchor: 课标2022.sp.1-2.1, gradeband: L}
+  - {code: math.sp.data.gather, title: 简单数据的调查与收集, std_anchor: 课标2022.sp.1-2.1, gradeband: L}
+  - {code: math.sp.chart.pictograph, title: 象形统计图, std_anchor: 课标2022.sp.1-2.2, gradeband: L}
+  - {code: math.sp.table.simple, title: 简单统计表, std_anchor: 课标2022.sp.1-2.2, gradeband: L}
+
+  # ─── 综合与实践 cp ───
+  - {code: math.cp.project.shopping, title: 购物活动（人民币的应用）, std_anchor: 课标2022.cp.1-2.1, gradeband: L}
+  - {code: math.cp.project.schedule, title: 作息时间表设计, std_anchor: 课标2022.cp.1-2.1, gradeband: L}
+  - {code: math.cp.project.measure_body, title: 身上的“尺子”（测量实践）, std_anchor: 课标2022.cp.1-2.1, gradeband: L}
+  - {code: math.cp.project.organize, title: 整理书包与教室（分类实践）, std_anchor: 课标2022.cp.1-2.1, gradeband: L}
+
+  # ─── 数学思想方法（横切）───
+  - {code: math.nal.thinking.pattern, title: 找规律, std_anchor: 课标2022.thinking.1-2.1, gradeband: L}
+  - {code: math.nal.thinking.number_sense, title: 数感的初步建立, std_anchor: 课标2022.thinking.1-2.1, gradeband: L}
+  - {code: math.geo.thinking.space, title: 空间观念的初步建立, std_anchor: 课标2022.thinking.1-2.2, gradeband: L}
+  - {code: math.sp.thinking.data, title: 数据意识的初步建立, std_anchor: 课标2022.thinking.1-2.3, gradeband: L}
+
+# ────────────────────────────────────────────────────────────────────
+# 边：先修 prerequisite / 易混淆 confusable / 组成 composes
+# ────────────────────────────────────────────────────────────────────
+edges:
+
+  # ── 先修：数的认识链 ──
+  - {src: math.nal.number_twenty.recognize, dst: math.nal.number_twenty.read_write, rel_type: prerequisite}
+  - {src: math.nal.number_twenty.read_write, dst: math.nal.number_twenty.compare, rel_type: prerequisite}
+  - {src: math.nal.number_twenty.recognize, dst: math.nal.number_twenty.compose_decompose, rel_type: prerequisite}
+  - {src: math.nal.number_twenty.compose_decompose, dst: math.nal.number_twenty.read_write, rel_type: prerequisite}
+  - {src: math.nal.number_twenty.recognize, dst: math.nal.number_hundred.recognize, rel_type: prerequisite}
+  - {src: math.nal.number_hundred.recognize, dst: math.nal.number_hundred.read_write, rel_type: prerequisite}
+  - {src: math.nal.number_hundred.read_write, dst: math.nal.number_hundred.compare, rel_type: prerequisite}
+
+  # ── 先修：加减法（先学）──
+  - {src: math.nal.number_twenty.compose_decompose, dst: math.nal.add_sub_twenty.basic, rel_type: prerequisite}
+  - {src: math.nal.add_sub_twenty.basic, dst: math.nal.add_sub_twenty.carry, rel_type: prerequisite}
+  - {src: math.nal.add_sub_twenty.basic, dst: math.nal.add_sub_hundred.basic, rel_type: prerequisite}
+  - {src: math.nal.add_sub_hundred.basic, dst: math.nal.add_sub_hundred.vertical, rel_type: prerequisite}
+  - {src: math.nal.number_hundred.recognize, dst: math.nal.add_sub_hundred.basic, rel_type: prerequisite}
+
+  # ── 先修：乘除法（后学：同数连加引入乘法，乘法引入除法）──
+  - {src: math.nal.add_sub_twenty.basic, dst: math.nal.mul.meaning, rel_type: prerequisite}
+  - {src: math.nal.mul.meaning, dst: math.nal.mul.table, rel_type: prerequisite}
+  - {src: math.nal.mul.table, dst: math.nal.div.meaning, rel_type: prerequisite}
+  - {src: math.nal.div.meaning, dst: math.nal.div.table, rel_type: prerequisite}
+
+  # ── 先修：量与计量 ──
+  - {src: math.nal.add_sub_twenty.basic, dst: math.nal.money.recognize, rel_type: prerequisite}
+  - {src: math.nal.number_twenty.read_write, dst: math.nal.quantity.clock, rel_type: prerequisite}
+  - {src: math.nal.number_twenty.recognize, dst: math.nal.quantity.length_cm, rel_type: prerequisite}
+
+  # ── 先修：问题解决 ──
+  - {src: math.nal.number_twenty.compose_decompose, dst: math.nal.problem.quantity_relation, rel_type: prerequisite}
+  - {src: math.nal.problem.quantity_relation, dst: math.nal.problem.word_problem, rel_type: prerequisite}
+  - {src: math.nal.add_sub_hundred.basic, dst: math.nal.problem.word_problem, rel_type: prerequisite}
+
+  # ── 先修：图形与几何 ──
+  - {src: math.geo.shape_three_d.recognize, dst: math.geo.shape_two_d.recognize, rel_type: prerequisite}
+  - {src: math.geo.shape_two_d.recognize, dst: math.geo.shape_two_d.compose, rel_type: prerequisite}
+  - {src: math.geo.shape_two_d.compose, dst: math.geo.shape_two_d.tangram, rel_type: prerequisite}
+  - {src: math.geo.shape_two_d.recognize, dst: math.geo.angle.right, rel_type: prerequisite}
+  - {src: math.geo.line.segment, dst: math.nal.quantity.length_cm, rel_type: prerequisite}
+  - {src: math.geo.position.words, dst: math.geo.direction.east, rel_type: prerequisite}
+  - {src: math.geo.shape_two_d.recognize, dst: math.geo.transform.motion, rel_type: prerequisite}
+  - {src: math.geo.shape_two_d.recognize, dst: math.geo.transform.axis_symmetry, rel_type: prerequisite}
+
+  # ── 先修：统计与概率 ──
+  - {src: math.sp.data.classify, dst: math.sp.data.gather, rel_type: prerequisite}
+  - {src: math.sp.data.gather, dst: math.sp.chart.pictograph, rel_type: prerequisite}
+  - {src: math.sp.data.gather, dst: math.sp.table.simple, rel_type: prerequisite}
+
+  # ── 先修：综合与实践 ──
+  - {src: math.nal.money.recognize, dst: math.cp.project.shopping, rel_type: prerequisite}
+  - {src: math.nal.quantity.clock, dst: math.cp.project.schedule, rel_type: prerequisite}
+  - {src: math.nal.quantity.length_cm, dst: math.cp.project.measure_body, rel_type: prerequisite}
+  - {src: math.sp.data.classify, dst: math.cp.project.organize, rel_type: prerequisite}
+
+  # ── 先修：思想方法 ──
+  - {src: math.nal.number_twenty.recognize, dst: math.nal.thinking.number_sense, rel_type: prerequisite}
+  - {src: math.nal.number_twenty.compose_decompose, dst: math.nal.thinking.pattern, rel_type: prerequisite}
+  - {src: math.geo.shape_three_d.recognize, dst: math.geo.thinking.space, rel_type: prerequisite}
+  - {src: math.sp.data.gather, dst: math.sp.thinking.data, rel_type: prerequisite}
+
+  # ── 易混淆 confusable（对称）──
+  - {src: math.geo.shape_two_d.recognize, dst: math.geo.shape_three_d.recognize, rel_type: confusable}
+  - {src: math.nal.mul.meaning, dst: math.nal.div.meaning, rel_type: confusable}
+  - {src: math.nal.add_sub_twenty.carry, dst: math.nal.add_sub_hundred.vertical, rel_type: confusable}
+  - {src: math.sp.chart.pictograph, dst: math.sp.table.simple, rel_type: confusable}
+  - {src: math.geo.transform.motion, dst: math.geo.transform.axis_symmetry, rel_type: confusable}
+
+  # ── 组成 composes（A 是 B 的子部分）──
+  - {src: math.nal.add_sub_twenty.carry, dst: math.nal.add_sub_twenty.basic, rel_type: composes}
+  - {src: math.nal.mul.table, dst: math.nal.mul.meaning, rel_type: composes}
+  - {src: math.nal.div.table, dst: math.nal.div.meaning, rel_type: composes}
+  - {src: math.sp.chart.pictograph, dst: math.sp.data.gather, rel_type: composes}

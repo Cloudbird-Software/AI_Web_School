@@ -1,0 +1,143 @@
+# 英语 3-4 年级知识图谱种子数据（审计卡 #149 知识点种子补齐）
+#
+# 锚定课标：义务教育英语课程标准（2022 年版）第二学段（3-4 年级，二级）。
+# 覆盖三大板块代表性知识点：词汇 / 语法 / 听说读。
+#
+# 节点编码命名约定（任务卡验收）：eng.{domain}.{topic}
+#   domain ∈ {vocab 词汇, gram 语法, listen 听, speak 说, read 读}
+#   全部 dimension=kp，pack_id=subject-english，gradeband=M（第二学段，显式标注）
+#   eng.vocab.spell / eng.gram.article / eng.gram.third_person / eng.gram.plural
+#   与 packs/subjectenglish 生成器引用的 kp code 严格一致（实例 objective.kp
+#   可回指图谱节点；eng.vocab.misspell / eng.gram.rule_violation 是 error_type
+#   维度 id，不属 kp 种子）。
+#
+# 课标常识红线：二级语法止于名词复数、be 动词形态、一般现在时（含第三
+# 人称单数）、现在进行时、一般过去时（规则动词）、一般/特殊疑问句；不涉
+# 比较级与被动语态（三级内容，不入本文件）。
+#
+# 边类型（与 relation_type 表一致）：
+#   prerequisite 先修（transitive=true，方向，acyclic）
+#   confusable   易混淆（对称，非传递）
+#   composes     组成（A 是 B 的子部分）
+#
+# 幂等约定：seed_loader 按 (pack_id, dimension, code) 查重节点，
+#           按 (src_node_id, dst_node_id, rel_type) 查重边；
+#           重复导入 = skip，不抛错。
+
+version: "1.0"
+pack_id: subject-english
+graph_release_id: "2026.1.eng-3-4"
+
+relation_types:
+  - rel_type: prerequisite
+    directed: true
+    transitive: true
+    acyclic: true
+    symmetric: false
+    description: 先修关系（传递闭包展开）
+  - rel_type: confusable
+    directed: false
+    transitive: false
+    acyclic: false
+    symmetric: true
+    description: 易混淆关系（对称，非传递）
+  - rel_type: composes
+    directed: true
+    transitive: true
+    acyclic: true
+    symmetric: false
+    description: 组成关系（A 是 B 的子部分）
+
+# ────────────────────────────────────────────────────────────────────
+# 节点：3-4 年级英语知识点（dimension=kp，gradeband=M 固定）
+# ────────────────────────────────────────────────────────────────────
+nodes:
+
+  # ─── 词汇 vocab ───
+  - {code: eng.vocab.recognize, title: 核心词汇的认读, std_anchor: 课标2022.eng.3-4.1, gradeband: M}
+  - {code: eng.vocab.spell, title: 核心词汇的拼写, std_anchor: 课标2022.eng.3-4.1, gradeband: M}
+  - {code: eng.vocab.spelling_rules, title: 简单拼读拼写规律, std_anchor: 课标2022.eng.3-4.1, gradeband: M}
+  - {code: eng.vocab.category, title: 话题词汇分类（颜色、动物、食物等）, std_anchor: 课标2022.eng.3-4.1, gradeband: M}
+  - {code: eng.vocab.parts_of_speech, title: 词性初步（名词、动词、形容词）, std_anchor: 课标2022.eng.3-4.1, gradeband: M}
+  - {code: eng.vocab.synonym_antonym, title: 近义与反义, std_anchor: 课标2022.eng.3-4.1, gradeband: M}
+  - {code: eng.vocab.collocation, title: 常见动词短语搭配, std_anchor: 课标2022.eng.3-4.1, gradeband: M}
+
+  # ─── 语法 gram ───
+  - {code: eng.gram.article, title: 冠词（a、an、the）的初步使用, std_anchor: 课标2022.eng.3-4.1, gradeband: M}
+  - {code: eng.gram.plural, title: 名词复数变化, std_anchor: 课标2022.eng.3-4.1, gradeband: M}
+  - {code: eng.gram.pronoun, title: 人称代词与物主代词, std_anchor: 课标2022.eng.3-4.1, gradeband: M}
+  - {code: eng.gram.be_forms, title: be 动词的形态变化（am、is、are）, std_anchor: 课标2022.eng.3-4.1, gradeband: M}
+  - {code: eng.gram.there_be, title: there be 句型, std_anchor: 课标2022.eng.3-4.1, gradeband: M}
+  - {code: eng.gram.sentence_order, title: 陈述句基本语序（主谓宾）, std_anchor: 课标2022.eng.3-4.1, gradeband: M}
+  - {code: eng.gram.question_forms, title: 一般疑问句与特殊疑问句, std_anchor: 课标2022.eng.3-4.1, gradeband: M}
+  - {code: eng.gram.third_person, title: 一般现在时第三人称单数, std_anchor: 课标2022.eng.3-4.1, gradeband: M}
+  - {code: eng.gram.present_continuous, title: 现在进行时, std_anchor: 课标2022.eng.3-4.1, gradeband: M}
+  - {code: eng.gram.past_simple, title: 一般过去时（规则动词）, std_anchor: 课标2022.eng.3-4.1, gradeband: M}
+  - {code: eng.gram.preposition, title: 介词（方位与时间）, std_anchor: 课标2022.eng.3-4.1, gradeband: M}
+
+  # ─── 听说读 listen / speak / read ───
+  - {code: eng.listen.sounds, title: 近似音的听辨, std_anchor: 课标2022.eng.3-4.2, gradeband: M}
+  - {code: eng.listen.gist, title: 听懂大意, std_anchor: 课标2022.eng.3-4.2, gradeband: M}
+  - {code: eng.listen.detail, title: 听取关键信息（数字、时间、人物）, std_anchor: 课标2022.eng.3-4.2, gradeband: M}
+  - {code: eng.speak.introduction, title: 自我介绍与日常问候, std_anchor: 课标2022.eng.3-4.2, gradeband: M}
+  - {code: eng.speak.routine, title: 日常交际用语（场景对话）, std_anchor: 课标2022.eng.3-4.2, gradeband: M}
+  - {code: eng.speak.describe, title: 描述人物与事物, std_anchor: 课标2022.eng.3-4.2, gradeband: M}
+  - {code: eng.speak.pronunciation, title: 语音语调（重音与语调）, std_anchor: 课标2022.eng.3-4.2, gradeband: M}
+  - {code: eng.read.decode, title: 字母与发音对应的拼读解码, std_anchor: 课标2022.eng.3-4.3, gradeband: M}
+  - {code: eng.read.sight_words, title: 常见视觉词的认读, std_anchor: 课标2022.eng.3-4.3, gradeband: M}
+  - {code: eng.read.sentence_read, title: 句子与短文的朗读, std_anchor: 课标2022.eng.3-4.3, gradeband: M}
+  - {code: eng.read.comprehension, title: 短文理解（回答事实性问题）, std_anchor: 课标2022.eng.3-4.3, gradeband: M}
+  - {code: eng.read.gist, title: 阅读获取大意, std_anchor: 课标2022.eng.3-4.3, gradeband: M}
+  - {code: eng.read.picture_books, title: 图画书与分级阅读的欣赏, std_anchor: 课标2022.eng.3-4.3, gradeband: M}
+
+# ────────────────────────────────────────────────────────────────────
+# 边：先修 prerequisite / 易混淆 confusable / 组成 composes
+# ────────────────────────────────────────────────────────────────────
+edges:
+
+  # ── 先修：词汇 ──
+  - {src: eng.vocab.recognize, dst: eng.vocab.spell, rel_type: prerequisite}
+  - {src: eng.vocab.spelling_rules, dst: eng.vocab.spell, rel_type: prerequisite}
+  - {src: eng.vocab.recognize, dst: eng.vocab.category, rel_type: prerequisite}
+  - {src: eng.vocab.recognize, dst: eng.vocab.synonym_antonym, rel_type: prerequisite}
+  - {src: eng.vocab.spell, dst: eng.vocab.collocation, rel_type: prerequisite}
+
+  # ── 先修：语法（词性先行支撑形态变化）──
+  - {src: eng.vocab.parts_of_speech, dst: eng.gram.plural, rel_type: prerequisite}
+  - {src: eng.vocab.parts_of_speech, dst: eng.gram.article, rel_type: prerequisite}
+  - {src: eng.vocab.parts_of_speech, dst: eng.gram.sentence_order, rel_type: prerequisite}
+  - {src: eng.gram.pronoun, dst: eng.gram.sentence_order, rel_type: prerequisite}
+  - {src: eng.gram.be_forms, dst: eng.gram.there_be, rel_type: prerequisite}
+  - {src: eng.gram.preposition, dst: eng.gram.there_be, rel_type: prerequisite}
+  - {src: eng.gram.article, dst: eng.gram.sentence_order, rel_type: prerequisite}
+  - {src: eng.gram.sentence_order, dst: eng.gram.question_forms, rel_type: prerequisite}
+  - {src: eng.gram.sentence_order, dst: eng.gram.third_person, rel_type: prerequisite}
+  - {src: eng.gram.be_forms, dst: eng.gram.present_continuous, rel_type: prerequisite}
+  - {src: eng.gram.sentence_order, dst: eng.gram.past_simple, rel_type: prerequisite}
+
+  # ── 先修：听说 ──
+  - {src: eng.listen.sounds, dst: eng.listen.gist, rel_type: prerequisite}
+  - {src: eng.listen.sounds, dst: eng.listen.detail, rel_type: prerequisite}
+  - {src: eng.listen.sounds, dst: eng.speak.pronunciation, rel_type: prerequisite}
+  - {src: eng.speak.introduction, dst: eng.speak.routine, rel_type: prerequisite}
+  - {src: eng.speak.routine, dst: eng.speak.describe, rel_type: prerequisite}
+  - {src: eng.vocab.category, dst: eng.speak.describe, rel_type: prerequisite}
+  - {src: eng.vocab.recognize, dst: eng.speak.introduction, rel_type: prerequisite}
+
+  # ── 先修：读（拼读解码→视觉词→朗读→理解→大意）──
+  - {src: eng.vocab.spelling_rules, dst: eng.read.decode, rel_type: prerequisite}
+  - {src: eng.read.decode, dst: eng.read.sight_words, rel_type: prerequisite}
+  - {src: eng.read.sight_words, dst: eng.read.sentence_read, rel_type: prerequisite}
+  - {src: eng.read.sentence_read, dst: eng.read.comprehension, rel_type: prerequisite}
+  - {src: eng.read.comprehension, dst: eng.read.gist, rel_type: prerequisite}
+  - {src: eng.read.sentence_read, dst: eng.read.picture_books, rel_type: prerequisite}
+  - {src: eng.listen.gist, dst: eng.read.comprehension, rel_type: prerequisite}
+
+  # ── 易混淆 confusable（对称；不与先修边重叠）──
+  - {src: eng.gram.there_be, dst: eng.gram.question_forms, rel_type: confusable}
+  - {src: eng.gram.third_person, dst: eng.gram.past_simple, rel_type: confusable}
+  - {src: eng.listen.gist, dst: eng.listen.detail, rel_type: confusable}
+
+  # ── 组成 composes（A 是 B 的子部分）──
+  - {src: eng.gram.be_forms, dst: eng.gram.there_be, rel_type: composes}
+  - {src: eng.gram.sentence_order, dst: eng.gram.question_forms, rel_type: composes}

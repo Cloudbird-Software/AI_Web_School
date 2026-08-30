@@ -1,0 +1,169 @@
+# 语文 3-4 年级知识图谱种子数据（审计卡 #149 知识点种子补齐）
+#
+# 锚定课标：义务教育语文课程标准（2022 年版）第二学段（3-4 年级）。
+# 覆盖五大板块代表性知识点：拼音 / 识字写字 / 词语 / 句子 / 阅读。
+#
+# 节点编码命名约定（任务卡验收）：lang.{domain}.{topic}
+#   domain ∈ {pinyin 拼音, chr 识字写字, word 词语, sent 句子, read 阅读}
+#   全部 dimension=kp，pack_id=subject-lang，gradeband=M（第二学段，显式标注）
+#   lang.chr.recognize / lang.sent.reorg 与 packs/subjectlang 生成器引用的
+#   kp code 严格一致（实例 objective.kp 可回指图谱节点）。
+#
+# 边类型（与 relation_type 表一致）：
+#   prerequisite 先修（transitive=true，方向，acyclic）
+#   confusable   易混淆（对称，非传递）
+#   composes     组成（A 是 B 的子部分）
+#
+# 幂等约定：seed_loader 按 (pack_id, dimension, code) 查重节点，
+#           按 (src_node_id, dst_node_id, rel_type) 查重边；
+#           重复导入 = skip，不抛错。
+
+version: "1.0"
+pack_id: subject-lang
+graph_release_id: "2026.1.lang-3-4"
+
+relation_types:
+  - rel_type: prerequisite
+    directed: true
+    transitive: true
+    acyclic: true
+    symmetric: false
+    description: 先修关系（传递闭包展开）
+  - rel_type: confusable
+    directed: false
+    transitive: false
+    acyclic: false
+    symmetric: true
+    description: 易混淆关系（对称，非传递）
+  - rel_type: composes
+    directed: true
+    transitive: true
+    acyclic: true
+    symmetric: false
+    description: 组成关系（A 是 B 的子部分）
+
+# ────────────────────────────────────────────────────────────────────
+# 节点：3-4 年级语文知识点（dimension=kp，gradeband=M 固定）
+# ────────────────────────────────────────────────────────────────────
+nodes:
+
+  # ─── 拼音 pinyin（第二学段为巩固面）───
+  - {code: lang.pinyin.alphabet, title: 字母表与大小写, std_anchor: 课标2022.lang.3-4.1, gradeband: M}
+  - {code: lang.pinyin.phonetic_order, title: 音序与音序查字法, std_anchor: 课标2022.lang.3-4.1, gradeband: M}
+  - {code: lang.pinyin.spelling, title: 声母韵母的拼读（巩固）, std_anchor: 课标2022.lang.3-4.1, gradeband: M}
+  - {code: lang.pinyin.tone, title: 声调与标调规则, std_anchor: 课标2022.lang.3-4.1, gradeband: M}
+
+  # ─── 识字写字 chr ───
+  - {code: lang.chr.recognize, title: 会认字的识记与认读, std_anchor: 课标2022.lang.3-4.1, gradeband: M}
+  - {code: lang.chr.stroke, title: 笔画与笔顺规则, std_anchor: 课标2022.lang.3-4.1, gradeband: M}
+  - {code: lang.chr.writing, title: 规范书写（结构、比例与整洁）, std_anchor: 课标2022.lang.3-4.1, gradeband: M}
+  - {code: lang.chr.radical, title: 偏旁与部首归类, std_anchor: 课标2022.lang.3-4.1, gradeband: M}
+  - {code: lang.chr.dictionary_use, title: 字典词典的使用（音序、部首两法）, std_anchor: 课标2022.lang.3-4.1, gradeband: M}
+  - {code: lang.chr.shape_near, title: 形近字辨析, std_anchor: 课标2022.lang.3-4.1, gradeband: M}
+  - {code: lang.chr.homophone, title: 同音字辨析, std_anchor: 课标2022.lang.3-4.1, gradeband: M}
+  - {code: lang.chr.polyphone, title: 多音字据词定音, std_anchor: 课标2022.lang.3-4.1, gradeband: M}
+  - {code: lang.chr.amount, title: 认识常用汉字的积累（累计约两千五百）, std_anchor: 课标2022.lang.3-4.1, gradeband: M}
+
+  # ─── 词语 word ───
+  - {code: lang.word.meaning, title: 词语的理解, std_anchor: 课标2022.lang.3-4.1, gradeband: M}
+  - {code: lang.word.collocation, title: 词语的搭配, std_anchor: 课标2022.lang.3-4.1, gradeband: M}
+  - {code: lang.word.synonym, title: 近义词与反义词, std_anchor: 课标2022.lang.3-4.1, gradeband: M}
+  - {code: lang.word.classify, title: 词语的感情色彩（褒义、贬义）, std_anchor: 课标2022.lang.3-4.1, gradeband: M}
+  - {code: lang.word.idiom, title: 成语与四字词语的积累, std_anchor: 课标2022.lang.3-4.1, gradeband: M}
+  - {code: lang.word.context, title: 依据语境选词填空, std_anchor: 课标2022.lang.3-4.1, gradeband: M}
+  - {code: lang.word.accumulate, title: 好词佳句的积累与运用, std_anchor: 课标2022.lang.3-4.1, gradeband: M}
+
+  # ─── 句子 sent ───
+  - {code: lang.sent.punctuation, title: 标点符号的使用（逗号、句号、问号、感叹号）, std_anchor: 课标2022.lang.3-4.1, gradeband: M}
+  - {code: lang.sent.complete, title: 把句子写完整、写通顺, std_anchor: 课标2022.lang.3-4.1, gradeband: M}
+  - {code: lang.sent.reorg, title: 连词成句与句子重组, std_anchor: 课标2022.lang.3-4.1, gradeband: M}
+  - {code: lang.sent.transform, title: 句式变换（把字句、被字句、陈述与反问）, std_anchor: 课标2022.lang.3-4.1, gradeband: M}
+  - {code: lang.sent.expand, title: 缩句与扩句, std_anchor: 课标2022.lang.3-4.1, gradeband: M}
+  - {code: lang.sent.modify, title: 修改病句（成分残缺、用词不当）, std_anchor: 课标2022.lang.3-4.1, gradeband: M}
+  - {code: lang.sent.dialogue, title: 提示语与对话（冒号、引号）, std_anchor: 课标2022.lang.3-4.1, gradeband: M}
+  - {code: lang.sent.rhetoric, title: 修辞初步（比喻、拟人）, std_anchor: 课标2022.lang.3-4.1, gradeband: M}
+
+  # ─── 阅读 read ───
+  - {code: lang.read.fluency, title: 朗读与默读（正确、流利、有感情）, std_anchor: 课标2022.lang.3-4.2, gradeband: M}
+  - {code: lang.read.word_meaning_context, title: 联系上下文理解词句, std_anchor: 课标2022.lang.3-4.2, gradeband: M}
+  - {code: lang.read.segment, title: 自然段与意义段（分层）, std_anchor: 课标2022.lang.3-4.2, gradeband: M}
+  - {code: lang.read.detail_extraction, title: 提取显性信息, std_anchor: 课标2022.lang.3-4.2, gradeband: M}
+  - {code: lang.read.main_idea, title: 把握文章主要内容, std_anchor: 课标2022.lang.3-4.2, gradeband: M}
+  - {code: lang.read.inference, title: 简单推论（联系语境推测）, std_anchor: 课标2022.lang.3-4.2, gradeband: M}
+  - {code: lang.read.attitude, title: 体会文章的思想感情, std_anchor: 课标2022.lang.3-4.2, gradeband: M}
+  - {code: lang.read.retell, title: 复述与转述, std_anchor: 课标2022.lang.3-4.2, gradeband: M}
+  - {code: lang.read.questioning, title: 边读边提问, std_anchor: 课标2022.lang.3-4.2, gradeband: M}
+  - {code: lang.read.predict, title: 预测与推想（依题目与插图猜内容）, std_anchor: 课标2022.lang.3-4.2, gradeband: M}
+  - {code: lang.read.quote, title: 摘录好词佳句（日积月累）, std_anchor: 课标2022.lang.3-4.2, gradeband: M}
+  - {code: lang.read.genre_narrative, title: 记叙文阅读（时地人事）, std_anchor: 课标2022.lang.3-4.2, gradeband: M}
+  - {code: lang.read.genre_explanatory, title: 说明性文本的初步阅读, std_anchor: 课标2022.lang.3-4.2, gradeband: M}
+  - {code: lang.read.genre_poetry, title: 诗歌的朗读与想象, std_anchor: 课标2022.lang.3-4.2, gradeband: M}
+
+# ────────────────────────────────────────────────────────────────────
+# 边：先修 prerequisite / 易混淆 confusable / 组成 composes
+# ────────────────────────────────────────────────────────────────────
+edges:
+
+  # ── 先修：拼音 ──
+  - {src: lang.pinyin.alphabet, dst: lang.pinyin.phonetic_order, rel_type: prerequisite}
+  - {src: lang.pinyin.spelling, dst: lang.pinyin.tone, rel_type: prerequisite}
+  - {src: lang.pinyin.phonetic_order, dst: lang.chr.dictionary_use, rel_type: prerequisite}
+
+  # ── 先修：识字写字 ──
+  - {src: lang.chr.stroke, dst: lang.chr.writing, rel_type: prerequisite}
+  - {src: lang.chr.radical, dst: lang.chr.recognize, rel_type: prerequisite}
+  - {src: lang.chr.radical, dst: lang.chr.dictionary_use, rel_type: prerequisite}
+  - {src: lang.chr.recognize, dst: lang.chr.shape_near, rel_type: prerequisite}
+  - {src: lang.chr.recognize, dst: lang.chr.homophone, rel_type: prerequisite}
+  - {src: lang.chr.recognize, dst: lang.chr.polyphone, rel_type: prerequisite}
+  - {src: lang.chr.recognize, dst: lang.chr.amount, rel_type: prerequisite}
+  - {src: lang.pinyin.spelling, dst: lang.chr.homophone, rel_type: prerequisite}
+
+  # ── 先修：词语 ──
+  - {src: lang.chr.recognize, dst: lang.word.meaning, rel_type: prerequisite}
+  - {src: lang.word.meaning, dst: lang.word.collocation, rel_type: prerequisite}
+  - {src: lang.word.meaning, dst: lang.word.synonym, rel_type: prerequisite}
+  - {src: lang.word.synonym, dst: lang.word.classify, rel_type: prerequisite}
+  - {src: lang.word.collocation, dst: lang.word.idiom, rel_type: prerequisite}
+  - {src: lang.word.synonym, dst: lang.word.context, rel_type: prerequisite}
+  - {src: lang.word.idiom, dst: lang.word.accumulate, rel_type: prerequisite}
+
+  # ── 先修：句子 ──
+  - {src: lang.sent.punctuation, dst: lang.sent.complete, rel_type: prerequisite}
+  - {src: lang.sent.complete, dst: lang.sent.reorg, rel_type: prerequisite}
+  - {src: lang.sent.complete, dst: lang.sent.expand, rel_type: prerequisite}
+  - {src: lang.sent.complete, dst: lang.sent.transform, rel_type: prerequisite}
+  - {src: lang.sent.complete, dst: lang.sent.rhetoric, rel_type: prerequisite}
+  - {src: lang.sent.punctuation, dst: lang.sent.dialogue, rel_type: prerequisite}
+  - {src: lang.word.collocation, dst: lang.sent.modify, rel_type: prerequisite}
+  - {src: lang.sent.expand, dst: lang.sent.modify, rel_type: prerequisite}
+
+  # ── 先修：阅读 ──
+  - {src: lang.read.fluency, dst: lang.read.word_meaning_context, rel_type: prerequisite}
+  - {src: lang.read.segment, dst: lang.read.main_idea, rel_type: prerequisite}
+  - {src: lang.read.word_meaning_context, dst: lang.read.detail_extraction, rel_type: prerequisite}
+  - {src: lang.read.detail_extraction, dst: lang.read.main_idea, rel_type: prerequisite}
+  - {src: lang.read.main_idea, dst: lang.read.inference, rel_type: prerequisite}
+  - {src: lang.read.main_idea, dst: lang.read.attitude, rel_type: prerequisite}
+  - {src: lang.read.main_idea, dst: lang.read.retell, rel_type: prerequisite}
+  - {src: lang.read.fluency, dst: lang.read.questioning, rel_type: prerequisite}
+  - {src: lang.read.questioning, dst: lang.read.predict, rel_type: prerequisite}
+  - {src: lang.read.fluency, dst: lang.read.quote, rel_type: prerequisite}
+  - {src: lang.read.main_idea, dst: lang.read.genre_narrative, rel_type: prerequisite}
+  - {src: lang.read.detail_extraction, dst: lang.read.genre_explanatory, rel_type: prerequisite}
+  - {src: lang.sent.rhetoric, dst: lang.read.genre_poetry, rel_type: prerequisite}
+
+  # ── 跨板块：积累闭环（摘录→积累）──
+  - {src: lang.read.quote, dst: lang.word.accumulate, rel_type: prerequisite}
+
+  # ── 易混淆 confusable（对称；不与先修边重叠）──
+  - {src: lang.chr.shape_near, dst: lang.chr.homophone, rel_type: confusable}
+  - {src: lang.chr.homophone, dst: lang.chr.polyphone, rel_type: confusable}
+  - {src: lang.read.inference, dst: lang.read.attitude, rel_type: confusable}
+  - {src: lang.sent.expand, dst: lang.sent.transform, rel_type: confusable}
+  - {src: lang.read.genre_narrative, dst: lang.read.genre_explanatory, rel_type: confusable}
+
+  # ── 组成 composes（A 是 B 的子部分）──
+  - {src: lang.chr.stroke, dst: lang.chr.writing, rel_type: composes}
+  - {src: lang.sent.punctuation, dst: lang.sent.complete, rel_type: composes}
+  - {src: lang.word.collocation, dst: lang.word.context, rel_type: composes}

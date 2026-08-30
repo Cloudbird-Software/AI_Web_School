@@ -1,0 +1,255 @@
+# 数学 5-6 年级知识图谱种子数据（审计卡 #149 知识点种子补齐）
+#
+# 锚定课标：义务教育数学课程标准（2022 年版）第三学段（5-6 年级）。
+# 覆盖四大领域代表性知识点：数与代数 / 图形与几何 / 统计与概率 / 综合与实践。
+#
+# 节点编码命名约定（对齐 math_kp_3-4.yaml）：math.{domain}.{topic}.{subtopic}
+#   domain ∈ {nal 数与代数, geo 图形与几何, sp 统计与概率, cp 综合与实践}
+#   全部 dimension=kp，pack_id=subject-math，gradeband=H（第三学段，显式标注）
+#   code 在同 pack 内全局唯一（uq_kp_node_pack_dim_code 不分学段）——与
+#   math_kp_3-4.yaml / math_kp_1-2.yaml 既有 code 逐一避让。
+#
+# 课标常识红线：分数乘除建立在分数加减与整数乘除之后；比与比例建立在
+# 分数除法之后；百分数与比互为表里；图形面积按"转化"递进（平行四边形→
+# 三角形→梯形），体积建立在体积单位与表面积之后；负数与简易方程是本
+# 学段代数萌芽的入口。
+#
+# 边类型（与 relation_type 表一致）：
+#   prerequisite 先修（transitive=true，方向，acyclic）
+#   confusable   易混淆（对称，非传递）
+#   composes     组成（A 是 B 的子部分）
+#
+# 幂等约定：seed_loader 按 (pack_id, dimension, code) 查重节点，
+#           按 (src_node_id, dst_node_id, rel_type) 查重边；
+#           重复导入 = skip，不抛错。
+
+version: "1.0"
+pack_id: subject-math
+graph_release_id: "2026.1.math-5-6"
+
+relation_types:
+  - rel_type: prerequisite
+    directed: true
+    transitive: true
+    acyclic: true
+    symmetric: false
+    description: 先修关系（传递闭包展开）
+  - rel_type: confusable
+    directed: false
+    transitive: false
+    acyclic: false
+    symmetric: true
+    description: 易混淆关系（对称，非传递）
+  - rel_type: composes
+    directed: true
+    transitive: true
+    acyclic: true
+    symmetric: false
+    description: 组成关系（A 是 B 的子部分）
+
+# ────────────────────────────────────────────────────────────────────
+# 节点：5-6 年级数学知识点（dimension=kp，gradeband=H 固定）
+# ────────────────────────────────────────────────────────────────────
+nodes:
+
+  # ─── 数与代数 nal ───
+  # 小数（运算深化）
+  - {code: math.nal.decimal.mul, title: 小数乘法, std_anchor: 课标2022.nal.5-6.1, gradeband: H}
+  - {code: math.nal.decimal.div, title: 小数除法, std_anchor: 课标2022.nal.5-6.1, gradeband: H}
+  - {code: math.nal.decimal.four_op, title: 小数四则混合运算, std_anchor: 课标2022.nal.5-6.1, gradeband: H}
+
+  # 分数（意义与运算系统化）
+  - {code: math.nal.fraction.nature, title: 分数的意义与基本性质（约分、通分）, std_anchor: 课标2022.nal.5-6.1, gradeband: H}
+  - {code: math.nal.fraction.frac_decimal, title: 分数与小数的互化, std_anchor: 课标2022.nal.5-6.1, gradeband: H}
+  - {code: math.nal.fraction.add_sub, title: 异分母分数加减法, std_anchor: 课标2022.nal.5-6.1, gradeband: H}
+  - {code: math.nal.fraction.mul, title: 分数乘法, std_anchor: 课标2022.nal.5-6.1, gradeband: H}
+  - {code: math.nal.fraction.div, title: 分数除法, std_anchor: 课标2022.nal.5-6.1, gradeband: H}
+  - {code: math.nal.fraction.mixed_op, title: 分数四则混合运算, std_anchor: 课标2022.nal.5-6.1, gradeband: H}
+
+  # 因数与倍数
+  - {code: math.nal.factor_multiples.meaning, title: 因数与倍数, std_anchor: 课标2022.nal.5-6.2, gradeband: H}
+  - {code: math.nal.factor_multiples.prime, title: 质数、合数与奇偶性, std_anchor: 课标2022.nal.5-6.2, gradeband: H}
+  - {code: math.nal.factor_multiples.gcd_lcm, title: 公因数与公倍数, std_anchor: 课标2022.nal.5-6.2, gradeband: H}
+
+  # 比与比例
+  - {code: math.nal.ratio.meaning, title: 比的意义与基本性质, std_anchor: 课标2022.nal.5-6.3, gradeband: H}
+  - {code: math.nal.ratio.simplify, title: 化简比与求比值, std_anchor: 课标2022.nal.5-6.3, gradeband: H}
+  - {code: math.nal.proportion.meaning, title: 比例的意义与基本性质, std_anchor: 课标2022.nal.5-6.3, gradeband: H}
+  - {code: math.nal.proportion.positive_negative, title: 正比例与反比例, std_anchor: 课标2022.nal.5-6.3, gradeband: H}
+
+  # 百分数
+  - {code: math.nal.percent.meaning, title: 百分数的意义, std_anchor: 课标2022.nal.5-6.4, gradeband: H}
+  - {code: math.nal.percent.convert, title: 百分数与小数、分数的互化, std_anchor: 课标2022.nal.5-6.4, gradeband: H}
+  - {code: math.nal.percent.application, title: 百分数的应用（折扣、税率、利率）, std_anchor: 课标2022.nal.5-6.4, gradeband: H}
+
+  # 负数与代数萌芽
+  - {code: math.nal.negative.recognize, title: 负数的认识, std_anchor: 课标2022.nal.5-6.5, gradeband: H}
+  - {code: math.nal.algebra.letter, title: 用字母表示数, std_anchor: 课标2022.nal.5-6.5, gradeband: H}
+  - {code: math.nal.algebra.equation, title: 简易方程（等式的性质）, std_anchor: 课标2022.nal.5-6.5, gradeband: H}
+  - {code: math.nal.algebra.word_problem, title: 列方程解决实际问题, std_anchor: 课标2022.nal.5-6.5, gradeband: H}
+
+  # 量与计量（体积/容积）与运算律应用
+  - {code: math.nal.quantity.volume_unit, title: 体积与容积单位, std_anchor: 课标2022.nal.5-6.6, gradeband: H}
+  - {code: math.nal.quantity.area_convert, title: 面积单位换算（公顷、平方千米）, std_anchor: 课标2022.nal.5-6.6, gradeband: H}
+  - {code: math.nal.operation.law_apply, title: 运算律的灵活应用, std_anchor: 课标2022.nal.5-6.6, gradeband: H}
+
+  # ─── 图形与几何 geo ───
+  # 面积（转化递进）
+  - {code: math.geo.parallelogram.recognize, title: 平行四边形的认识, std_anchor: 课标2022.geo.5-6.1, gradeband: H}
+  - {code: math.geo.parallelogram.area, title: 平行四边形的面积, std_anchor: 课标2022.geo.5-6.1, gradeband: H}
+  - {code: math.geo.triangle.area, title: 三角形的面积, std_anchor: 课标2022.geo.5-6.1, gradeband: H}
+  - {code: math.geo.trapezoid.recognize, title: 梯形的认识, std_anchor: 课标2022.geo.5-6.1, gradeband: H}
+  - {code: math.geo.trapezoid.area, title: 梯形的面积, std_anchor: 课标2022.geo.5-6.1, gradeband: H}
+  - {code: math.geo.combined.area, title: 组合图形的面积, std_anchor: 课标2022.geo.5-6.1, gradeband: H}
+
+  # 立体图形
+  - {code: math.geo.cuboid.recognize, title: 长方体与正方体的认识, std_anchor: 课标2022.geo.5-6.2, gradeband: H}
+  - {code: math.geo.net.expand, title: 立体图形的展开与折叠, std_anchor: 课标2022.geo.5-6.2, gradeband: H}
+  - {code: math.geo.cuboid.surface_area, title: 长方体与正方体的表面积, std_anchor: 课标2022.geo.5-6.2, gradeband: H}
+  - {code: math.geo.cuboid.volume, title: 长方体与正方体的体积, std_anchor: 课标2022.geo.5-6.2, gradeband: H}
+  - {code: math.geo.cylinder.recognize, title: 圆柱的认识, std_anchor: 课标2022.geo.5-6.2, gradeband: H}
+  - {code: math.geo.cylinder.volume, title: 圆柱的表面积与体积, std_anchor: 课标2022.geo.5-6.2, gradeband: H}
+  - {code: math.geo.cone.recognize, title: 圆锥的认识, std_anchor: 课标2022.geo.5-6.2, gradeband: H}
+  - {code: math.geo.cone.volume, title: 圆锥的体积, std_anchor: 课标2022.geo.5-6.2, gradeband: H}
+
+  # 圆
+  - {code: math.geo.circle.circumference, title: 圆的周长, std_anchor: 课标2022.geo.5-6.3, gradeband: H}
+  - {code: math.geo.circle.area, title: 圆的面积, std_anchor: 课标2022.geo.5-6.3, gradeband: H}
+
+  # 位置与运动
+  - {code: math.geo.coordinate.pair, title: 用数对确定位置, std_anchor: 课标2022.geo.5-6.4, gradeband: H}
+  - {code: math.geo.direction.distance, title: 用方向和距离确定位置, std_anchor: 课标2022.geo.5-6.4, gradeband: H}
+  - {code: math.geo.transform.rotation, title: 图形的旋转, std_anchor: 课标2022.geo.5-6.4, gradeband: H}
+  - {code: math.geo.transform.scale, title: 图形的放大与缩小, std_anchor: 课标2022.geo.5-6.4, gradeband: H}
+  - {code: math.geo.observe.three_view, title: 从三个方向观察立体图形, std_anchor: 课标2022.geo.5-6.4, gradeband: H}
+
+  # ─── 统计与概率 sp ───
+  - {code: math.sp.data.collect_design, title: 数据收集方案的设计, std_anchor: 课标2022.sp.5-6.1, gradeband: H}
+  - {code: math.sp.chart.line, title: 折线统计图, std_anchor: 课标2022.sp.5-6.2, gradeband: H}
+  - {code: math.sp.chart.line_multi, title: 复式折线统计图, std_anchor: 课标2022.sp.5-6.2, gradeband: H}
+  - {code: math.sp.chart.sector, title: 扇形统计图, std_anchor: 课标2022.sp.5-6.2, gradeband: H}
+  - {code: math.sp.chart.choice, title: 统计图的选择, std_anchor: 课标2022.sp.5-6.2, gradeband: H}
+  - {code: math.sp.probability.random, title: 随机现象与可能性大小, std_anchor: 课标2022.sp.5-6.3, gradeband: H}
+  - {code: math.sp.analysis.trend, title: 数据变化趋势分析, std_anchor: 课标2022.sp.5-6.4, gradeband: H}
+
+  # ─── 综合与实践 cp ───
+  - {code: math.cp.project.campus_map, title: 校园平面图设计, std_anchor: 课标2022.cp.5-6.1, gradeband: H}
+  - {code: math.cp.project.water_saving, title: 节约用水（水费计算）, std_anchor: 课标2022.cp.5-6.1, gradeband: H}
+  - {code: math.cp.project.package, title: 邮寄包裹（运费与包装）, std_anchor: 课标2022.cp.5-6.1, gradeband: H}
+  - {code: math.cp.project.trip_plan, title: 旅行方案设计（最优方案）, std_anchor: 课标2022.cp.5-6.1, gradeband: H}
+  - {code: math.cp.project.bike_math, title: 自行车里的数学, std_anchor: 课标2022.cp.5-6.1, gradeband: H}
+  - {code: math.cp.project.nutrition, title: 营养午餐（配餐与统计）, std_anchor: 课标2022.cp.5-6.1, gradeband: H}
+  - {code: math.cp.method.model, title: 用数学模型解决问题, std_anchor: 课标2022.cp.5-6.2, gradeband: H}
+
+  # ─── 数学思想方法（横切）───
+  - {code: math.nal.thinking.transformation, title: 转化思想, std_anchor: 课标2022.thinking.5-6.1, gradeband: H}
+  - {code: math.nal.thinking.abstraction, title: 抽象与符号化（用字母表达规律）, std_anchor: 课标2022.thinking.5-6.1, gradeband: H}
+  - {code: math.geo.thinking.reasoning, title: 几何直观与推理意识, std_anchor: 课标2022.thinking.5-6.2, gradeband: H}
+  - {code: math.sp.thinking.decision, title: 用数据支持决策, std_anchor: 课标2022.thinking.5-6.3, gradeband: H}
+
+# ────────────────────────────────────────────────────────────────────
+# 边：先修 prerequisite / 易混淆 confusable / 组成 composes
+# ────────────────────────────────────────────────────────────────────
+edges:
+
+  # ── 先修：小数运算 ──
+  - {src: math.nal.decimal.mul, dst: math.nal.decimal.div, rel_type: prerequisite}
+  - {src: math.nal.decimal.div, dst: math.nal.decimal.four_op, rel_type: prerequisite}
+
+  # ── 先修：分数（意义→互化→加减→乘除→混合）──
+  - {src: math.nal.fraction.nature, dst: math.nal.fraction.frac_decimal, rel_type: prerequisite}
+  - {src: math.nal.fraction.frac_decimal, dst: math.nal.fraction.add_sub, rel_type: prerequisite}
+  - {src: math.nal.fraction.add_sub, dst: math.nal.fraction.mul, rel_type: prerequisite}
+  - {src: math.nal.fraction.mul, dst: math.nal.fraction.div, rel_type: prerequisite}
+  - {src: math.nal.fraction.div, dst: math.nal.fraction.mixed_op, rel_type: prerequisite}
+  - {src: math.nal.decimal.four_op, dst: math.nal.fraction.mixed_op, rel_type: prerequisite}
+
+  # ── 先修：因数与倍数（支撑约分通分）──
+  - {src: math.nal.factor_multiples.meaning, dst: math.nal.factor_multiples.prime, rel_type: prerequisite}
+  - {src: math.nal.factor_multiples.meaning, dst: math.nal.factor_multiples.gcd_lcm, rel_type: prerequisite}
+  - {src: math.nal.factor_multiples.gcd_lcm, dst: math.nal.fraction.nature, rel_type: prerequisite}
+  - {src: math.nal.factor_multiples.gcd_lcm, dst: math.nal.fraction.add_sub, rel_type: prerequisite}
+
+  # ── 先修：比与比例（建立在分数除法之上）──
+  - {src: math.nal.fraction.div, dst: math.nal.ratio.meaning, rel_type: prerequisite}
+  - {src: math.nal.ratio.meaning, dst: math.nal.ratio.simplify, rel_type: prerequisite}
+  - {src: math.nal.ratio.simplify, dst: math.nal.proportion.meaning, rel_type: prerequisite}
+  - {src: math.nal.proportion.meaning, dst: math.nal.proportion.positive_negative, rel_type: prerequisite}
+
+  # ── 先修：百分数 ──
+  - {src: math.nal.fraction.frac_decimal, dst: math.nal.percent.meaning, rel_type: prerequisite}
+  - {src: math.nal.percent.meaning, dst: math.nal.percent.convert, rel_type: prerequisite}
+  - {src: math.nal.percent.convert, dst: math.nal.percent.application, rel_type: prerequisite}
+
+  # ── 先修：负数与代数萌芽 ──
+  - {src: math.nal.algebra.letter, dst: math.nal.algebra.equation, rel_type: prerequisite}
+  - {src: math.nal.algebra.equation, dst: math.nal.algebra.word_problem, rel_type: prerequisite}
+  - {src: math.nal.operation.law_apply, dst: math.nal.algebra.equation, rel_type: prerequisite}
+  - {src: math.nal.decimal.four_op, dst: math.nal.operation.law_apply, rel_type: prerequisite}
+
+  # ── 先修：量与计量 ──
+  - {src: math.nal.quantity.volume_unit, dst: math.geo.cuboid.volume, rel_type: prerequisite}
+  - {src: math.nal.quantity.area_convert, dst: math.geo.parallelogram.area, rel_type: prerequisite}
+
+  # ── 先修：面积（转化递进）──
+  - {src: math.geo.parallelogram.recognize, dst: math.geo.parallelogram.area, rel_type: prerequisite}
+  - {src: math.geo.parallelogram.area, dst: math.geo.triangle.area, rel_type: prerequisite}
+  - {src: math.geo.trapezoid.recognize, dst: math.geo.trapezoid.area, rel_type: prerequisite}
+  - {src: math.geo.triangle.area, dst: math.geo.trapezoid.area, rel_type: prerequisite}
+  - {src: math.geo.trapezoid.area, dst: math.geo.combined.area, rel_type: prerequisite}
+
+  # ── 先修：立体图形 ──
+  - {src: math.geo.cuboid.recognize, dst: math.geo.net.expand, rel_type: prerequisite}
+  - {src: math.geo.net.expand, dst: math.geo.cuboid.surface_area, rel_type: prerequisite}
+  - {src: math.geo.cuboid.recognize, dst: math.geo.cuboid.surface_area, rel_type: prerequisite}
+  - {src: math.geo.cuboid.surface_area, dst: math.geo.cuboid.volume, rel_type: prerequisite}
+  - {src: math.geo.circle.area, dst: math.geo.cylinder.recognize, rel_type: prerequisite}
+  - {src: math.geo.cuboid.volume, dst: math.geo.cylinder.volume, rel_type: prerequisite}
+  - {src: math.geo.cylinder.recognize, dst: math.geo.cylinder.volume, rel_type: prerequisite}
+  - {src: math.geo.cylinder.recognize, dst: math.geo.cone.recognize, rel_type: prerequisite}
+  - {src: math.geo.cylinder.volume, dst: math.geo.cone.volume, rel_type: prerequisite}
+
+  # ── 先修：圆 ──
+  - {src: math.geo.circle.circumference, dst: math.geo.circle.area, rel_type: prerequisite}
+
+  # ── 先修：位置与运动 ──
+  - {src: math.geo.coordinate.pair, dst: math.geo.direction.distance, rel_type: prerequisite}
+  - {src: math.geo.cuboid.recognize, dst: math.geo.observe.three_view, rel_type: prerequisite}
+  - {src: math.nal.ratio.meaning, dst: math.geo.transform.scale, rel_type: prerequisite}
+
+  # ── 先修：统计与概率 ──
+  - {src: math.sp.data.collect_design, dst: math.sp.chart.line, rel_type: prerequisite}
+  - {src: math.sp.chart.line, dst: math.sp.chart.line_multi, rel_type: prerequisite}
+  - {src: math.sp.chart.line_multi, dst: math.sp.analysis.trend, rel_type: prerequisite}
+  - {src: math.sp.chart.sector, dst: math.sp.chart.choice, rel_type: prerequisite}
+  - {src: math.sp.chart.line_multi, dst: math.sp.chart.choice, rel_type: prerequisite}
+  - {src: math.sp.data.collect_design, dst: math.sp.probability.random, rel_type: prerequisite}
+
+  # ── 先修：综合与实践 ──
+  - {src: math.geo.direction.distance, dst: math.cp.project.campus_map, rel_type: prerequisite}
+  - {src: math.nal.percent.application, dst: math.cp.project.water_saving, rel_type: prerequisite}
+  - {src: math.geo.cuboid.surface_area, dst: math.cp.project.package, rel_type: prerequisite}
+  - {src: math.nal.percent.application, dst: math.cp.project.trip_plan, rel_type: prerequisite}
+  - {src: math.geo.circle.circumference, dst: math.cp.project.bike_math, rel_type: prerequisite}
+  - {src: math.sp.chart.choice, dst: math.cp.project.nutrition, rel_type: prerequisite}
+  - {src: math.nal.algebra.word_problem, dst: math.cp.method.model, rel_type: prerequisite}
+
+  # ── 先修：思想方法 ──
+  - {src: math.geo.trapezoid.area, dst: math.nal.thinking.transformation, rel_type: prerequisite}
+  - {src: math.nal.algebra.letter, dst: math.nal.thinking.abstraction, rel_type: prerequisite}
+  - {src: math.geo.cone.volume, dst: math.geo.thinking.reasoning, rel_type: prerequisite}
+  - {src: math.sp.analysis.trend, dst: math.sp.thinking.decision, rel_type: prerequisite}
+
+  # ── 易混淆 confusable（对称；不与先修边重叠）──
+  - {src: math.geo.parallelogram.area, dst: math.geo.trapezoid.area, rel_type: confusable}
+  - {src: math.geo.circle.area, dst: math.geo.cone.volume, rel_type: confusable}
+  - {src: math.nal.ratio.meaning, dst: math.nal.proportion.meaning, rel_type: confusable}
+  - {src: math.nal.decimal.mul, dst: math.nal.fraction.mul, rel_type: confusable}
+  - {src: math.nal.proportion.positive_negative, dst: math.nal.ratio.simplify, rel_type: confusable}
+  - {src: math.nal.negative.recognize, dst: math.nal.percent.meaning, rel_type: confusable}
+
+  # ── 组成 composes（A 是 B 的子部分）──
+  - {src: math.nal.fraction.div, dst: math.nal.fraction.mixed_op, rel_type: composes}
+  - {src: math.nal.decimal.div, dst: math.nal.decimal.four_op, rel_type: composes}
+  - {src: math.geo.triangle.area, dst: math.geo.combined.area, rel_type: composes}
+  - {src: math.geo.circle.area, dst: math.geo.cylinder.volume, rel_type: composes}
