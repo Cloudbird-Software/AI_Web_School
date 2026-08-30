@@ -58,3 +58,47 @@ func (t *TypeBuilder) DraftInstance() (*DraftInstanceClassView, error) {
 func (t *DraftInstanceClassView) Type() (baml.Type, error) {
 	return t.inner.Type()
 }
+
+type SentenceReorgClassView struct {
+	inner baml.ClassBuilder
+}
+
+func (t *SentenceReorgClassView) ListProperties() ([]ClassPropertyView, error) {
+	result, err := t.inner.ListProperties()
+	if err != nil {
+		return nil, err
+	}
+	builders := make([]ClassPropertyView, len(result))
+	for i, p := range result {
+		builders[i] = p
+	}
+	return builders, nil
+}
+
+func (t *SentenceReorgClassView) PropertySentence() (ClassPropertyView, error) {
+	return t.inner.Property("sentence")
+}
+
+func (t *SentenceReorgClassView) PropertyAnswer() (ClassPropertyView, error) {
+	return t.inner.Property("answer")
+}
+
+func (t *SentenceReorgClassView) PropertyDistractors() (ClassPropertyView, error) {
+	return t.inner.Property("distractors")
+}
+
+func (t *SentenceReorgClassView) PropertyExplanation() (ClassPropertyView, error) {
+	return t.inner.Property("explanation")
+}
+
+func (t *TypeBuilder) SentenceReorg() (*SentenceReorgClassView, error) {
+	bld, err := t.inner.Class("SentenceReorg")
+	if err != nil {
+		return nil, err
+	}
+	return &SentenceReorgClassView{inner: bld}, nil
+}
+
+func (t *SentenceReorgClassView) Type() (baml.Type, error) {
+	return t.inner.Type()
+}
