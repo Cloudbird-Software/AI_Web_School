@@ -40,14 +40,14 @@ SELECT * FROM item_template_version WHERE template_version_id = $1;
 -- 0024 未对 item_version 挂整表 append-only 触发器，正是为本次合法前移留的面。
 
 -- name: UpdateItemVersionPublished :exec
--- 状态前移 draft/quarantined → published：写门证书与发布时刻。rendered_snapshot
--- 为空时补最小占位对象（冻结实现 writer.py 同款兜底，满足 0002
--- ck_iv_quarantine_requires_rendered 对非 draft 状态的非空要求）。
+-- 状态前移 draft/quarantined → published：写门证书与发布时刻。
+-- rendered_snapshot 不做任何兜底补写（审计 #161）：假渲染快照进内容账违反
+-- 「门不过不入库/不伪造数据」；缺失由 PublishService 取证面显式拒绝
+-- （ErrRenderedSnapshotMissing，fail-loud），0002 非空 CHECK 兜底防线保留。
 UPDATE item_version SET
 	status = 'published',
 	gate_certificate_id = $2,
-	published_at = $3,
-	rendered_snapshot = COALESCE(rendered_snapshot, '{"placeholder":true}'::jsonb)
+	published_at = $3
 WHERE item_version_id = $1;
 
 -- name: InsertPublication :exec

@@ -22,5 +22,8 @@ make demo-w0           # W0 出口验收
 - `tools/` opc CLI、sync_rules.sh、make_accept.sh
 - `content/` 内容资产与引入管线（sources/=来源许可登记）
 
+## 门禁双轨说明（ADR-0007 §二.4 口径）
+应用运行时唯一为 Go 1.25；`make check` 中仍为 Python 的项（**门禁基础设施，非业务服务**）：pytest 冻结契约/黄金测试（跨语言黄金锚，tests/ 受 test-freeze 治理）、alembic 迁移链（DB schema 治理双轨，migrate-go-check 做 parity）、check_sources/check_pairs/baml_golden/check_test_freeze 等胶水脚本。其 Go 化另行立项。
+
 ## 铁律速记
 三本账只增不改｜门不过不入库｜构建者不自证｜信号大于汇报｜核心零学科特判｜禁改测试｜密钥不入库

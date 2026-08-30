@@ -68,6 +68,10 @@ var (
 	// 内容寻址（伪造 id / 内容与 id 脱钩 / 口径漂移都会在此暴露）——D3 的
 	// 发布侧物理验证，不一致即 fail，零静默放行.
 	ErrContentDigestMismatch = errors.New("content: 内容寻址不一致（重算摘要 ≠ 版本 id）")
+
+	// ErrRenderedSnapshotMissing 是发布前渲染快照缺失的哨兵（审计 #161）：
+	// 占位快照兜底已废除——未渲染即发布会在内容账写入假快照，fail-loud 拒绝.
+	ErrRenderedSnapshotMissing = errors.New("content: 渲染快照缺失，拒绝发布（门不过不入库）")
 )
 
 // ItemStatus 内容版本状态四值域（迁移 0002 item_version_status_enum 同值投影；
@@ -226,6 +230,12 @@ func (s *PublishService) Publish(ctx context.Context, req PublishRequest) (*Publ
 		CertType:    gate.CertPublish,
 	}); err != nil {
 		return nil, err
+	}
+
+	// 4.5 渲染快照存在性（审计 #161）：占位兜底已废除，非 draft 状态的
+	// rendered_snapshot 非空是发布前显式前提——缺失即拒绝，不写假快照.
+	if len(row.RenderedSnapshot) == 0 {
+		return nil, ErrRenderedSnapshotMissing
 	}
 
 	// 5. 三写同事务：状态前移 → 签发账 → 指针前移（FK 均 DEFERRABLE，语句
