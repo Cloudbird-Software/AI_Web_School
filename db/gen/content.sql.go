@@ -28,6 +28,67 @@ func (q *Queries) ForwardItemCurrentVersion(ctx context.Context, arg ForwardItem
 	return err
 }
 
+const getItem = `-- name: GetItem :one
+
+SELECT item_id, pack_id, tier, template_version_id, current_version_id, created_at FROM item WHERE item_id = $1
+`
+
+// ── GO-RW-001：内容资产只读查询面（GET /items /templates 的取证语句）────────
+// 只读（宪法 D1 仅 SELECT）：item / item_template 是指针表（非三本账），身份与
+// current_version_id 指针的读侧基元；指针指向的版本行由调用方再经 GetItemVersion
+// / GetItemTemplateVersion 取回（两步取证而非 JOIN——指针悬空要在应用层
+// fail-loud，JOIN 会把账面残缺静默折损成 NULL）。
+// 单个 item 身份行（GET /items/{item_id} 的主取数）。
+func (q *Queries) GetItem(ctx context.Context, itemID string) (Item, error) {
+	row := q.db.QueryRow(ctx, getItem, itemID)
+	var i Item
+	err := row.Scan(
+		&i.ItemID,
+		&i.PackID,
+		&i.Tier,
+		&i.TemplateVersionID,
+		&i.CurrentVersionID,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
+const getItemTemplate = `-- name: GetItemTemplate :one
+SELECT template_id, pack_id, current_version_id, created_at FROM item_template WHERE template_id = $1
+`
+
+// 单个母题身份行（GET /templates/{template_id} 的主取数）。
+func (q *Queries) GetItemTemplate(ctx context.Context, templateID string) (ItemTemplate, error) {
+	row := q.db.QueryRow(ctx, getItemTemplate, templateID)
+	var i ItemTemplate
+	err := row.Scan(
+		&i.TemplateID,
+		&i.PackID,
+		&i.CurrentVersionID,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
+const getItemTemplateVersion = `-- name: GetItemTemplateVersion :one
+SELECT template_version_id, template_id, dsl_version, spec, status, created_at FROM item_template_version WHERE template_version_id = $1
+`
+
+// 单个母题版本行（指针 current_version_id 的解引用读侧）。
+func (q *Queries) GetItemTemplateVersion(ctx context.Context, templateVersionID string) (ItemTemplateVersion, error) {
+	row := q.db.QueryRow(ctx, getItemTemplateVersion, templateVersionID)
+	var i ItemTemplateVersion
+	err := row.Scan(
+		&i.TemplateVersionID,
+		&i.TemplateID,
+		&i.DslVersion,
+		&i.Spec,
+		&i.Status,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
 const getItemVersion = `-- name: GetItemVersion :one
 
 SELECT item_version_id, item_id, status, objective, interaction_ref, content, scoring_ref, error_bindings, lineage, rendered_snapshot, gate_certificate_id, published_at, retired_at, created_at FROM item_version WHERE item_version_id = $1

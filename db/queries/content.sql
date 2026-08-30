@@ -14,6 +14,24 @@ SELECT * FROM item_version WHERE item_id = $1 ORDER BY created_at ASC;
 -- 当前生效发布（发布服务 T-W5-003 证书验真的入口查询）。
 SELECT * FROM publication WHERE item_id = $1 ORDER BY published_at DESC LIMIT 1;
 
+-- ── GO-RW-001：内容资产只读查询面（GET /items /templates 的取证语句）────────
+-- 只读（宪法 D1 仅 SELECT）：item / item_template 是指针表（非三本账），身份与
+-- current_version_id 指针的读侧基元；指针指向的版本行由调用方再经 GetItemVersion
+-- / GetItemTemplateVersion 取回（两步取证而非 JOIN——指针悬空要在应用层
+-- fail-loud，JOIN 会把账面残缺静默折损成 NULL）。
+
+-- name: GetItem :one
+-- 单个 item 身份行（GET /items/{item_id} 的主取数）。
+SELECT * FROM item WHERE item_id = $1;
+
+-- name: GetItemTemplate :one
+-- 单个母题身份行（GET /templates/{template_id} 的主取数）。
+SELECT * FROM item_template WHERE template_id = $1;
+
+-- name: GetItemTemplateVersion :one
+-- 单个母题版本行（指针 current_version_id 的解引用读侧）。
+SELECT * FROM item_template_version WHERE template_version_id = $1;
+
 -- ── T-W5-003：发布事务写面（PublishService 专用）───────────────────────────
 -- 事务纪律（D11）：以下语句全部运行在调用方已 begin 的显式事务内，提交/回滚由
 -- 最外层调用方统一持有——状态前移、签发账与指针前移同进同退，本域不自 commit。

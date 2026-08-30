@@ -11,6 +11,11 @@
 // 业务实现的路由显式返回 501 not_implemented 占位：认证先行、业务后补，
 // 绝不以"功能未实现"为由跳过认证。
 //
+// 内容只读四端点接线（GO-RW-001）：items/item_versions/templates/
+// gate_certificates 经 ContentQueries 接口注入 core/content 取证面——
+// api 只做协议层（鉴权后取路径 id → 查询 → 契约 JSON 直出/脱敏错误映射），
+// 查询面未注入时四端点保持 501 占位（装配语义，认证盾照挂）。
+//
 // T-W5-008 边界加固：全部请求经固定链序的边界层（见 boundary.go 的顺序
 // 论证）——panic 收敛、CORS 白名单、IP 维度限流、请求体上限；健康探针
 // 豁免限流。与 006 的合流分工：路由表（route{shield}，全端点挂认证盾）
@@ -29,6 +34,7 @@
 package api
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -39,6 +45,7 @@ import (
 	"github.com/Cloudbird-Software/AI_Web_School/api/middleware"
 	"github.com/Cloudbird-Software/AI_Web_School/core/auth"
 	"github.com/Cloudbird-Software/AI_Web_School/core/compliance"
+	"github.com/Cloudbird-Software/AI_Web_School/core/content"
 	"github.com/Cloudbird-Software/AI_Web_School/core/session"
 )
 
@@ -50,6 +57,20 @@ type healthResponse struct {
 // ErrorClassNotImplemented 是骨架期占位路由的对外错误类：认证与主体绑定
 // 已闭合、业务实现未到位。与 401/403 相同的单字段脱敏形态。
 const ErrorClassNotImplemented = "not_implemented"
+
+// ContentQueries 是 api 对内容只读查询面的最小消费接口（consumer-side：
+// 在消费点按需声明，core/content.ContentQueryService 天然满足——编译锚见
+// 下方 var _）。GO-RW-001 的四条内容只读端点面向本接口编程，测试注入
+// Memory fake，生产注入 NewContentQueryService(pgxpool)（W6 接池装配）。
+type ContentQueries interface {
+	GetItem(ctx context.Context, itemID string) (*content.ItemDetail, error)
+	GetItemVersion(ctx context.Context, itemVersionID string) (*content.ItemVersionView, error)
+	GetTemplate(ctx context.Context, templateID string) (*content.TemplateDetail, error)
+	GetGateCertificate(ctx context.Context, certID string) (*content.GateCertificateDetail, error)
+}
+
+// 编译期锚定：领域实现即消费端口（W6 装配直通的假设防线）.
+var _ ContentQueries = (*content.ContentQueryService)(nil)
 
 // maxPlaceholderBodyBytes 限制占位路由读取请求体的字节数：POST /sessions
 // 需要 peek 请求体里的 alias 字段做越权比对，先卡长度防止超大体量输入进入
@@ -88,6 +109,8 @@ func healthHandler(w http.ResponseWriter, _ *http.Request) {
 //
 //   - 内容资产/门证书只读查询（items/item_versions/templates/gate_certificates）：
 //     教研（staff）与运维（ops）的生产域查询面；学生消费题目只能经会话链路。
+//     GO-RW-001 起经 ContentQueries 注入真实取证（见 routesWithConsent /
+//     NewRouterWithQueries）；本函数不注入，四端点保持 501 占位。
 //   - 会话生命周期（sessions 族）：学生作答域，仅学生主体；创建时的学生身份
 //     取自令牌主体（见 createSession——铁律"不再信任请求体传入的 alias"）。
 //   - 弱项报告与复习队列（reports/review）：alias 寻址的学生数据，经
@@ -105,19 +128,29 @@ func healthHandler(w http.ResponseWriter, _ *http.Request) {
 // 它们在任何数据读取前就 501，无可泄露面；作答提交的二次校验（卡验收 #2）
 // 以会话归属读取为前提，属业务波次落地项（sessionScoped 留痕）。
 func routes(signer *auth.Signer) []route {
-	return routesWithConsent(signer, nil)
+	return routesWithConsent(signer, nil, nil)
 }
 
-// routesWithConsent 在 routes 之上注入家长授权账：仅 POST /sessions 的
-// handler 捕获 store（闭包接缝），其余路由与授权无关、形态不变。
-func routesWithConsent(signer *auth.Signer, store compliance.ConsentStore) []route {
+// routesWithConsent 在 routes 之上注入家长授权账与内容只读查询面：仅
+// POST /sessions 的 handler 捕获 store（闭包接缝），四条内容只读端点经
+// contentRead 捕获 queries；queries 为 nil 时四端点保持 501 占位（查询面
+// 未接线的装配语义，认证盾照挂），非 nil 即真实取证返回。
+func routesWithConsent(signer *auth.Signer, store compliance.ConsentStore, queries ContentQueries) []route {
 	staffOrOps := middleware.RequireAuth(signer, auth.RoleStaff, auth.RoleOps)
 	student := middleware.RequireAuth(signer, auth.RoleStudent)
+	itemHandle, itemVersionHandle := notImplemented, notImplemented
+	templateHandle, certHandle := notImplemented, notImplemented
+	if queries != nil {
+		itemHandle = contentRead("item_id", queries.GetItem)
+		itemVersionHandle = contentRead("item_version_id", queries.GetItemVersion)
+		templateHandle = contentRead("template_id", queries.GetTemplate)
+		certHandle = contentRead("cert_id", queries.GetGateCertificate)
+	}
 	return []route{
-		{pattern: "GET /items/{item_id}", shield: staffOrOps, handle: notImplemented},
-		{pattern: "GET /item_versions/{item_version_id}", shield: staffOrOps, handle: notImplemented},
-		{pattern: "GET /templates/{template_id}", shield: staffOrOps, handle: notImplemented},
-		{pattern: "GET /gate_certificates/{cert_id}", shield: staffOrOps, handle: notImplemented},
+		{pattern: "GET /items/{item_id}", shield: staffOrOps, handle: itemHandle},
+		{pattern: "GET /item_versions/{item_version_id}", shield: staffOrOps, handle: itemVersionHandle},
+		{pattern: "GET /templates/{template_id}", shield: staffOrOps, handle: templateHandle},
+		{pattern: "GET /gate_certificates/{cert_id}", shield: staffOrOps, handle: certHandle},
 
 		{pattern: "POST /sessions", shield: student, handle: createSession(store)},
 		{pattern: "GET /sessions/{session_id}", shield: student, handle: sessionScoped},
@@ -148,8 +181,18 @@ func NewRouter(signer *auth.Signer) http.Handler {
 // 风格：NewRouter 原签名不动，依赖以 With 变体显式注入）。store 为 nil 属
 // "授权基础设施未接线"：授权门 fail-closed 拒绝会话创建，绝不放行（X12）；
 // 生产注入 compliance.PGStore（W6 接事务执行面），测试注入 MemoryStore.
+// 内容只读查询面在本签名下未注入（四端点 501 占位），需要真实取证走
+// NewRouterWithQueries。
 func NewRouterWithConsent(signer *auth.Signer, store compliance.ConsentStore) http.Handler {
-	return newRouterWithConfig(BoundaryConfigFromEnv(getenv), routesWithConsent(signer, store)...)
+	return NewRouterWithQueries(signer, store, nil)
+}
+
+// NewRouterWithQueries 是 GO-RW-001 的装配接缝：在授权账之上注入内容只读
+// 查询面（core/content.ContentQueryService 绑定 pgxpool 的生产形态）。queries
+// 为 nil 等价 NewRouterWithConsent——四条只读端点保持 501 占位（查询面未
+// 接线绝不回伪造/空数据，fail-closed 同 X12 纪律）。
+func NewRouterWithQueries(signer *auth.Signer, store compliance.ConsentStore, queries ContentQueries) http.Handler {
+	return newRouterWithConfig(BoundaryConfigFromEnv(getenv), routesWithConsent(signer, store, queries)...)
 }
 
 // newRouterWithConfig 构造带边界层的路由：注册健康探针与 extra 路由
@@ -171,6 +214,49 @@ func newRouterWithConfig(cfg BoundaryConfig, extra ...route) http.Handler {
 // error_class 一个字段（与其他认证错误同构，不给探测者额外反馈通道）。
 func notImplemented(w http.ResponseWriter, _ *http.Request) {
 	writeErrorClass(w, http.StatusNotImplemented, ErrorClassNotImplemented)
+}
+
+// contentRead 把一次内容取数闭包成只读 handler（GO-RW-001 四端点共用形态；
+// 路径变量名与冻结契约保持一致，由调用方钉入）。响应序：
+//
+//	200 → 契约 JSON（core/content 视图直出，本层零业务语义）
+//	404 → not_found（"账面无行"哨兵集合，单字段脱敏）
+//	500 → internal（其余错误一律归一：原始错误只进服务端日志，绝不外泄
+//	      消息/驱动细节——与认证错误同构的脱敏形态）
+func contentRead[T any](idVar string, fetch func(ctx context.Context, id string) (T, error)) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		v, err := fetch(r.Context(), r.PathValue(idVar))
+		if err != nil {
+			if contentUnknownRow(err) {
+				writeErrorClass(w, http.StatusNotFound, middleware.ErrorClassNotFound)
+				return
+			}
+			log.Printf("content query failure path=%s error_class=%s", r.URL.Path, errClass(err))
+			writeErrorClass(w, http.StatusInternalServerError, middleware.ErrorClassInternal)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		if encErr := json.NewEncoder(w).Encode(v); encErr != nil {
+			log.Printf("content response encode failure error_class=%T", encErr)
+		}
+	}
+}
+
+// contentUnknownRow 判定错误是否属"账面无行"哨兵集合（→404 的唯一映射面）；
+// 哨兵清单收口在 core/content，本层逐项 errors.Is 归一，不许字符串匹配.
+func contentUnknownRow(err error) bool {
+	for _, sentinel := range []error{
+		content.ErrUnknownItem,
+		content.ErrUnknownItemVersion,
+		content.ErrUnknownTemplate,
+		content.ErrUnknownGateCertificate,
+	} {
+		if errors.Is(err, sentinel) {
+			return true
+		}
+	}
+	return false
 }
 
 // sessionScoped 是 /sessions/{session_id} 子资源的骨架占位。
