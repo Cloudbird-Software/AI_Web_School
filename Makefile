@@ -11,7 +11,7 @@ ifneq (,$(wildcard .env))
 export POSTGRES_USER POSTGRES_PASSWORD POSTGRES_DB MINIO_ROOT_USER MINIO_ROOT_PASSWORD
 endif
 
-.PHONY: bootstrap up down migrate migrate-go migrate-go-check test accept contract golden golden-path nightly dashboard sync-rules model-bench demo-w0 demo-w2 demo-w3 setup check test-freeze-check holdout go-errcheck sql-pairs sqlc-generate sqlc-diff
+.PHONY: bootstrap up down migrate migrate-go migrate-go-check test accept contract golden golden-path nightly dashboard sync-rules model-bench demo-w0 demo-w2 demo-w3 setup check test-freeze-check holdout go-errcheck sql-pairs sqlc-generate sqlc-diff src-freeze
 
 ## 环境一键搭建与自检（新机器第一步）
 bootstrap:
@@ -66,6 +66,7 @@ setup: ; pip install --require-hashes -r requirements-dev.txt -r requirements.tx
 ## 组织治理基线（T-W0-009）：CI 全量检查（迁移自 pr-check.yml 的 PR 流水，本地亦可手动执行）
 ## T-W5-030/031：Go 工具链进 check（GO-1/GO-4 局部：gofmt/vet/test-race + X6 边界 lint + BAML-1 golden）
 ## T-W5-032：migrate-go-check 进 check（验收 #5：SQL 迁移 parity/可逆/append-only 在 PR 阶段拦截）
+## PyR-RETIRE/ADR-0007：src-freeze 进 check（src/ 退役冻结归档，增/删/改即红）
 check:
 	@[ -f .env ] || cp .env.example .env
 	docker compose up -d --wait db
@@ -75,6 +76,7 @@ check:
 	GOLDEN_PATH_QUICK=1 python -m pytest tests/golden-path -q
 	python tools/ci/check_sources.py
 	$(MAKE) check-go
+	$(MAKE) src-freeze
 	$(MAKE) sql-pairs
 	$(MAKE) migrate-go-check
 contract: ; python -m pytest tests/contract -q
@@ -103,6 +105,9 @@ go-errcheck:
 	@go tool errcheck $$(go list ./... | grep -v baml_client)
 ## T-W5-033 SQL-1 静态面：up/down 成对 + 非空 down + 版本号唯一（运行时可逆由 migrate-go-check 承担）
 sql-pairs: ; python tools/sql/check_pairs.py
+## PyR-RETIRE/ADR-0007：src/ 退役冻结归档的机器执行体（specs/src-freeze/）。
+## 校验器本体注释见 tools/srcfreeze/main.go；--resign 为安全修复例外的重签通道。
+src-freeze: ; go run ./tools/srcfreeze
 ## T-W5-033 SQL-2：sqlc 为版本+SHA256 双钉扎的发布二进制（非 go.mod 依赖）。
 ## 为什么：sqlc v1.31.1 传递树含 grpc v1.80.0——GHSA-hrxh-6v49-42gf（高危）唯一
 ## 修复版 v1.82.1 发布 <90 天，组织供应链 age≥90 硬红与漏洞高危硬红在该传递依赖上
