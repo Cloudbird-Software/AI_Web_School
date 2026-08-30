@@ -94,7 +94,10 @@ func main() {
 	fmt.Printf("✅ src/ 冻结面完整：%d 个文件与清单逐字节一致（ADR-0007）\n", len(pinned))
 }
 
-// scanTree 返回 srcDir 下全部文件的 {相对路径: sha256}（相对路径正斜杠、排序由调用方保证）。
+// scanTree 返回 srcDir 下全部冻结文件的 {相对路径: sha256}（相对路径正斜杠）。
+// 跳过 Python 解释器运行时产物（__pycache__/、*.pyc/*.pyo）——make check 的
+// pytest/alembic 阶段会先于本校验在 src/ 下再生这些派生物（CI 实证 200 处
+// 假红），它们不是冻结面内容；源码冻结仍逐字节。
 func scanTree(base string) (map[string]string, error) {
 	out := map[string]string{}
 	err := filepath.WalkDir(base, func(path string, d fs.DirEntry, err error) error {
@@ -102,6 +105,12 @@ func scanTree(base string) (map[string]string, error) {
 			return err
 		}
 		if d.IsDir() {
+			if d.Name() == "__pycache__" {
+				return filepath.SkipDir
+			}
+			return nil
+		}
+		if strings.HasSuffix(d.Name(), ".pyc") || strings.HasSuffix(d.Name(), ".pyo") {
 			return nil
 		}
 		sum, err := fileSHA256(path)
