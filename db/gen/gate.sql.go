@@ -73,3 +73,80 @@ func (q *Queries) InsertGateFailure(ctx context.Context, arg InsertGateFailurePa
 	)
 	return err
 }
+
+const listGateRunsByCertificate = `-- name: ListGateRunsByCertificate :many
+
+SELECT run_id, certificate_id, policy_version, validator_id, validator_version, verdict, evidence, confidence, cost_ms, cost_tokens, run_at, created_at FROM gate_run WHERE certificate_id = $1 ORDER BY run_at ASC, run_id ASC
+`
+
+// ── GO-RW-001：门证书只读查询面（GET /gate_certificates 的取证语句）─────────
+// 只读（宪法 D1 仅 SELECT）：证书 + 关联运行记录 + 判定明细的三段取证。
+// 判定明细经 gate_run 反查（证书 → 运行 → 判定）一次带全，避免按 run 逐个
+// N+1；排序键显式钉死（run_at+run_id / verdict_id），读面确定性不随执行计划漂移.
+// 某证书关联的全部验证器运行记录（按运行时刻升序，run_id 决胜同刻并列）。
+func (q *Queries) ListGateRunsByCertificate(ctx context.Context, certificateID pgtype.Text) ([]GateRun, error) {
+	rows, err := q.db.Query(ctx, listGateRunsByCertificate, certificateID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GateRun
+	for rows.Next() {
+		var i GateRun
+		if err := rows.Scan(
+			&i.RunID,
+			&i.CertificateID,
+			&i.PolicyVersion,
+			&i.ValidatorID,
+			&i.ValidatorVersion,
+			&i.Verdict,
+			&i.Evidence,
+			&i.Confidence,
+			&i.CostMs,
+			&i.CostTokens,
+			&i.RunAt,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listGateVerdictsByCertificate = `-- name: ListGateVerdictsByCertificate :many
+SELECT v.verdict_id, v.run_id, v.detail, v.created_at
+FROM gate_verdict AS v
+JOIN gate_run AS r ON r.run_id = v.run_id
+WHERE r.certificate_id = $1
+ORDER BY v.verdict_id ASC
+`
+
+// 某证书下全部运行记录的判定明细（经 gate_run 归到同一证书，verdict_id 升序）。
+func (q *Queries) ListGateVerdictsByCertificate(ctx context.Context, certificateID pgtype.Text) ([]GateVerdict, error) {
+	rows, err := q.db.Query(ctx, listGateVerdictsByCertificate, certificateID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GateVerdict
+	for rows.Next() {
+		var i GateVerdict
+		if err := rows.Scan(
+			&i.VerdictID,
+			&i.RunID,
+			&i.Detail,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
