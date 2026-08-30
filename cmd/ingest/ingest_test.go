@@ -190,7 +190,7 @@ func (f *fakeTx) QueryRow(_ context.Context, sql string, _ ...any) pgx.Row {
 			f.versionArgs[0], f.versionArgs[1], f.versionArgs[2], f.versionArgs[3],
 			f.versionArgs[4], f.versionArgs[5], f.versionArgs[6], f.versionArgs[7],
 			f.versionArgs[8],
-			[]byte(nil),          // rendered_snapshot（draft 为 NULL，发布语句 COALESCE）
+			f.versionArgs[9],     // rendered_snapshot（#170 起 draft 即带快照，发布前提）
 			pgtype.Text{},        // gate_certificate_id
 			pgtype.Timestamptz{}, // published_at
 			pgtype.Timestamptz{}, // retired_at

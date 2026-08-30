@@ -97,7 +97,10 @@ VALUES ($1, $2, $3, $4);
 -- 不可变内容快照 draft 入账：契约 §2.2 六块 JSONB + lineage 全写
 -- （lineage 携带 template_id/source/operator/pack_id/corpus_version_id 与
 -- pack_digest/engine_digest——发布事务重算公式一的证据链，审计卡 #156 点名）。
+-- rendered_snapshot 随 draft 入账（审计 #170/#171 联动修复）：发布前提
+-- ck_iv_quarantine_requires_rendered + ErrRenderedSnapshotMissing 的供给面。
 INSERT INTO item_version (
 	item_version_id, item_id, status,
-	objective, interaction_ref, content, scoring_ref, error_bindings, lineage
-) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9);
+	objective, interaction_ref, content, scoring_ref, error_bindings, lineage,
+	rendered_snapshot
+) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10);
