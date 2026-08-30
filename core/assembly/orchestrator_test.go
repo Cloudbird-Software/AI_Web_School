@@ -134,18 +134,15 @@ func TestOrchestrateFullChain(t *testing.T) {
 		t.Fatalf("卷面缺卷头")
 	}
 
-	// QR 槽位（#152 前现状）：payload 可验、位图缺位、哨兵错误原文如实入档.
+	// QR 槽位（#152 接线后）：payload 可验、位图真实产出、零哨兵残留.
 	if !render.VerifyQRPayload(art.QR.Payload) {
 		t.Fatalf("QR payload 未过 Luhn 校验: %q", art.QR.Payload)
 	}
-	if art.QR.SVG != "" {
-		t.Fatalf("位图未实现期间不得出现 SVG（伪造面）")
+	if !strings.HasPrefix(art.QR.SVG, "<svg") {
+		t.Fatalf("#152 接线后卷头必须携带真实位图: %q", art.QR.SVG)
 	}
-	if !errors.Is(errors.New(art.QR.Err), nil) && !strings.Contains(art.QR.Err, "QR SVG 生成未实现") {
-		t.Fatalf("QR 哨兵错误未如实入档: %q", art.QR.Err)
-	}
-	if !strings.Contains(html, "paper-qr unavailable") {
-		t.Fatalf("卷面缺 QR 缺位的如实声明")
+	if art.QR.Err != "" {
+		t.Fatalf("位图生成成功不得残留哨兵错误: %q", art.QR.Err)
 	}
 	// payload 锚定 paper_id（扫码回查的既定口径）.
 	if !strings.HasPrefix(art.QR.Payload, m.PaperID) {
