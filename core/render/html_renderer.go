@@ -60,6 +60,13 @@ func pyEscape(text string) string {
 	return pyEscaper.Replace(text)
 }
 
+// EscapeText 导出 pyEscape（#147 编排/CLI 面组装卷头元数据时的转义入口）：
+// 卷页包装层的动态值与单题内容走同一把转义器，不在包外复刻第二份实现
+// （转义口径漂移 = 跨实现快照不可比对）.
+func EscapeText(text string) string {
+	return pyEscape(text)
+}
+
 // sanitizeSVG SVG 白名单校验：拒绝 script/事件属性/javascript: 链接。
 // 校验通过返回原 svg 字符串；否则返回 ErrUnsafeSVG 包装错误。
 // 不做转义——SVG 是结构化 XML，转义会破坏渲染（与冻结实现一致）.
