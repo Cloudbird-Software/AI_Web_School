@@ -197,7 +197,11 @@ jobs:
       - name: 清单变更须人类批准标记（仅 PR）
         if: github.event_name == 'pull_request'
         run: |
-          git fetch origin main --depth=1 >/dev/null 2>&1 || true
+          # 2026-08-31 修复：原 --depth=1 fetch 会把 checkout 的完整克隆切成浅仓，
+          # main 移动后 merge-base 被截断 → git diff origin/main...HEAD exit 128
+          # （实测复现：fatal: no merge base）。checkout 已 fetch-depth: 0 全量
+          # 拉取全部 heads，此处全量补拉 main 即可（失败静默——非浅仓不受影响）。
+          git fetch origin main >/dev/null 2>&1 || true
           python3 tools/ci/check_test_freeze.py --base origin/main
 
   contract:
