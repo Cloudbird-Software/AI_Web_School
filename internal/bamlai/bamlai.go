@@ -27,7 +27,7 @@ import (
 const TaskSentenceReorg = "lang_sentence_reorg"
 
 // SentenceReorgFunc 是 BAML 函数的函数指针形态（测试注入 fake，不触网）.
-type SentenceReorgFunc func(ctx context.Context, sourceWord, gradeband string, opts ...baml_client.CallOptionFunc) (types.SentenceReorg, error)
+type SentenceReorgFunc func(ctx context.Context, sourceWord, gradeband, vocabCandidates string, opts ...baml_client.CallOptionFunc) (types.SentenceReorg, error)
 
 // SentenceReorgCaller 把 baml_client.GenerateSentenceReorg 适配成 ai.Caller.
 //
@@ -57,7 +57,7 @@ func (c *SentenceReorgCaller) SetCollectorName(name string) { c.collectorName = 
 // 出站内容即 BAML 输出契约的 JSON 序列化（字段与
 // packs/subjectlang.SentenceReorgDraft 一一对应，超纲字段不存在）.
 func (c SentenceReorgCaller) Call(ctx context.Context, req ai.OutboundRequest) (ai.OutboundResult, error) {
-	sw, gb, err := ParseSentenceReorgRequest(req.Prompt)
+	sw, gb, vc, err := ParseSentenceReorgRequest(req.Prompt)
 	if err != nil {
 		return ai.OutboundResult{}, err
 	}
@@ -69,7 +69,7 @@ func (c SentenceReorgCaller) Call(ctx context.Context, req ai.OutboundRequest) (
 	if colErr == nil {
 		opts = append(opts, baml_client.WithCollector(col))
 	}
-	draft, err := c.Fn(ctx, sw, gb, opts...)
+	draft, err := c.Fn(ctx, sw, gb, vc, opts...)
 	if err != nil {
 		// 错误文本不得包含 prompt 原文（X3/D7）；BAML 错误已由其运行时脱敏
 		// 到错误类，这里只加定位前缀.
@@ -94,14 +94,15 @@ func (c SentenceReorgCaller) Call(ctx context.Context, req ai.OutboundRequest) (
 }
 
 // ParseSentenceReorgRequest 严格解析句子重组出站信封：逐行 key: value，
-// 三键齐备且无未知键、值非空、task 行精确匹配。任何漂移都是 pack 侧契约
+// 四键齐备且无未知键、值非空、task 行精确匹配。任何漂移都是 pack 侧契约
 // 变更——在此 fail-closed，绝不猜默认值继续出站.
-func ParseSentenceReorgRequest(prompt string) (sourceWord, gradeband string, err error) {
+func ParseSentenceReorgRequest(prompt string) (sourceWord, gradeband, vocabCandidates string, err error) {
 	const (
 		keyTask        = "task"
 		keySourceWord  = "source_word"
 		keyGradeband   = "gradeband"
-		expectedKeyNum = 3
+		keyVocabCand   = "vocab_candidates"
+		expectedKeyNum = 4
 	)
 	seen := map[string]string{}
 	for i, line := range strings.Split(prompt, "\n") {
@@ -112,27 +113,27 @@ func ParseSentenceReorgRequest(prompt string) (sourceWord, gradeband string, err
 		k, v, ok := strings.Cut(line, ":")
 		if !ok {
 			// 行内容不回显（X3/D7）：错误文本不得携带 prompt 原文片段.
-			return "", "", fmt.Errorf("bamlai: 信封第 %d 行格式非法（缺少 key: value 冒号，内容不回显）", i+1)
+			return "", "", "", fmt.Errorf("bamlai: 信封第 %d 行格式非法（缺少 key: value 冒号，内容不回显）", i+1)
 		}
 		k, v = strings.TrimSpace(k), strings.TrimSpace(v)
 		switch k {
-		case keyTask, keySourceWord, keyGradeband:
+		case keyTask, keySourceWord, keyGradeband, keyVocabCand:
 			if _, dup := seen[k]; dup {
-				return "", "", fmt.Errorf("bamlai: 信封键重复: %s", k)
+				return "", "", "", fmt.Errorf("bamlai: 信封键重复: %s", k)
 			}
 			if v == "" {
-				return "", "", fmt.Errorf("bamlai: 信封键值为空: %s", k)
+				return "", "", "", fmt.Errorf("bamlai: 信封键值为空: %s", k)
 			}
 			seen[k] = v
 		default:
-			return "", "", fmt.Errorf("bamlai: 信封未知键: %s", k)
+			return "", "", "", fmt.Errorf("bamlai: 信封未知键: %s", k)
 		}
 	}
 	if len(seen) != expectedKeyNum {
-		return "", "", fmt.Errorf("bamlai: 信封键不齐（%d/%d）", len(seen), expectedKeyNum)
+		return "", "", "", fmt.Errorf("bamlai: 信封键不齐（%d/%d）", len(seen), expectedKeyNum)
 	}
 	if seen[keyTask] != TaskSentenceReorg {
-		return "", "", fmt.Errorf("bamlai: task 不符: %s", seen[keyTask])
+		return "", "", "", fmt.Errorf("bamlai: task 不符: %s", seen[keyTask])
 	}
-	return seen[keySourceWord], seen[keyGradeband], nil
+	return seen[keySourceWord], seen[keyGradeband], seen[keyVocabCand], nil
 }

@@ -142,16 +142,14 @@ func (g *genGramSC) Instance(index int) (*Instance, error) {
 	inst := &Instance{
 		TemplateID: g.entry.ID,
 		Locale:     "en",
-		Objective: map[string]any{
-			"kp":        kp,
-			"gradeband": "L",
-		},
+		Objective:  objective(kp),
 		InteractionRef: map[string]any{
 			"interaction_id":     "single_choice",
 			"interaction_params": map[string]any{"options": toAnySlice(opts)},
 		},
 		Content: map[string]any{
 			"stem":        stem,
+			"blocks":      scBlocks(stem, opts),
 			"options":     toAnySlice(opts),
 			"answer":      correctIdx,
 			"answer_form": correct,
@@ -165,8 +163,10 @@ func (g *genGramSC) Instance(index int) (*Instance, error) {
 		},
 		ErrorBindings: errBinds,
 		Lineage: map[string]any{
-			"tier":   "A",
-			"params": map[string]any{"index": index, "family": it.family, "word": it.word},
+			"tier": "A",
+			// 契约 §5.2：实例判别参数落 params.normalized（公式一 np 输入——
+			// 不同实例必须产生不同 item_version_id，内容寻址才成立）。
+			"params": map[string]any{"normalized": map[string]any{"index": index, "family": it.family, "word": it.word}},
 		},
 	}
 	return inst, nil

@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"hash/fnv"
 	"io"
+	"sort"
 	"strings"
 
 	"github.com/Cloudbird-Software/AI_Web_School/core/ai"
@@ -124,14 +125,23 @@ func NewSentenceReorgGenerator(c *Corpus, caller ai.Caller, target string) (*Sen
 	if err != nil {
 		return nil, err
 	}
+	entry, spec := SentenceReorgTemplateSpec()
 	g := &SentenceReorgGenerator{
-		entry:  registry.Entry{ID: "tpl-sl-sent-reorg-c", Version: "1.0.0"},
+		entry:  entry,
 		corpus: c,
 		solv:   solv,
 		caller: caller,
 		target: target,
 	}
-	g.spec = map[string]any{
+	g.spec = spec
+	return g, nil
+}
+
+// SentenceReorgTemplateSpec 返回句子重组母题的 entry 与 spec（与生成器
+// 构造期同源同值）——ingest 等只消费模板身份与 spec 摘要的调用方使用
+// （spec 摘要 = template_version_id 对表口径，绝不另造第二份 spec）.
+func SentenceReorgTemplateSpec() (registry.Entry, map[string]any) {
+	return registry.Entry{ID: "tpl-sl-sent-reorg-c", Version: "1.0.0"}, map[string]any{
 		"objective":    "句子重组：从四个词中选出能填回句中空格的词（半确定档：LLM 挖空 + 代码验可解性）",
 		"slots":        []string{"sentence", "answer", "distractor_1", "distractor_2", "distractor_3", "explanation"},
 		"variation":    []string{"source_word ∈ corpus.words", "answer ∈ corpus.words", "distractors ∈ corpus.words\\answer 且不在句中"},
@@ -139,7 +149,6 @@ func NewSentenceReorgGenerator(c *Corpus, caller ai.Caller, target string) (*Sen
 		"answer":       "correct_index(1..4)",
 		"provenance":   "LLM draft（baml_src/generators/lang_sentence.baml）→ SentenceReorgSolvability 全过才成实例",
 	}
-	return g, nil
 }
 
 // Entry/Spec 实现审计面（生产线档位 C：LLM 单件级草稿过验后成实例）。
@@ -160,7 +169,7 @@ func (g *SentenceReorgGenerator) Draft(ctx context.Context, sourceWord, gradeban
 	}
 	out, err := g.caller.Call(ctx, ai.OutboundRequest{
 		Target: g.target,
-		Prompt: draftPrompt(sourceWord, gradeband),
+		Prompt: draftPrompt(sourceWord, gradeband, g.vocabCandidates()),
 	})
 	if err != nil {
 		return nil, fmt.Errorf("sentence_reorg: 出站失败: %w", err)
@@ -208,13 +217,14 @@ func (g *SentenceReorgGenerator) instance(sourceWord, gradeband string, d *Sente
 	return &Instance{
 		TemplateID: g.entry.ID,
 		Locale:     "zh-Hans",
-		Objective:  map[string]any{"kp": "lang.sent.reorg", "gradeband": gradeband},
+		Objective:  objective("lang.sent.reorg"),
 		InteractionRef: map[string]any{
 			"interaction_id":     "single_choice",
 			"interaction_params": map[string]any{"options": toAnySlice(opts)},
 		},
 		Content: map[string]any{
 			"stem":        stem,
+			"blocks":      scBlocks(stem, opts),
 			"sentence":    blanked,
 			"options":     toAnySlice(opts),
 			"answer":      correctIdx,
@@ -245,8 +255,21 @@ func (g *SentenceReorgGenerator) instance(sourceWord, gradeband string, d *Sente
 // lang_sentence.baml（operators.baml：指令与输出契约留在 BAML，禁止 prompt
 // 模板散落代码）；Caller 面只传结构化入参，生产装配方把入参解包进 BAML
 // 函数调用。
-func draftPrompt(sourceWord, gradeband string) string {
-	return fmt.Sprintf("task: lang_sentence_reorg\nsource_word: %s\ngradeband: %s", sourceWord, gradeband)
+func draftPrompt(sourceWord, gradeband, vocabCandidates string) string {
+	return fmt.Sprintf("task: lang_sentence_reorg\nsource_word: %s\ngradeband: %s\nvocab_candidates: %s",
+		sourceWord, gradeband, vocabCandidates)
+}
+
+// vocabCandidates 是词表判定域的出站投影：answer/distractors 的 word_in_vocab
+// 校验域就是这里递出的集合（LLM 只能从候选里选，选即合法）。demo 语料词表
+// 规模 45 词，全量注入；词表扩张后按需改滑动窗口采样（确定性：稳定排序）。
+func (g *SentenceReorgGenerator) vocabCandidates() string {
+	words := make([]string, 0, len(g.corpus.Words))
+	for w := range g.corpus.Words {
+		words = append(words, w)
+	}
+	sort.Strings(words)
+	return strings.Join(words, ",")
 }
 
 // fnv32 稳定哈希（答案位轮换用——同 draft 同位序，纯确定性）。

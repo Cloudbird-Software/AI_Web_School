@@ -95,7 +95,7 @@ func GenerateDraftInstance(ctx context.Context, template_signature string, corpu
 	}
 }
 
-func GenerateSentenceReorg(ctx context.Context, source_word string, gradeband string, opts ...CallOptionFunc) (types.SentenceReorg, error) {
+func GenerateSentenceReorg(ctx context.Context, source_word string, gradeband string, vocab_candidates string, opts ...CallOptionFunc) (types.SentenceReorg, error) {
 
 	var callOpts callOption
 	for _, opt := range opts {
@@ -111,7 +111,7 @@ func GenerateSentenceReorg(ctx context.Context, source_word string, gradeband st
 	}
 
 	args := baml.BamlFunctionArguments{
-		Kwargs: map[string]any{"source_word": source_word, "gradeband": gradeband},
+		Kwargs: map[string]any{"source_word": source_word, "gradeband": gradeband, "vocab_candidates": vocab_candidates},
 		Env:    getEnvVars(callOpts.env),
 	}
 

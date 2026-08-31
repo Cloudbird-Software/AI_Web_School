@@ -65,16 +65,14 @@ func (g *genVocabSpell) Instance(index int) (*Instance, error) {
 	inst := &Instance{
 		TemplateID: g.entry.ID,
 		Locale:     "en",
-		Objective: map[string]any{
-			"kp":        "eng.vocab.spell",
-			"gradeband": "L",
-		},
+		Objective:  objective("eng.vocab.spell"),
 		InteractionRef: map[string]any{
 			"interaction_id":     "text_blank",
 			"interaction_params": map[string]any{"blank_ids": []any{"b1"}},
 		},
 		Content: map[string]any{
 			"stem":         stem,
+			"blocks":       fillBlocks(stem, []string{"b1"}),
 			"answer":       e.Word,
 			"gloss":        e.Gloss,
 			"letter_count": len(e.Word),
@@ -93,8 +91,10 @@ func (g *genVocabSpell) Instance(index int) (*Instance, error) {
 			},
 		},
 		Lineage: map[string]any{
-			"tier":   "A",
-			"params": map[string]any{"index": index},
+			"tier": "A",
+			// 契约 §5.2：实例判别参数落 params.normalized（公式一 np 输入——
+			// 不同实例必须产生不同 item_version_id，内容寻址才成立）。
+			"params": map[string]any{"normalized": map[string]any{"index": index}},
 		},
 	}
 	return inst, nil

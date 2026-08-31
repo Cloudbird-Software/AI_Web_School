@@ -185,16 +185,14 @@ func (g *genPinyinChar) Instance(index int) (*Instance, error) {
 	inst := &Instance{
 		TemplateID: g.entry.ID,
 		Locale:     "zh-Hans",
-		Objective: map[string]any{
-			"kp":        "lang.pinyin.to_char",
-			"gradeband": "L",
-		},
+		Objective:  objective("lang.pinyin.to_char"),
 		InteractionRef: map[string]any{
 			"interaction_id":     "single_choice",
 			"interaction_params": map[string]any{"options": toAnySlice(opts)},
 		},
 		Content: map[string]any{
 			"stem":      fmt.Sprintf("选字：读音是「%s」的字是哪一个？", e.Pinyin),
+			"blocks":    scBlocks(fmt.Sprintf("选字：读音是「%s」的字是哪一个？", e.Pinyin), opts),
 			"options":   toAnySlice(opts),
 			"answer":    correctIdx,
 			"target":    e.Char,
@@ -207,8 +205,10 @@ func (g *genPinyinChar) Instance(index int) (*Instance, error) {
 		},
 		ErrorBindings: errBinds,
 		Lineage: map[string]any{
-			"tier":   "A",
-			"params": map[string]any{"index": index, "target_index": ti, "comb": comb, "correct_index": correctIdx},
+			"tier": "A",
+			// 契约 §5.2：实例判别参数落 params.normalized（公式一 np 输入——
+			// 不同实例必须产生不同 item_version_id，内容寻址才成立）。
+			"params": map[string]any{"normalized": map[string]any{"index": index, "target_index": ti, "comb": comb, "correct_index": correctIdx}},
 		},
 	}
 	return inst, nil

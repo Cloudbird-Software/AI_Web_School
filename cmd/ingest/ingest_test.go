@@ -548,8 +548,12 @@ func TestDigestCheckFormulaOneMatchesModels(t *testing.T) {
 	if err != nil {
 		t.Fatalf("decodeRecord: %v", err)
 	}
-	lineage := buildLineage(rec, testOptions())
-	got := digestCheck(rec, lineage, testOptions())
+	binding, err := resolvePack(rec.TemplateID)
+	if err != nil {
+		t.Fatalf("resolvePack: %v", err)
+	}
+	lineage := buildLineage(rec, binding, testOptions())
+	got := digestCheck(rec, lineage, testOptions(), binding)
 	if got.Verdict != "pass" {
 		t.Fatalf("digest 验证器应 pass，得 %v（%v）", got.Verdict, got.Evidence["fail_reason"])
 	}
@@ -572,7 +576,11 @@ func TestBuildLineageCarriesAuditKeys(t *testing.T) {
 	if err != nil {
 		t.Fatalf("decodeRecord: %v", err)
 	}
-	lineage := buildLineage(rec, testOptions())
+	binding, err := resolvePack(rec.TemplateID)
+	if err != nil {
+		t.Fatalf("resolvePack: %v", err)
+	}
+	lineage := buildLineage(rec, binding, testOptions())
 	if lineage["source"] != "subjectmath-mathgen" {
 		t.Fatalf("source 应取谱系生产线 id，得 %v", lineage["source"])
 	}

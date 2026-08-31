@@ -16,23 +16,29 @@ class SentenceReorg {
 }
 
 // GenerateSentenceReorg 依据题材词与学段生成一道「选词填空」草稿。
-function GenerateSentenceReorg(source_word: string, gradeband: string) -> SentenceReorg {
-  client "openai/gpt-4o-mini" // 环境变量 OPENAI_API_KEY；与 GenerateDraftInstance 同：不要求真实调用，Go 侧测试用 fake Caller。
+// vocab_candidates 是入库语料词表全量（逗号分隔）——answer 与 distractors
+// 的判定域：LLM 不知道词表内容时只能凭空造词，校验器必然拒绝（fail-closed
+// 浪费一次出站）；把判定域显式递给出站面，候选即合法域。
+function GenerateSentenceReorg(source_word: string, gradeband: string, vocab_candidates: string) -> SentenceReorg {
+  client StepFun // StepFun OpenAI 兼容网关（clients.baml 注册；环境变量 STEPFUN_API_KEY）。Go 侧测试用 fake Caller，不要求真实调用。
   prompt #"
     你是小学语文练习题生成操作员（半确定档：句子重组）。依据题材词与学段，
     生成一道「选词填空」草稿：一句围绕题材词的完整句子 + 句中挖空词 +
     3 个干扰词 + 解析。
 
     规则（Go 侧校验器将逐条复核，任何一条不满足该草稿作废）：
-    1. sentence：一句适合该学段学生的完整中文句子，围绕题材词展开；
-       句子必须恰好包含一次挖空词。
-    2. answer（挖空词）：必须来自入库语料词表。
-    3. distractors：恰好 3 个干扰词，全部来自词表；两两互异；都不等于挖空词；
-       都不出现在题干句中（避免多解）。
+    1. sentence：一句适合该学段学生的完整中文句子，围绕题材词展开。
+       句子给出完整形式——挖空词原样出现在句中恰好一次；
+       不要自己挖空、不要用括号/下划线/空格代替挖空词（挖空由系统完成）。
+    2. answer（挖空词）：只能从下方词表（vocab_candidates）里选。
+    3. distractors：恰好 3 个干扰词，全部从词表里选；两两互异；都不等于
+       挖空词；都不出现在题干句中（避免多解）。
     4. explanation：非空，说明挖空词为何恰配该空格。
 
     题材词（source_word）：{{ source_word }}
     学段（gradeband）：{{ gradeband }}
+    词表（vocab_candidates，answer 与 distractors 只能从这里选）：
+    {{ vocab_candidates }}
 
     {{ ctx.output_format }}
   "#
@@ -43,5 +49,6 @@ test sentence_reorg_golden {
   args {
     source_word "太阳"
     gradeband "L"
+    vocab_candidates "太阳,月亮,星星,学校,老师,同学,朋友,上学,读书,写字,说话,听话,看见,听到,走路,跑步,游泳,吃饭,喝水"
   }
 }

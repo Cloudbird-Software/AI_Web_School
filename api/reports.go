@@ -40,10 +40,13 @@ type DueQueries interface {
 	DueEntries(ctx context.Context, studentAliasID string, now time.Time, limit int) ([]review.DueEntryProjection, error)
 }
 
-// LearnerReads 聚合两条学生只读面的注入接缝（nil 字段 = 对应端点 501 占位）.
+// LearnerReads 聚合学生数据面的注入接缝（nil 字段 = 对应端点 501 占位）。
+// Sync 是唯一的写侧接缝（P0-4）：复习队列随作答提交链路同步，非独立端点
+// （见 sessions.go ReviewSyncer 端口注释）；nil = 提交照常、队列留待自愈.
 type LearnerReads struct {
 	Reports ReportQueries
 	Review  DueQueries
+	Sync    ReviewSyncer
 }
 
 // weaknessReportDTO 是契约 WeaknessReport 的 api 层键面（required 五键 +

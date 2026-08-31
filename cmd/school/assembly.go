@@ -11,7 +11,9 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"time"
 
+	"github.com/Cloudbird-Software/AI_Web_School/core/review"
 	"github.com/Cloudbird-Software/AI_Web_School/core/scoring"
 	"github.com/Cloudbird-Software/AI_Web_School/core/session"
 	dbgen "github.com/Cloudbird-Software/AI_Web_School/db/gen"
@@ -41,6 +43,34 @@ func (r *poolTxRunner) InTx(ctx context.Context, fn func(q session.Executor) err
 	return tx.Commit(ctx)
 }
 
+// txReviewSyncer 是 api.ReviewSyncer 的生产实现（P0-4，2026-08-31）：每次
+// 同步开一个独立事务——读事件投影 + upsert 队列条目同进同退（一次派生状态
+// 写入 = 一个事务，S4/D11；与提交事务分离：派生队列滞后可由全量重放自愈，
+// 绝不反向拖垮已入账的作答证据）.
+type txReviewSyncer struct {
+	pool *pgxpool.Pool
+}
+
+// SyncQueue 实现 api.ReviewSyncer：Begin → review.SyncService.SyncQueue →
+// Commit / Rollback。fn 错误即回滚；回滚自身失败与原错误一并上抛.
+func (t *txReviewSyncer) SyncQueue(ctx context.Context, studentAliasID, policyID, policyVersion string, now time.Time) (int, error) {
+	tx, err := t.pool.Begin(ctx)
+	if err != nil {
+		return 0, fmt.Errorf("school: begin review sync tx: %w", err)
+	}
+	n, err := review.NewSyncService(tx).SyncQueue(ctx, studentAliasID, policyID, policyVersion, now)
+	if err != nil {
+		if rbErr := tx.Rollback(ctx); rbErr != nil {
+			return 0, errors.Join(err, fmt.Errorf("school: rollback review sync tx: %w", rbErr))
+		}
+		return 0, err
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return 0, fmt.Errorf("school: commit review sync tx: %w", err)
+	}
+	return n, nil
+}
+
 // dbResponseScorer 是 api.ResponseScorer 的生产实现：内容账取 item_version
 // → scoring_ref 解析（{scorer_id, scorer_params}，D4 冻结注册表键）→
 // core/scoring.Runner 执行 → 落账形态 trace 直接上交（协议层零二次加工）.
@@ -63,12 +93,33 @@ func newDeterministicScorerTable() (*registry.ScorerTable, error) {
 
 // ScoreSubmit 实现 api.ResponseScorer。残缺 scoring_ref / 评分器执行失败
 // 原样上抛——评分失败不落账（评分先行的原子前提），由协议层映射.
+//
+// 错误推断（2026-08-31 E2E 补齐，北极星断点修复）：评分轨迹显式判错时
+// 经 inferErrorBindings 从 error_bindings 产推断（选项位次/选项值/answer 级
+// 规则三形态，见 inference.go）——弱项报告与复习队列的数据源头.
 func (s *dbResponseScorer) ScoreSubmit(ctx context.Context, itemVersionID string, response map[string]any) (map[string]any, []map[string]any, error) {
 	row, err := dbgen.New(s.pool).GetItemVersion(ctx, itemVersionID)
 	if err != nil {
 		return nil, nil, fmt.Errorf("school: read item_version %s: %w", itemVersionID, err)
 	}
-	return scoreAgainstRef(ctx, row.ScoringRef, response, s.runner)
+	trace, _, err := scoreAgainstRef(ctx, row.ScoringRef, response, s.runner)
+	if err != nil {
+		return nil, nil, err
+	}
+	wrongExplicit := traceWrongExplicit(trace)
+	inferences := inferErrorBindings(row.InteractionRef, row.Content, row.ErrorBindings, response, itemVersionID, wrongExplicit)
+	return trace, inferences, nil
+}
+
+// traceWrongExplicit 从评分轨迹提取显式判错（契约 §3 trace.process.correct；
+// 缺失=未显式判定，不产推断——不猜对错）.
+func traceWrongExplicit(trace map[string]any) bool {
+	process, ok := trace["process"].(map[string]any)
+	if !ok {
+		return false
+	}
+	c, ok := process["correct"].(bool)
+	return ok && !c
 }
 
 // scoreAgainstRef 是评分桥的纯函数面（无 DB，可测）：scoring_ref JSONB →
@@ -97,7 +148,7 @@ func scoreAgainstRef(ctx context.Context, scoringRef []byte, response map[string
 	if err != nil {
 		return nil, nil, fmt.Errorf("school: 评分执行失败: %w", err)
 	}
-	// 错误推断数组：确定性评分器的 evidence 面不含错误推断（归因推断属
-	// 评分证据加工波次）——此处空集上交，不伪造归因.
+	// 错误推断数组：确定性评分器的 evidence 面不含错误推断——推断由调用方
+	// ScoreSubmit 经 inferErrorBindings 从 error_bindings 加工（见 inference.go）.
 	return run.Trace, []map[string]any{}, nil
 }

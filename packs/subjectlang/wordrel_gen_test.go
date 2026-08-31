@@ -117,7 +117,8 @@ func TestBatchWordRelValidAndDistinct(t *testing.T) {
 		if err := v.Validate(inst); err != nil {
 			t.Fatalf("i=%d 校验器拒绝: %v", i, err)
 		}
-		kps[inst.Objective["kp"].(string)] = true
+		// objective.kp_set 标准形态（学科包内容形态统一——见 aliases.go objective）。
+		kps[inst.Objective["kp_set"].([]any)[0].(map[string]any)["code"].(string)] = true
 		// 干扰词与题词必须无同关系（正确集零泄漏，独立于校验器再证一遍）。
 		word := inst.Content["word"].(string)
 		relation := inst.Content["relation"].(string)

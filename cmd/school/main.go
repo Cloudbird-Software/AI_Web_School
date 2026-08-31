@@ -148,10 +148,12 @@ func main() {
 	}
 
 	// 学生只读面 + 内容取证面（审计 #155 收口）：同一池的只读查询服务，
-	// 13 条业务路由自此全部业务接线（零 501 生产形态）。
+	// 13 条业务路由自此全部业务接线（零 501 生产形态）。Sync 是复习队列
+	// 写侧接缝（P0-4）：提交链路触发的事务化同步器。
 	reads := api.LearnerReads{
 		Reports: report.NewWeaknessQueryService(pool),
 		Review:  review.NewDueQueryService(pool),
+		Sync:    &txReviewSyncer{pool: pool},
 	}
 	contentQueries := content.NewContentQueryService(pool)
 

@@ -71,7 +71,7 @@ func (*build_request_stream) GenerateDraftInstance(template_signature string, co
 }
 
 // Build streaming HTTP request for GenerateSentenceReorg (returns baml.HTTPRequest)
-func (*build_request_stream) GenerateSentenceReorg(source_word string, gradeband string, opts ...CallOptionFunc) (baml.HTTPRequest, error) {
+func (*build_request_stream) GenerateSentenceReorg(source_word string, gradeband string, vocab_candidates string, opts ...CallOptionFunc) (baml.HTTPRequest, error) {
 
 	var callOpts callOption
 	for _, opt := range opts {
@@ -87,7 +87,7 @@ func (*build_request_stream) GenerateSentenceReorg(source_word string, gradeband
 	}
 
 	args := baml.BamlFunctionArguments{
-		Kwargs: map[string]any{"source_word": source_word, "gradeband": gradeband, "stream": true},
+		Kwargs: map[string]any{"source_word": source_word, "gradeband": gradeband, "vocab_candidates": vocab_candidates, "stream": true},
 		Env:    getEnvVars(callOpts.env),
 	}
 

@@ -26,6 +26,7 @@ import (
 	"github.com/Cloudbird-Software/AI_Web_School/core/ai"
 	"github.com/Cloudbird-Software/AI_Web_School/internal/bamlai"
 	"github.com/Cloudbird-Software/AI_Web_School/packs/subjectlang"
+	"github.com/Cloudbird-Software/AI_Web_School/packs/subjectmath"
 )
 
 func main() {
@@ -67,11 +68,18 @@ func main() {
 		var sb strings.Builder
 		seen := map[string]bool{}
 		validate := suite.Validators[g.Entry().ID]
+		// 母题版本号（契约 §2.3 内容寻址）：与数学轮同一公式同一口径
+		// （subjectmath.TemplateVersionID），ingest 摘要对表 ② 的判定对象。
+		tvid, err := subjectmath.TemplateVersionID(g.Spec())
+		if err != nil {
+			fatal(fmt.Errorf("%s 母题版本号计算失败: %w", g.Entry().ID, err))
+		}
 		for i := 0; i < *n; i++ {
 			inst, err := g.Instance(i)
 			if err != nil {
 				fatal(fmt.Errorf("%s Instance(%d): %w", g.Entry().ID, i, err))
 			}
+			inst.TemplateVersionID = tvid
 			// 批量面真跑独立校验器（不是只在测试里跑）：按模板分派，逐实例重判。
 			if validate != nil {
 				if verr := validate(inst); verr != nil {
@@ -91,7 +99,16 @@ func main() {
 			seen[digest] = true
 			seenAll[digest] = g.Entry().ID
 			distinct++
-			b, _ := json.Marshal(inst)
+			// Record 形态（与 mathgen JSONL 同构）：Instance 字段平铺 +
+			// space_index + content_digest——ingest 入账链的消费契约。
+			b, merr := json.Marshal(subjectmath.Record{
+				Instance:      (*subjectmath.Instance)(inst),
+				SpaceIndex:    i,
+				ContentDigest: digest,
+			})
+			if merr != nil {
+				fatal(merr)
+			}
 			sb.Write(b)
 			sb.WriteByte('\n')
 			total++
@@ -162,6 +179,12 @@ func runReorg(corpus *subjectlang.Corpus, n int, out, target, gradeband, provide
 			fmt.Fprintf(os.Stderr, "⚠️ draft(%s) 拒绝: %v\n", word, err)
 			continue
 		}
+		// 母题版本号补全（与确定性档同一公式——ingest 对表 ② 的判定对象）。
+		tvid, err := subjectmath.TemplateVersionID(gen.Spec())
+		if err != nil {
+			fatal(err)
+		}
+		inst.TemplateVersionID = tvid
 		digest, err := subjectlang.InstanceDigest(inst)
 		if err != nil {
 			fatal(err)
@@ -171,7 +194,12 @@ func runReorg(corpus *subjectlang.Corpus, n int, out, target, gradeband, provide
 			continue
 		}
 		seen[digest] = true
-		b, err := json.Marshal(inst)
+		// Record 形态（与确定性档/mathgen 同构）：ingest 入账链的消费契约。
+		b, err := json.Marshal(subjectmath.Record{
+			Instance:      (*subjectmath.Instance)(inst),
+			SpaceIndex:    accepted,
+			ContentDigest: digest,
+		})
 		if err != nil {
 			fatal(err)
 		}

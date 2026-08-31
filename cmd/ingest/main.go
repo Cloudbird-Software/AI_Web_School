@@ -1,13 +1,17 @@
-// Command ingest 是内容入账链路（审计卡 #156）的入口：读取 mathgen 等
-// 生成器产出的 JSONL（packs/subjectmath.Record：嵌入 *Instance +
-// space_index + content_digest），逐条过摘要对表与校验门，门过者在一个
-// 显式事务内入账（item / item_version / gate_certificate / gate_run →
+// Command ingest 是内容入账链路（审计卡 #156）的入口：读取 mathgen /
+// langgen / enggen 生成器产出的 JSONL（packs/subjectmath.Record 形态：嵌入
+// *Instance + space_index + content_digest），逐条过摘要对表与校验门，门过者
+// 在一个显式事务内入账（item / item_version / gate_certificate / gate_run →
 // core/content PublishService 发布事务），门不过者独立事务留痕后继续。
 //
 // 用法：
 //
 //	go run ./cmd/ingest -dsn "postgresql://user:pass@localhost:5432/db" \
 //	    -in out/mathgen/ -pack-digest sha256:<学科包摘要>
+//
+// 学科包（P0-2 起）：按模板 id 前缀自动分派（tpl-sm-→subject-math /
+// tpl-sl-→subject-lang / tpl-se-→subject-english）——摘要对表 ① 用各包
+// 既有 InstanceDigest 口径、② 用各包模板注册表；-pack-id 显式传入时覆盖。
 //
 // pack_digest 的口径说明（审计卡 ground truth 结论）：公式一的 pd 输入在
 // 仓库内没有学科包摘要的生成点（core/instantiation golden 用 fixture 值；
@@ -47,7 +51,7 @@ func main() {
 func run() error {
 	opts := options{}
 	flag.StringVar(&opts.input, "in", "out/mathgen/", "JSONL 文件或目录（目录取其中 *.jsonl）")
-	flag.StringVar(&opts.packID, "pack-id", "subject-math", "item.pack_id（冻结 overlay pack_id）")
+	flag.StringVar(&opts.packID, "pack-id", "", "item.pack_id 覆盖（缺省按模板 id 前缀自动分派：tpl-sm-→subject-math / tpl-sl-→subject-lang / tpl-se-→subject-english）")
 	flag.StringVar(&opts.packDigest, "pack-digest", "", "公式一 pack_digest（sha256:...，必填——仓库无学科包摘要真源，禁止缺参退化）")
 	flag.StringVar(&opts.engineDigest, "engine-digest", instantiation.EngineDigest, "公式一 engine_digest（缺省 core/instantiation.EngineDigest）")
 	flag.StringVar(&opts.policyVersion, "policy-version", "1.0", "门策略版本（gate_certificate/gate_run/gate_failure 判定语境）")

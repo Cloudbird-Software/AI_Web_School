@@ -103,19 +103,18 @@ func (g *genCharRecognize) Instance(index int) (*Instance, error) {
 		j++
 	}
 	prompt := fmt.Sprintf("选字：下面四个选项中，哪一个是语料字表里的「%s」？", target)
+	blocks := scBlocks(prompt, opts)
 	inst := &Instance{
 		TemplateID: g.entry.ID,
 		Locale:     "zh-Hans",
-		Objective: map[string]any{
-			"kp":        "lang.chr.recognize",
-			"gradeband": "L",
-		},
+		Objective:  objective("lang.chr.recognize"),
 		InteractionRef: map[string]any{
 			"interaction_id":     "single_choice",
 			"interaction_params": map[string]any{"options": opts},
 		},
 		Content: map[string]any{
 			"stem":      prompt,
+			"blocks":    blocks,
 			"options":   toAnySlice(opts),
 			"answer":    correctIdx,
 			"target":    target,
@@ -131,8 +130,10 @@ func (g *genCharRecognize) Instance(index int) (*Instance, error) {
 			{"slot": "distractor_3", "error_type_id": "lang.chr.confusable"},
 		},
 		Lineage: map[string]any{
-			"tier":   "A",
-			"params": map[string]any{"target_index": ti, "comb": comb, "correct_index": correctIdx},
+			"tier": "A",
+			// 契约 §5.2：实例判别参数落 params.normalized（公式一 np 输入——
+			// 不同实例必须产生不同 item_version_id，内容寻址才成立）。
+			"params": map[string]any{"normalized": map[string]any{"target_index": ti, "comb": comb, "correct_index": correctIdx}},
 		},
 	}
 	return inst, nil

@@ -52,6 +52,7 @@ func AssertPairwiseDistinct(digests []string) error {
 // canonicalBytes 输出确定性字节流：
 //   - map[string]any   键升序 → "k":v 紧凑序列
 //   - []any            元素保序（数组序本身语义）
+//   - []string         同 []any（元素全 string——语英轮 spec 字面量形态）
 //   - string/int/int64/bool/json.Number(整数)/nil
 //
 // 其余类型一律拒绝：宁可失败也不产出平台相关的“伪规范”字节。
@@ -95,6 +96,17 @@ func encodeCanonical(buf *bytes.Buffer, v any) error {
 			if err := encodeCanonical(buf, e); err != nil {
 				return err
 			}
+		}
+		buf.WriteByte(']')
+	case []string:
+		// 字符串切片（语英轮 spec 的 slots/variation 等字面量形态）：与
+		// 等价 []any 同一字节流——切片只是构造型语法糖，不是新语义类型.
+		buf.WriteByte('[')
+		for i, e := range x {
+			if i > 0 {
+				buf.WriteByte(',')
+			}
+			encodeString(buf, e)
 		}
 		buf.WriteByte(']')
 	case map[string]any:

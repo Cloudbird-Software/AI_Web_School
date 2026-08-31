@@ -174,6 +174,14 @@ func mustTemplateVersionID(spec map[string]any) string {
 	return id
 }
 
+// TemplateVersionID 计算母题版本号（sha256(canonical({dsl_version:"1", spec}))，
+// 契约 §2.3 内容寻址）——语英轮生成器共用同一公式同一口径（同轴管线，
+// issue #34 §二；ingest 摘要对表 ② 的判定对象）。导出面供生成器 CLI 在
+// 实例补全 template_version_id 时使用，绝不另造第二套公式.
+func TemplateVersionID(spec map[string]any) (string, error) {
+	return DigestAny(map[string]any{"dsl_version": "1", "spec": spec})
+}
+
 // digestHex 供 registry.Entry 摘要展示外的通用小工具。
 func digestHex(b []byte) string {
 	sum := sha256.Sum256(b)

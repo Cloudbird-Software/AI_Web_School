@@ -151,7 +151,19 @@ func convertBlock(raw map[string]any, interactionID string, strict bool) (Block,
 			}
 		}
 	}
+	// 内容方言归一（kind 方言兼容层）：A 线实例化引擎（core/instantiation，
+	// Go packs/subjectmath 同构）产出的 content block 是 {kind, template,
+	// rendered} 形态（黄金数据集 expected_content_snapshot 同构）；B 线
+	// 装配器与 IR 严格形态用 {type, value}。冻结契约对 content.blocks 保持
+	// permissive（openapi §2.2 未强制 schema），渲染边界同时接受两种方言：
+	// type 缺失而 kind 存在时按 kind 分发（E2E 实证 papergen 对 mathgen
+	// 产物全量 IR 转换失败即此分歧）。
 	blockType, _ := raw["type"].(string)
+	if blockType == "" {
+		if kind, ok := raw["kind"].(string); ok && kind != "" {
+			blockType = kind
+		}
+	}
 	switch BlockType(blockType) {
 	case BlockText:
 		return convertTextBlock(raw)
@@ -187,6 +199,15 @@ func requireStrictString(raw map[string]any, key string) error {
 func convertTextBlock(raw map[string]any) (Block, error) {
 	value, ok := raw["value"].(string)
 	if !ok {
+		// kind 方言（A 线引擎产物）：value 缺失时取 rendered（插值后文本），
+		// 再退 template（未插值模板）。两者皆缺才拒绝——与冻结实现对
+		// value 的 str() 收紧口径不冲突（此处不字符串化任意标量）。
+		if rendered, rok := raw["rendered"].(string); rok && rendered != "" {
+			return TextBlock{Value: rendered}, nil
+		}
+		if tmpl, tok := raw["template"].(string); tok && tmpl != "" {
+			return TextBlock{Value: tmpl}, nil
+		}
 		// 显式偏离（收紧）：冻结实现 str(raw["value"]) 把任意标量静默字符串化
 		// （str(5)=="5"、str(True)=="True"），跨实现产物不可比对——Go 侧拒绝。
 		return nil, fmt.Errorf("%w: text 块缺 value（须为字符串）", ErrInvalidItemVersion)

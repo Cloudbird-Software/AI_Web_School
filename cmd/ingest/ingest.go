@@ -23,6 +23,7 @@ import (
 
 	"github.com/Cloudbird-Software/AI_Web_School/core/content"
 	"github.com/Cloudbird-Software/AI_Web_School/core/gate"
+	"github.com/Cloudbird-Software/AI_Web_School/core/gate/validators"
 	"github.com/Cloudbird-Software/AI_Web_School/core/models"
 	dbgen "github.com/Cloudbird-Software/AI_Web_School/db/gen"
 	"github.com/Cloudbird-Software/AI_Web_School/packs/subjectmath"
@@ -88,12 +89,18 @@ func (rn *Runner) ingestRecord(ctx context.Context, line []byte) (string, string
 		return outcomeDecoded, "decode:" + err.Error(), nil
 	}
 
+	// 学科包绑定（P0-2：按模板 id 前缀分派——摘要口径/模板注册表/pack_id）。
+	binding, err := resolvePack(rec.TemplateID)
+	if err != nil {
+		return outcomeDecoded, "pack:" + err.Error(), nil
+	}
+
 	// 谱系补全（审计卡点名键 + 公式一证据链键），后续检查与入账同源。
-	lineage := buildLineage(rec, rn.opts)
+	lineage := buildLineage(rec, binding, rn.opts)
 
 	// ── 校验门（先判后写：判定为纯函数，不烧事务语句）──────────────────
 	checks := []checkResult{
-		digestCheck(rec, lineage, rn.opts),
+		digestCheck(rec, lineage, rn.opts, binding),
 		registryCheck(rec, rn.interactions, rn.scorers),
 	}
 	var failed []checkResult
@@ -128,7 +135,7 @@ func (rn *Runner) ingestRecord(ctx context.Context, line []byte) (string, string
 		return outcomeRejected, rejectReason(failed), nil
 	}
 
-	if err := rn.writeLedger(ctx, tx, rec, lineage, ivid, checks); err != nil {
+	if err := rn.writeLedger(ctx, tx, rec, lineage, ivid, checks, binding); err != nil {
 		if isDuplicate(err) {
 			// 重放同批：内容寻址 id 已在账（PK 冲突），幂等屏障显形为
 			// 拒绝计数——不是门失败，不走 failure trail。
@@ -148,15 +155,21 @@ func (rn *Runner) ingestRecord(ctx context.Context, line []byte) (string, string
 //	母题身份/版本行 → item（A 级自引用） → item_version(draft, 六块+谱系)
 //	→ gate_certificate → gate_run×N → PublishService.Publish（状态前移+
 //	签发账+指针前移，复用同一证书验真）。
-func (rn *Runner) writeLedger(ctx context.Context, tx pgx.Tx, rec *subjectmath.Record, lineage map[string]any, ivid string, checks []checkResult) error {
+func (rn *Runner) writeLedger(ctx context.Context, tx pgx.Tx, rec *subjectmath.Record, lineage map[string]any, ivid string, checks []checkResult, binding *packBinding) error {
 	qs := dbgen.New(tx)
 	now := rn.now()
 
+	// pack_id（P0-2：显式 flag 覆盖 > 学科包绑定缺省）。
+	packID := binding.PackID
+	if rn.opts.packID != "" {
+		packID = rn.opts.packID
+	}
+
 	// 母题身份与版本行就位（item.template_version_id 的非延迟外键要求版本行
-	// 先于实例行；spec 取自 pack 注册表——digest 验证器已对表过版本号）。
-	g, ok := subjectmath.Get(rec.TemplateID)
+	// 先于实例行；spec 取自包注册表——digest 验证器已对表过版本号）。
+	g, ok := binding.Templates[rec.TemplateID]
 	if !ok {
-		return fmt.Errorf("母题 %q 不在 packs/subjectmath 注册表（writeLedger 前置门失效）", rec.TemplateID)
+		return fmt.Errorf("母题 %q 不在学科包 %s 注册表（writeLedger 前置门失效）", rec.TemplateID, binding.PackID)
 	}
 	specJSON, err := jsonb("spec", g.Spec())
 	if err != nil {
@@ -164,7 +177,7 @@ func (rn *Runner) writeLedger(ctx context.Context, tx pgx.Tx, rec *subjectmath.R
 	}
 	if err := qs.UpsertItemTemplate(ctx, dbgen.UpsertItemTemplateParams{
 		TemplateID: rec.TemplateID,
-		PackID:     rn.opts.packID,
+		PackID:     packID,
 	}); err != nil {
 		return fmt.Errorf("upsert item_template: %w", err)
 	}
@@ -181,7 +194,7 @@ func (rn *Runner) writeLedger(ctx context.Context, tx pgx.Tx, rec *subjectmath.R
 	// item：A/B 级 item_id = item_version_id（自引用，冻结 engine.py 地面真值）。
 	if err := qs.InsertItem(ctx, dbgen.InsertItemParams{
 		ItemID:            ivid,
-		PackID:            rn.opts.packID,
+		PackID:            packID,
 		Tier:              dbgen.ItemTierEnumA,
 		TemplateVersionID: pgtext(rec.TemplateVersionID),
 	}); err != nil {
@@ -369,12 +382,22 @@ func decodeRecord(line []byte) (*subjectmath.Record, error) {
 //   - pack_digest / engine_digest：公式一 pd/ed 证据链（publish 侧重算必读）；
 //   - content_digest：H-W6-1 结构互异审计的判定对象（库内无独立摘要列，
 //     谱系即其账面落点——dup 验证器 W6 DB 适配的消费键）。
-func buildLineage(rec *subjectmath.Record, opts options) map[string]any {
+//
+// pack_id 与缺省生产线 id 来自学科包绑定（P0-2）；opts.packID 显式传入时
+// 覆盖包缺省（向后兼容数学轮既有作业面）。
+func buildLineage(rec *subjectmath.Record, binding *packBinding, opts options) map[string]any {
+	packID := binding.PackID
+	if opts.packID != "" {
+		packID = opts.packID
+	}
 	lineage := rec.Lineage
 	lineage["template_id"] = rec.TemplateID
-	lineage["source"] = pipelineID(lineage)
+	// 公式一证据链的谱系锚（publish.verifyContentAddress 读此键判 A/B 级走
+	// 公式一——语英轮生成器谱系不带该键时在此补全；数学轮既有同值，幂等）。
+	lineage["template_version_id"] = rec.TemplateVersionID
+	lineage["source"] = pipelineID(lineage, binding)
 	lineage["operator"] = opts.operator
-	lineage["pack_id"] = opts.packID
+	lineage["pack_id"] = packID
 	lineage["corpus_version_id"] = firstCorpusVersionID(lineage)
 	lineage["pack_digest"] = opts.packDigest
 	lineage["engine_digest"] = opts.engineDigest
@@ -382,17 +405,40 @@ func buildLineage(rec *subjectmath.Record, opts options) map[string]any {
 	return lineage
 }
 
-// computeInstanceVersionID 重算公式一（core/models.ComputeInstanceID，冻结
-// compute_instance_id 的 Go 唯一实现）：np 取谱系 params.normalized，cd 取
-// corpus_refs[].digest 按引用顺序——与 core/content 发布侧重算同源同缺省。
+// computeInstanceVersionID 重算 item_version_id，判定树与 core/content
+// publish.verifyContentAddress 完全同款（同公式同证据链，两侧才不脱钩）：
+//   - tier ∈ {A,B} 且 template_version_id 非空 → 公式一
+//     H(tvd, np, pd, ed, cd, l)（core/models.ComputeInstanceID，冻结
+//     compute_instance_id 的 Go 唯一实现）：np 取谱系 params.normalized，
+//     cd 取 corpus_refs[].digest 按引用顺序；
+//   - 其余（C/D 级——LLM 草稿/外采单件）→ 公式二 H(o, ir, c, sr, eb, l)：
+//     五块内容行内即证据链（buildLineage 为 C 级也补 template_version_id，
+//     但 publish 侧按 tier 分流不看该键——C 级恒走公式二）。
 func computeInstanceVersionID(rec *subjectmath.Record, lineage map[string]any, opts options) (string, error) {
-	corpus, err := corpusDigests(lineage)
-	if err != nil {
-		return "", err
+	tier, _ := lineage["tier"].(string)
+	if (tier == "A" || tier == "B") && rec.TemplateVersionID != "" {
+		corpus, err := corpusDigests(lineage)
+		if err != nil {
+			return "", err
+		}
+		return models.ComputeInstanceID(
+			rec.TemplateVersionID, normalizedParams(lineage),
+			opts.packDigest, opts.engineDigest, corpus, rec.Locale)
 	}
-	return models.ComputeInstanceID(
-		rec.TemplateVersionID, normalizedParams(lineage),
-		opts.packDigest, opts.engineDigest, corpus, rec.Locale)
+	// eb：[]map[string]any 提升为 []any（canonical 序列化的类型面——
+	// publish 侧行内 JSONB 解码即 []any，两侧同字节流）。
+	eb := make([]any, len(rec.ErrorBindings))
+	for i, m := range rec.ErrorBindings {
+		eb[i] = m
+	}
+	return validators.ContentDigest(map[string]any{
+		"o":  rec.Objective,
+		"ir": rec.InteractionRef,
+		"c":  rec.Content,
+		"sr": rec.ScoringRef,
+		"eb": eb,
+		"l":  rec.Locale,
+	})
 }
 
 // normalizedParams 取公式一 np（lineage.params.normalized；缺省空对象，
@@ -446,13 +492,14 @@ func firstCorpusVersionID(lineage map[string]any) any {
 }
 
 // pipelineID 取谱系声明生产线 id（lineage.source 的取值：来源=生产线本身）。
-func pipelineID(lineage map[string]any) string {
+// 谱系未声明时取学科包绑定缺省（P0-2：语英轮不再是数学轮的缺省值）。
+func pipelineID(lineage map[string]any, binding *packBinding) string {
 	if p, ok := lineage["pipeline"].(map[string]any); ok {
 		if id, ok := p["id"].(string); ok && id != "" {
 			return id
 		}
 	}
-	return "subjectmath-mathgen"
+	return binding.PipelineID
 }
 
 // rejectReason 汇总门失败为稳定拒因键（"digest:fail/registry:fail" 形态，
@@ -499,8 +546,10 @@ func jsonb(field string, v any) ([]byte, error) {
 func pgts(t time.Time) pgtype.Timestamptz { return pgtype.Timestamptz{Time: t, Valid: true} }
 func pgtext(s string) pgtype.Text         { return pgtype.Text{String: s, Valid: s != ""} }
 
-// renderedSnapshot 从 content.blocks 的 rendered 文本拼装渲染快照（确定性：
-// 块序即文档序；文本 HTML 转义防注入——快照是发布时的渲染面存档）.
+// renderedSnapshot 从 content 拼装渲染快照（确定性：块序即文档序；文本 HTML
+// 转义防注入——快照是发布时的渲染面存档）。两种内容方言（P0-2）：
+//   - blocks 方言（数学轮）：[{kind,text,template,rendered}] 块序拼装；
+//   - 平铺方言（语英轮）：stem 题干 + options 选项（content 直接携带语义字段）.
 func renderedSnapshot(content map[string]any) map[string]any {
 	var sb strings.Builder
 	sb.WriteString(`<div class="item-rendered">`)
@@ -521,6 +570,19 @@ func renderedSnapshot(content map[string]any) map[string]any {
 			sb.WriteString("<p>")
 			sb.WriteString(html.EscapeString(rendered))
 			sb.WriteString("</p>")
+		}
+	} else if stem, ok := content["stem"].(string); ok && stem != "" {
+		sb.WriteString("<p>")
+		sb.WriteString(html.EscapeString(stem))
+		sb.WriteString("</p>")
+		if opts, ok := content["options"].([]any); ok {
+			for i, o := range opts {
+				if s, ok := o.(string); ok && s != "" {
+					sb.WriteString("<p>")
+					sb.WriteString(html.EscapeString(string(rune('A'+i)) + ". " + s))
+					sb.WriteString("</p>")
+				}
+			}
 		}
 	}
 	sb.WriteString("</div>")

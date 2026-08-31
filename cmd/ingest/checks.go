@@ -65,8 +65,9 @@ func confidenceCertain() pgtype.Numeric {
 // 短路后两段——evidence 一次带全三段实况，审账不必重放就知道断在哪）。
 //
 // rec 必须是 UseNumber 解码的 JSONL 行（json.Number 保数字原文，浮点重解析
-// 即口径漂移）；lineage 是 buildLineage 补全谱系键后的实例谱系。
-func digestCheck(rec *subjectmath.Record, lineage map[string]any, opts options) checkResult {
+// 即口径漂移）；lineage 是 buildLineage 补全谱系键后的实例谱系；binding 是
+// 按模板 id 前缀解析的学科包绑定（P0-2：摘要口径与模板注册表按包分派）。
+func digestCheck(rec *subjectmath.Record, lineage map[string]any, opts options, binding *packBinding) checkResult {
 	start := time.Now()
 	r := checkResult{
 		ValidatorID:      digestValidatorID,
@@ -75,9 +76,10 @@ func digestCheck(rec *subjectmath.Record, lineage map[string]any, opts options) 
 		Evidence:         map[string]any{},
 	}
 
-	// ① content 摘要对表：packs 唯一口径 subjectmath.ContentDigest（H-W6-1
-	//    判定函数本身），重算 ≠ JSONL 声明即内容被篡改/口径漂移，拒绝入账。
-	recomputed, err := subjectmath.ContentDigest(rec.Content)
+	// ① content 摘要对表：packs 唯一口径（学科包既有 InstanceDigest——数学轮
+	//    content-only、语英轮 {template_id, content, scoring_ref} 三字段，同轴
+	//    管线 issue #34 §二），重算 ≠ JSONL 声明即内容被篡改/口径漂移，拒绝入账。
+	recomputed, err := binding.Digest(rec)
 	if err != nil {
 		r.fail("内容摘要不可计算: " + err.Error())
 		r.evidenceClose(start)
@@ -89,12 +91,12 @@ func digestCheck(rec *subjectmath.Record, lineage map[string]any, opts options) 
 		r.fail("content 摘要与 JSONL 声明不一致（重算 ≠ content_digest）")
 	}
 
-	// ② 母题版本号对表：instance.template_version_id 必须等于 pack 注册表
+	// ② 母题版本号对表：instance.template_version_id 必须等于包注册表
 	//    spec 的规范化摘要（mustTemplateVersionID 同输入同函数同口径）；
 	//    模板未注册即生成侧私造，拒绝。
-	g, ok := subjectmath.Get(rec.TemplateID)
+	g, ok := binding.Templates[rec.TemplateID]
 	if !ok {
-		r.fail(fmt.Sprintf("母题 %q 不在 packs/subjectmath 注册表（私造模板禁止入账）", rec.TemplateID))
+		r.fail(fmt.Sprintf("母题 %q 不在学科包 %s 注册表（私造模板禁止入账）", rec.TemplateID, binding.PackID))
 		r.evidenceClose(start)
 		return r
 	}

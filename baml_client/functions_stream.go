@@ -117,7 +117,7 @@ func (*stream) GenerateDraftInstance(ctx context.Context, template_signature str
 }
 
 // / Streaming version of GenerateSentenceReorg
-func (*stream) GenerateSentenceReorg(ctx context.Context, source_word string, gradeband string, opts ...CallOptionFunc) (<-chan StreamValue[stream_types.SentenceReorg, types.SentenceReorg], error) {
+func (*stream) GenerateSentenceReorg(ctx context.Context, source_word string, gradeband string, vocab_candidates string, opts ...CallOptionFunc) (<-chan StreamValue[stream_types.SentenceReorg, types.SentenceReorg], error) {
 
 	var callOpts callOption
 	for _, opt := range opts {
@@ -125,7 +125,7 @@ func (*stream) GenerateSentenceReorg(ctx context.Context, source_word string, gr
 	}
 
 	args := baml.BamlFunctionArguments{
-		Kwargs: map[string]any{"source_word": source_word, "gradeband": gradeband},
+		Kwargs: map[string]any{"source_word": source_word, "gradeband": gradeband, "vocab_candidates": vocab_candidates},
 		Env:    getEnvVars(callOpts.env),
 	}
 

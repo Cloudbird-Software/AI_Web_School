@@ -177,7 +177,7 @@ func routesWithConsent(signer *auth.Signer, store compliance.ConsentStore, queri
 		{pattern: "POST /sessions", shield: student, handle: createSession(store, svc)},
 		{pattern: "GET /sessions/{session_id}", shield: student, handle: sessionState(svc)},
 		{pattern: "GET /sessions/{session_id}/next", shield: student, handle: sessionNext(svc)},
-		{pattern: "POST /sessions/{session_id}/responses", shield: student, handle: sessionSubmit(svc, scorer)},
+		{pattern: "POST /sessions/{session_id}/responses", shield: student, handle: sessionSubmit(svc, scorer, reads.Sync)},
 		{pattern: "POST /sessions/{session_id}/resume", shield: student, handle: sessionResume(svc)},
 		{pattern: "POST /sessions/{session_id}/abandon", shield: student, handle: sessionAbandon(svc)},
 

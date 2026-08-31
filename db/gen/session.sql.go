@@ -57,6 +57,11 @@ const advanceSessionAfterSubmit = `-- name: AdvanceSessionAfterSubmit :exec
 UPDATE practice_session SET
 	current_index = current_index + 1,
 	answered_count = answered_count + 1,
+	correct_count = correct_count + $3::int,
+	wrong_marks = CASE
+		WHEN $4::jsonb IS NULL THEN wrong_marks
+		ELSE COALESCE(wrong_marks, '[]'::jsonb) || $4::jsonb
+	END,
 	last_activity_at = $2,
 	status = CASE
 		WHEN current_index + 1 >= jsonb_array_length(item_sequence) AND NOT retest_wrong
@@ -74,14 +79,24 @@ WHERE session_id = $1
 type AdvanceSessionAfterSubmitParams struct {
 	SessionID      pgtype.UUID
 	LastActivityAt pgtype.Timestamptz
+	CorrectDelta   int32
+	WrongMark      []byte
 }
 
 // 提交推进：current_index/answered_count 各恰 +1 + 活动时刻（board 验收
-// 「current_index 恰好推进 1」的物理面）。完结判定与 Python 冻结实现同构：
-// 主序列走完且未开启回测 → completed（开回测的会话进入回测轮，归会话状态
-// 机域，本卡不推进其完结）。CASE 引用的是本行旧值（UPDATE 语义）.
+// 「current_index 恰好推进 1」的物理面）。对错记账与内存实现同构（2026-08-31
+// E2E 实证修复：correct_count 只在评分轨迹显式判对时累加，显式判错追加
+// wrong_marks 错题标记；轨迹不含显式判定时两账都不动，不猜对错）。
+// 完结判定与 Python 冻结实现同构：主序列走完且未开启回测 → completed
+// （开回测的会话进入回测轮，归会话状态机域，本卡不推进其完结）。
+// CASE 引用的是本行旧值（UPDATE 语义）.
 func (q *Queries) AdvanceSessionAfterSubmit(ctx context.Context, arg AdvanceSessionAfterSubmitParams) error {
-	_, err := q.db.Exec(ctx, advanceSessionAfterSubmit, arg.SessionID, arg.LastActivityAt)
+	_, err := q.db.Exec(ctx, advanceSessionAfterSubmit,
+		arg.SessionID,
+		arg.LastActivityAt,
+		arg.CorrectDelta,
+		arg.WrongMark,
+	)
 	return err
 }
 

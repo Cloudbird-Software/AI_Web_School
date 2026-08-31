@@ -2,6 +2,7 @@ package session
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"time"
@@ -129,14 +130,49 @@ func (s *PGStore) SubmitAnswer(ctx context.Context, q Executor, in SubmitInput) 
 	}); err != nil {
 		return "", false, fmt.Errorf("session/pg register submission: %w", mapUniqueViolation(err))
 	}
-	// 7) 推进恰 +1（board 验收「current_index 恰好推进 1」的物理面）.
+	// 7) 推进恰 +1 + 对错记账（board 验收「current_index 恰好推进 1」的物理面；
+	// 2026-08-31 E2E 实证修复：与内存实现同构——显式判对累加 correct_count，
+	// 显式判错追加 wrong_marks 错题标记；轨迹不含显式判定两账均不动）.
+	explicit, correct := traceCorrect(p.trace)
+	var correctDelta int32
+	var wrongMark []byte
+	if explicit {
+		if correct {
+			correctDelta = 1
+		} else {
+			mk, err := json.Marshal(newWrongMarkPG(p, v.CurrentIndex, row.RetestWrong))
+			if err != nil {
+				return "", false, fmt.Errorf("session/pg encode wrong mark: %w", err)
+			}
+			wrongMark = mk
+		}
+	}
 	if err := qs.AdvanceSessionAfterSubmit(ctx, dbgen.AdvanceSessionAfterSubmitParams{
 		SessionID:      sid,
 		LastActivityAt: tsTZ(p.at),
+		CorrectDelta:   correctDelta,
+		WrongMark:      wrongMark,
 	}); err != nil {
 		return "", false, fmt.Errorf("session/pg advance session: %w", err)
 	}
 	return eventID, false, nil
+}
+
+// newWrongMarkPG 构造错题标记（内存实现 newWrongMark 的 PG 面：字段形状
+// 同构——item_version_id/item_number/error_type_ids/first_seen_at/retest_status；
+// item_number 按推进前的 current_index + 1，与内存实现同一口径）.
+func newWrongMarkPG(p *preparedSubmit, currentIndex int, retestWrong bool) map[string]any {
+	status := "off"
+	if retestWrong {
+		status = "pending"
+	}
+	return map[string]any{
+		"item_version_id": p.itemVersionID,
+		"item_number":     currentIndex + 1,
+		"error_type_ids":  inferenceErrorTypeIDs(p.inferences),
+		"first_seen_at":   p.at,
+		"retest_status":   status,
+	}
 }
 
 // sessionViewFromGen 把 practice_session 行装配为共享校验视图。题序还原复用

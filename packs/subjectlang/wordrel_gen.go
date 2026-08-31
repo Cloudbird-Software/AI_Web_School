@@ -117,16 +117,14 @@ func (g *genWordRel) Instance(index int) (*Instance, error) {
 	inst := &Instance{
 		TemplateID: g.entry.ID,
 		Locale:     "zh-Hans",
-		Objective: map[string]any{
-			"kp":        "lang.sem." + mapRelKp(e.Relation),
-			"gradeband": "L",
-		},
+		Objective:  objective("lang.sem." + mapRelKp(e.Relation)),
 		InteractionRef: map[string]any{
 			"interaction_id":     "single_choice",
 			"interaction_params": map[string]any{"options": toAnySlice(opts)},
 		},
 		Content: map[string]any{
 			"stem":        wordRelStem(e.Relation, e.Word),
+			"blocks":      scBlocks(wordRelStem(e.Relation, e.Word), opts),
 			"options":     toAnySlice(opts),
 			"answer":      correctIdx,
 			"word":        e.Word,
@@ -140,8 +138,10 @@ func (g *genWordRel) Instance(index int) (*Instance, error) {
 		},
 		ErrorBindings: errBinds,
 		Lineage: map[string]any{
-			"tier":   "A",
-			"params": map[string]any{"index": index, "entry_index": ei, "comb": comb, "correct_index": correctIdx},
+			"tier": "A",
+			// 契约 §5.2：实例判别参数落 params.normalized（公式一 np 输入——
+			// 不同实例必须产生不同 item_version_id，内容寻址才成立）。
+			"params": map[string]any{"normalized": map[string]any{"index": index, "entry_index": ei, "comb": comb, "correct_index": correctIdx}},
 		},
 	}
 	return inst, nil

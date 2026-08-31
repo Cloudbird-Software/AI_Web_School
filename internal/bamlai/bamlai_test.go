@@ -13,12 +13,21 @@ import (
 	"github.com/Cloudbird-Software/AI_Web_School/packs/subjectlang"
 )
 
+// testVocab 是测试信封的词表行固定值（四键信封的 vocab_candidates 取值面）.
+const testVocab = "太阳,月亮,星星,学校,苹果"
+
+// testEnvelope 组装四键合法信封（源词/学段可变，词表恒定）.
+func testEnvelope(sourceWord, gradeband string) string {
+	return "task: lang_sentence_reorg\nsource_word: " + sourceWord +
+		"\ngradeband: " + gradeband + "\nvocab_candidates: " + testVocab
+}
+
 // fakeFn 构造不触网的 BAML 函数替身（签名对齐 SentenceReorgFunc）.
 func fakeFn(t *testing.T, out types.SentenceReorg, rec *string) SentenceReorgFunc {
 	t.Helper()
-	return func(_ context.Context, sourceWord, gradeband string, _ ...baml_client.CallOptionFunc) (types.SentenceReorg, error) {
+	return func(_ context.Context, sourceWord, gradeband, vocabCandidates string, _ ...baml_client.CallOptionFunc) (types.SentenceReorg, error) {
 		if rec != nil {
-			*rec = sourceWord + "|" + gradeband
+			*rec = sourceWord + "|" + gradeband + "|" + vocabCandidates
 		}
 		return out, nil
 	}
@@ -34,7 +43,7 @@ func TestCallDraftJSONShape(t *testing.T) {
 	}, nil)}
 	out, err := caller.Call(context.Background(), ai.OutboundRequest{
 		Target: "t",
-		Prompt: "task: lang_sentence_reorg\nsource_word: 苹果\ngradeband: L",
+		Prompt: testEnvelope("苹果", "L"),
 	})
 	if err != nil {
 		t.Fatalf("Call: %v", err)
@@ -65,11 +74,11 @@ func TestCallPassesUnpackedArgs(t *testing.T) {
 	caller := SentenceReorgCaller{Fn: fakeFn(t, types.SentenceReorg{Distractors: []string{"a", "b", "c"}}, &got)}
 	if _, err := caller.Call(context.Background(), ai.OutboundRequest{
 		Target: "t",
-		Prompt: "task: lang_sentence_reorg\nsource_word: 太阳\ngradeband: L",
+		Prompt: testEnvelope("太阳", "L"),
 	}); err != nil {
 		t.Fatalf("Call: %v", err)
 	}
-	if got != "太阳|L" {
+	if got != "太阳|L|"+testVocab {
 		t.Fatalf("BAML 入参解包错误: %q", got)
 	}
 }
@@ -77,7 +86,7 @@ func TestCallPassesUnpackedArgs(t *testing.T) {
 func TestCallRejectsMalformedEnvelopeBeforeOutbound(t *testing.T) {
 	t.Parallel()
 	invoked := false
-	caller := SentenceReorgCaller{Fn: func(_ context.Context, _, _ string, _ ...baml_client.CallOptionFunc) (types.SentenceReorg, error) {
+	caller := SentenceReorgCaller{Fn: func(_ context.Context, _, _, _ string, _ ...baml_client.CallOptionFunc) (types.SentenceReorg, error) {
 		invoked = true
 		return types.SentenceReorg{}, nil
 	}}
@@ -96,12 +105,12 @@ func TestCallRejectsMalformedEnvelopeBeforeOutbound(t *testing.T) {
 func TestCallFnErrorPassthrough(t *testing.T) {
 	t.Parallel()
 	sentinel := errors.New("upstream down")
-	caller := SentenceReorgCaller{Fn: func(_ context.Context, _, _ string, _ ...baml_client.CallOptionFunc) (types.SentenceReorg, error) {
+	caller := SentenceReorgCaller{Fn: func(_ context.Context, _, _, _ string, _ ...baml_client.CallOptionFunc) (types.SentenceReorg, error) {
 		return types.SentenceReorg{}, sentinel
 	}}
 	_, err := caller.Call(context.Background(), ai.OutboundRequest{
 		Target: "t",
-		Prompt: "task: lang_sentence_reorg\nsource_word: 太阳\ngradeband: L",
+		Prompt: testEnvelope("太阳", "L"),
 	})
 	if !errors.Is(err, sentinel) {
 		t.Fatalf("上游错误必须原样透传: %v", err)
@@ -113,7 +122,7 @@ func TestCallNilFnFailClosed(t *testing.T) {
 	caller := SentenceReorgCaller{}
 	_, err := caller.Call(context.Background(), ai.OutboundRequest{
 		Target: "t",
-		Prompt: "task: lang_sentence_reorg\nsource_word: 太阳\ngradeband: L",
+		Prompt: testEnvelope("太阳", "L"),
 	})
 	if err == nil {
 		t.Fatal("Fn 未注入必须拒绝")
@@ -122,28 +131,30 @@ func TestCallNilFnFailClosed(t *testing.T) {
 
 func TestEnvelopeParse(t *testing.T) {
 	t.Parallel()
-	sw, gb, err := ParseSentenceReorgRequest("task: lang_sentence_reorg\nsource_word: 太阳\ngradeband: L")
+	sw, gb, vc, err := ParseSentenceReorgRequest(testEnvelope("太阳", "L"))
 	if err != nil {
 		t.Fatalf("合法信封被拒: %v", err)
 	}
-	if sw != "太阳" || gb != "L" {
-		t.Fatalf("解包错误: %q %q", sw, gb)
+	if sw != "太阳" || gb != "L" || vc != testVocab {
+		t.Fatalf("解包错误: %q %q %q", sw, gb, vc)
 	}
 }
 
 func TestEnvelopeParseFailClosed(t *testing.T) {
 	t.Parallel()
 	cases := map[string]string{
-		"task不符": "task: other_task\nsource_word: 太阳\ngradeband: L",
+		"task不符": "task: other_task\nsource_word: 太阳\ngradeband: L\nvocab_candidates: " + testVocab,
 		"缺键":     "task: lang_sentence_reorg\nsource_word: 太阳",
-		"重复键":    "task: lang_sentence_reorg\nsource_word: 太阳\nsource_word: 月亮\ngradeband: L",
-		"未知键":    "task: lang_sentence_reorg\nsource_word: 太阳\ngradeband: L\nfoo: bar",
-		"空值":     "task: lang_sentence_reorg\nsource_word: \ngradeband: L",
-		"无冒号行":   "task: lang_sentence_reorg\nsource_word 太阳\ngradeband: L",
+		"缺词表键":   "task: lang_sentence_reorg\nsource_word: 太阳\ngradeband: L",
+		"重复键":    "task: lang_sentence_reorg\nsource_word: 太阳\nsource_word: 月亮\ngradeband: L\nvocab_candidates: " + testVocab,
+		"未知键":    "task: lang_sentence_reorg\nsource_word: 太阳\ngradeband: L\nvocab_candidates: " + testVocab + "\nfoo: bar",
+		"空值":     "task: lang_sentence_reorg\nsource_word: \ngradeband: L\nvocab_candidates: " + testVocab,
+		"空词表":    "task: lang_sentence_reorg\nsource_word: 太阳\ngradeband: L\nvocab_candidates: ",
+		"无冒号行":   "task: lang_sentence_reorg\nsource_word 太阳\ngradeband: L\nvocab_candidates: " + testVocab,
 		"空信封":    "",
 	}
 	for name, prompt := range cases {
-		if _, _, err := ParseSentenceReorgRequest(prompt); err == nil {
+		if _, _, _, err := ParseSentenceReorgRequest(prompt); err == nil {
 			t.Errorf("%s: 必须拒绝", name)
 		}
 	}

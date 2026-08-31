@@ -162,16 +162,14 @@ func (g *genRadical) Instance(index int) (*Instance, error) {
 	inst := &Instance{
 		TemplateID: g.entry.ID,
 		Locale:     "zh-Hans",
-		Objective: map[string]any{
-			"kp":        "lang.chr.radical",
-			"gradeband": "L",
-		},
+		Objective:  objective("lang.chr.radical"),
 		InteractionRef: map[string]any{
 			"interaction_id":     "single_choice",
 			"interaction_params": map[string]any{"options": toAnySlice(opts)},
 		},
 		Content: map[string]any{
 			"stem":      fmt.Sprintf("选偏旁：「%s」字的偏旁是哪一个？", ch),
+			"blocks":    scBlocks(fmt.Sprintf("选偏旁：「%s」字的偏旁是哪一个？", ch), opts),
 			"options":   toAnySlice(opts),
 			"answer":    correctIdx,
 			"char":      ch,
@@ -185,7 +183,7 @@ func (g *genRadical) Instance(index int) (*Instance, error) {
 		ErrorBindings: errBinds,
 		Lineage: map[string]any{
 			"tier":   "A",
-			"params": map[string]any{"index": index, "char_index": ci, "comb": comb, "correct_index": correctIdx},
+			"params": map[string]any{"normalized": map[string]any{"index": index, "char_index": ci, "comb": comb, "correct_index": correctIdx}},
 		},
 	}
 	return inst, nil

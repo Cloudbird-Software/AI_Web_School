@@ -28,6 +28,7 @@ import (
 	"github.com/Cloudbird-Software/AI_Web_School/api/middleware"
 	"github.com/Cloudbird-Software/AI_Web_School/core/auth"
 	"github.com/Cloudbird-Software/AI_Web_School/core/compliance"
+	"github.com/Cloudbird-Software/AI_Web_School/core/review"
 	"github.com/Cloudbird-Software/AI_Web_School/core/session"
 )
 
@@ -52,6 +53,16 @@ type ResponseScorer interface {
 	// ScoreSubmit 对一次作答产出评分轨迹与错误推断（trace 形态 =
 	// core/scoring buildTrace 落账原文；错误推断数组可为空）.
 	ScoreSubmit(ctx context.Context, itemVersionID string, response map[string]any) (trace map[string]any, inferences []map[string]any, err error)
+}
+
+// ReviewSyncer 是复习队列入队写面的协议层接缝（P0-4，2026-08-31）：提交
+// 落账成功后由作答链路触发同步（冻结设计「sync_review_queue 由作答链路
+// 调用，API 不暴露」——本端口非业务端点，无独立路由）。nil = 同步面未装配
+// → 提交照常成功，队列留待手动/后续同步自愈（派生队列可全量重建，不阻塞
+// 作答证据入账——北极星：宁可少一个派生视图，不可丢一条作答证据）.
+type ReviewSyncer interface {
+	// SyncQueue 重放学生作答事件流，幂等同步复习队列；返回在队条目数.
+	SyncQueue(ctx context.Context, studentAliasID, policyID, policyVersion string, now time.Time) (int, error)
 }
 
 // startSessionRequest 对齐 openapi-v1.1 StartSessionRequest（身份字段语义
@@ -360,9 +371,11 @@ func sessionNext(svc *session.Service) http.HandlerFunc {
 }
 
 // sessionSubmit 是 POST /sessions/{session_id}/responses（提交作答：评分
-// 先行 → 提交临界区落账 → 反馈投影）。评分链路未装配时 fail-closed 501
-// ——绝不以「无评分」作答入账（残缺评分不落账，submit.go 契约）.
-func sessionSubmit(svc *session.Service, scorer ResponseScorer) http.HandlerFunc {
+// 先行 → 提交临界区落账 → 复习队列同步 → 反馈投影）。评分链路未装配时
+// fail-closed 501——绝不以「无评分」作答入账（残缺评分不落账，submit.go
+// 契约）。复习队列同步失败不拒绝已落账的提交（派生队列可全量重建——
+// 见 ReviewSyncer 端口注释），错误类名落日志供运维定位.
+func sessionSubmit(svc *session.Service, scorer ResponseScorer, syncer ReviewSyncer) http.HandlerFunc {
 	if svc == nil {
 		return sessionScoped
 	}
@@ -403,6 +416,13 @@ func sessionSubmit(svc *session.Service, scorer ResponseScorer) http.HandlerFunc
 		if err != nil {
 			writeSessionError(w, err)
 			return
+		}
+		if syncer != nil {
+			// P0-4：作答链路触发的复习队列同步（v1 默认策略）。同步在提交事务
+			// 之外（派生账独立事务）；失败仅记日志——队列由全量重放自愈.
+			if _, sErr := syncer.SyncQueue(r.Context(), alias, review.DefaultPolicyID, review.DefaultPolicyVersion, time.Now().UTC()); sErr != nil {
+				log.Printf("review sync failure route=%s error_class=%s", r.Pattern, errClass(sErr))
+			}
 		}
 		writeJSON(w, http.StatusOK, feedbackResponse{
 			EventID:         res.EventID,
