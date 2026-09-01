@@ -45,8 +45,9 @@ func (r *poolTxRunner) InTx(ctx context.Context, fn func(q session.Executor) err
 // → scoring_ref 解析（{scorer_id, scorer_params}，D4 冻结注册表键）→
 // core/scoring.Runner 执行 → 落账形态 trace 直接上交（协议层零二次加工）.
 type dbResponseScorer struct {
-	pool   *pgxpool.Pool
-	runner *scoring.Runner
+	pool       *pgxpool.Pool
+	runner     *scoring.Runner
+	errorTypes *scoring.ErrorTypeRegistry
 }
 
 // newDeterministicScorerTable 装配确定性评分器注册表（exact_match /
@@ -68,13 +69,18 @@ func (s *dbResponseScorer) ScoreSubmit(ctx context.Context, itemVersionID string
 	if err != nil {
 		return nil, nil, fmt.Errorf("school: read item_version %s: %w", itemVersionID, err)
 	}
-	return scoreAgainstRef(ctx, row.ScoringRef, response, s.runner)
+	return scoreAgainstRef(ctx, row.ScoringRef, response, s.runner, s.errorTypes)
 }
 
 // scoreAgainstRef 是评分桥的纯函数面（无 DB，可测）：scoring_ref JSONB →
-// 评分器执行 → trace。作答载荷整体 JSON 序列化为评分器 answer 面（作答原文
-// 只落 response_event.raw_payload，trace 只留摘要——职责分离）.
-func scoreAgainstRef(ctx context.Context, scoringRef []byte, response map[string]any, runner *scoring.Runner) (map[string]any, []map[string]any, error) {
+// 评分器执行 → trace + error_inferences。作答载荷整体 JSON 序列化为评分器
+// answer 面（作答原文只落 response_event.raw_payload，trace 只留摘要——职责
+// 分离）。
+//
+// 卡 #185 改造：从 run.Trace 的 evidence 面提取 error_inferences，经
+// error_type 注册中心校验后回填返回数组（修复 assembly.go:100 恒空断点）。
+// 未登记的 error_type_id 逐条丢弃——不伪造归因，不污染 response_error_type.
+func scoreAgainstRef(ctx context.Context, scoringRef []byte, response map[string]any, runner *scoring.Runner, errorTypes *scoring.ErrorTypeRegistry) (map[string]any, []map[string]any, error) {
 	var ref struct {
 		ScorerID     string         `json:"scorer_id"`
 		ScorerParams map[string]any `json:"scorer_params"`
@@ -97,7 +103,12 @@ func scoreAgainstRef(ctx context.Context, scoringRef []byte, response map[string
 	if err != nil {
 		return nil, nil, fmt.Errorf("school: 评分执行失败: %w", err)
 	}
-	// 错误推断数组：确定性评分器的 evidence 面不含错误推断（归因推断属
-	// 评分证据加工波次）——此处空集上交，不伪造归因.
-	return run.Trace, []map[string]any{}, nil
+	// 错误推断数组：从评分 trace 的 evidence 面提取 error_inferences，经注册
+	// 中心校验（未登记 id 丢弃）。桥对外恒返回非 nil 数组（nil 归空集）——
+	// 协议层契约「可为空数组」的形态保证.
+	inferences := scoring.ExtractErrorInferences(run.Trace, errorTypes)
+	if inferences == nil {
+		inferences = []map[string]any{}
+	}
+	return run.Trace, inferences, nil
 }
