@@ -134,7 +134,9 @@ func main() {
 	if err != nil {
 		log.Fatalf("scoring runner bootstrap failed: %v", err)
 	}
-	scorer := &dbResponseScorer{pool: pool, runner: scoringRunner}
+	// 卡 #185：error_type 注册中心（评分桥 error_inferences 提取的校验面）.
+	errorTypeRegistry := scoring.DefaultErrorTypeRegistry()
+	scorer := &dbResponseScorer{pool: pool, runner: scoringRunner, errorTypes: errorTypeRegistry}
 	svc, err := session.NewService(session.Deps{
 		Consents:    consents,
 		Orders:      accounts,

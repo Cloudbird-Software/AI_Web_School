@@ -30,6 +30,19 @@ from src.core.data.ctt import (
 from src.core.events.writer import record_event
 
 
+def _month_safe_base() -> datetime:
+    """边界安全基准：锚定当月月中，保证减若干小时仍落在当月分区内.
+
+    response_event 按月分区，迁移只建「当月 + 未来 3 月」分区（无历史分区）。
+    若用 ``datetime.now() - timedelta(hours=2)`` 作 created_at，在每月 1 日
+    头两小时内会落进上月（无分区）→ ``no partition of relation``。锚定到
+    当月 15 日 12:00，任何小时级偏移都不跨月，断言只依赖相对先后与
+    as_of=max(created_at)，与绝对时间无关。
+    """
+    now = datetime.now(timezone.utc)
+    return datetime(now.year, now.month, 15, 12, 0, 0, tzinfo=timezone.utc)
+
+
 # ────────────────────────────────────────────────────────────────────
 # §1/§2 compute_ctt 纯函数
 # ────────────────────────────────────────────────────────────────────
@@ -199,7 +212,7 @@ class TestRunCttCalibration:
         """as_of = 输入事件最大 created_at（输入快照右端）."""
         iv = "sha256:iv-ctt-asof"
         await _insert_item_version(async_session, iv)
-        base = datetime.now(timezone.utc)
+        base = _month_safe_base()
         t1 = base - timedelta(hours=2)
         t2 = base - timedelta(hours=1)
         await _answer(
@@ -250,7 +263,7 @@ class TestRunCttCalibration:
         """§4（D5）：同题两场景分别标定，参数行独立共存（各自 as_of 区分）."""
         iv = "sha256:iv-ctt-two-scope"
         await _insert_item_version(async_session, iv)
-        now = datetime.now(timezone.utc)
+        now = _month_safe_base()
         await _answer(
             async_session, item_version_id=iv, student_alias_id=uuid4(),
             scene="practice", correct=1, created_at=now - timedelta(hours=2),
