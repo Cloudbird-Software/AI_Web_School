@@ -38,8 +38,8 @@ func TestRebuildQueueFSEntryDiscipline(t *testing.T) {
 func TestRebuildQueueFSRSLapseResets(t *testing.T) {
 	pol := NewFSRSPolicy()
 	events := []ReviewEventView{
-		event("e1", "iv-1", fsrsBase, boolPtr(false), "e-A"),            // 入队
-		event("e2", "iv-1", fsrsBase.AddDate(0, 0, 1), boolPtr(true)),    // Good → stage1
+		event("e1", "iv-1", fsrsBase, boolPtr(false), "e-A"),                   // 入队
+		event("e2", "iv-1", fsrsBase.AddDate(0, 0, 1), boolPtr(true)),          // Good → stage1
 		event("e3", "iv-1", fsrsBase.AddDate(0, 0, 10), boolPtr(false), "e-B"), // Again → 重置
 	}
 	states, err := RebuildQueueFSRS(events, pol)
