@@ -88,12 +88,12 @@ func TestWriteItemParamsDryRun(t *testing.T) {
 	r, w, _ := os.Pipe()
 	os.Stderr = w
 	err := writeItemParams("unused-dsn", params, datastat.IRTSource, datastat.ScopeMeasurement, true)
-	w.Close()
+	_ = w.Close()
 	os.Stderr = old
 	if err != nil {
 		t.Fatalf("dry-run 不应报错: %v", err)
 	}
-	io.Copy(&sb, r)
+	_, _ = io.Copy(&sb, r)
 	if !strings.Contains(sb.String(), "it01") || !strings.Contains(sb.String(), "measured_irt") {
 		t.Errorf("dry-run 输出应含 item 与 source，got: %s", sb.String())
 	}

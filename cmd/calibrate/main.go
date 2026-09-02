@@ -175,7 +175,7 @@ func readRecords(path string) ([]datastat.ResponseRecord, error) {
 		if err != nil {
 			return nil, err
 		}
-		defer f.Close()
+		defer func() { _ = f.Close() }() // GO-2 显式弃错：只读句柄，关闭失败不丢数据
 		r = f
 	}
 	dec := json.NewDecoder(r)
@@ -206,7 +206,7 @@ func writeParams(path string, params []datastat.ItemIrtStats) error {
 		if err != nil {
 			return err
 		}
-		defer f.Close()
+		defer func() { _ = f.Close() }() // GO-2 显式弃错：写失败已由 enc.Encode 逐条暴露
 		w = f
 	}
 	enc := json.NewEncoder(w)
