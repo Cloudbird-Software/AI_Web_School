@@ -19,8 +19,9 @@ import (
 
 // FSRS 策略标识（与 fixed-interval/1.0.0 并列，双字段无枚举约束）.
 const (
-	FSRSPolicyID      = "fsrs"
-	FSRSPolicyVersion = "1.0.0"
+	FSRSPolicyID               = "fsrs"
+	FSRSPolicyVersion          = "1.0.0"
+	FSRSPolicyVersionOptimized = "1.1.0-optimized"
 )
 
 // FSRSPolicy 携带 FSRS 调度参数（请求保持率 + 21 权重 + 最大间隔等）.
@@ -31,6 +32,25 @@ type FSRSPolicy struct {
 // NewFSRSPolicy 返回默认参数的 FSRS 策略.
 func NewFSRSPolicy() FSRSPolicy {
 	return FSRSPolicy{Params: fsrs.DefaultParam()}
+}
+
+// NewFSRSPolicyOptimized 返回合成数据优化参数的 FSRS 策略（fsrs/1.1.0-optimized）。
+// 参数来源：fsrs-opt/params_optimized.json（合成 sim-student 数据，非真实学生作答标定）。
+// 仅显式 opt-in 使用，不影响 v1.0.0 默认行为。
+func NewFSRSPolicyOptimized() FSRSPolicy {
+	return FSRSPolicy{
+		Params: fsrs.Parameters{
+			RequestRetention: 0.9,
+			MaximumInterval:  36500,
+			W: fsrs.Weights{
+				0.12386, 1.2931, 2.3065, 8.2956, 1.0, 0.001,
+				1.742965, 0.001, 0.030614, 0.574502, 0.291703, 0.666051,
+				0.129001, 0.269923, 2.87329, 0.264142, 2.496415,
+			},
+			Decay:  0.166158,
+			Factor: 0.885322,
+		},
+	}
 }
 
 // ratingFromEvent 将事件对错映射为 FSRS 评分.

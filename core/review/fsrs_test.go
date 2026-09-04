@@ -211,3 +211,109 @@ func TestRebuildQueueFSRSMultiItem(t *testing.T) {
 		t.Fatalf("归因错")
 	}
 }
+
+// 优化参数构造：验证 NewFSRSPolicyOptimized 的权重与 params_optimized.json 一致.
+func TestNewFSRSPolicyOptimizedParams(t *testing.T) {
+	pol := NewFSRSPolicyOptimized()
+	if pol.Params.RequestRetention != 0.9 {
+		t.Fatalf("RequestRetention 应为 0.9: %v", pol.Params.RequestRetention)
+	}
+	if pol.Params.MaximumInterval != 36500 {
+		t.Fatalf("MaximumInterval 应为 36500: %v", pol.Params.MaximumInterval)
+	}
+	if pol.Params.Decay != 0.166158 {
+		t.Fatalf("Decay 应为 0.166158: %v", pol.Params.Decay)
+	}
+	if pol.Params.Factor != 0.885322 {
+		t.Fatalf("Factor 应为 0.885322: %v", pol.Params.Factor)
+	}
+	w := pol.Params.W
+	if w[0] != 0.12386 || w[3] != 8.2956 || w[16] != 2.496415 {
+		t.Fatalf("权重异常: %v", w)
+	}
+}
+
+// 优化参数可重放性：同一事件流 + 同一优化策略 → 同态.
+func TestRebuildQueueFSRSOptimizedReplayable(t *testing.T) {
+	events := []ReviewEventView{
+		event("e1", "iv-1", fsrsBase, boolPtr(false), "e-calc"),
+		event("e2", "iv-2", fsrsBase, boolPtr(false), "e-read"),
+		event("e3", "iv-1", fsrsBase.AddDate(0, 0, 1), boolPtr(true)),
+		event("e4", "iv-2", fsrsBase.AddDate(0, 0, 2), boolPtr(true)),
+		event("e5", "iv-1", fsrsBase.AddDate(0, 0, 5), boolPtr(true)),
+		event("e6", "iv-2", fsrsBase.AddDate(0, 0, 9), boolPtr(false), "e-read2"),
+		event("e7", "iv-1", fsrsBase.AddDate(0, 0, 20), boolPtr(true)),
+	}
+	first, err := RebuildQueueFSRS(events, NewFSRSPolicyOptimized())
+	if err != nil {
+		t.Fatalf("first: %v", err)
+	}
+	second, err := RebuildQueueFSRS(events, NewFSRSPolicyOptimized())
+	if err != nil {
+		t.Fatalf("second: %v", err)
+	}
+	if len(first) != len(second) {
+		t.Fatalf("重放条数不一致: %d vs %d", len(first), len(second))
+	}
+	for id, want := range first {
+		if got, ok := second[id]; !ok {
+			t.Fatalf("重放缺失 %s", id)
+		} else if got != want {
+			t.Fatalf("重放不同态 %s:\n got %+v\nwant %+v", id, got, want)
+		}
+	}
+}
+
+// 版本稳定分化：默认 v1.0.0 与优化 1.1.0-optimized 在同一事件流上产出不同 due，
+// 证明优化参数确实改变了调度行为；两版本各自可重放.
+func TestPolicyVersionStableDivergence(t *testing.T) {
+	events := []ReviewEventView{
+		event("e1", "iv-1", fsrsBase, boolPtr(false), "e-calc"),
+		event("e2", "iv-1", fsrsBase.AddDate(0, 0, 1), boolPtr(true)),
+		event("e3", "iv-1", fsrsBase.AddDate(0, 0, 5), boolPtr(true)),
+		event("e4", "iv-1", fsrsBase.AddDate(0, 0, 20), boolPtr(true)),
+	}
+	defaultStates, err := RebuildQueueFSRS(events, NewFSRSPolicy())
+	if err != nil {
+		t.Fatalf("default: %v", err)
+	}
+	optimizedStates, err := RebuildQueueFSRS(events, NewFSRSPolicyOptimized())
+	if err != nil {
+		t.Fatalf("optimized: %v", err)
+	}
+	if len(defaultStates) != 1 || len(optimizedStates) != 1 {
+		t.Fatalf("条数应均为 1: default=%d optimized=%d", len(defaultStates), len(optimizedStates))
+	}
+	if defaultStates["iv-1"].DueAt.Equal(optimizedStates["iv-1"].DueAt) {
+		t.Fatalf("默认与优化参数 due 应不同，均为 %v", defaultStates["iv-1"].DueAt)
+	}
+	// 各自重放同态
+	replayDefault, _ := RebuildQueueFSRS(events, NewFSRSPolicy())
+	replayOptimized, _ := RebuildQueueFSRS(events, NewFSRSPolicyOptimized())
+	if replayDefault["iv-1"].DueAt != defaultStates["iv-1"].DueAt {
+		t.Fatalf("默认参数重放不同态")
+	}
+	if replayOptimized["iv-1"].DueAt != optimizedStates["iv-1"].DueAt {
+		t.Fatalf("优化参数重放不同态")
+	}
+}
+
+// 队列条目装配：显式使用 fsrs/1.1.0-optimized 版本号.
+func TestOptimizedPolicyEntry(t *testing.T) {
+	pol := NewFSRSPolicyOptimized()
+	events := []ReviewEventView{
+		event("e1", "iv-1", fsrsBase, boolPtr(false), "e-calc"),
+		event("e2", "iv-1", fsrsBase.AddDate(0, 0, 1), boolPtr(true)),
+	}
+	states, err := RebuildQueueFSRS(events, pol)
+	if err != nil {
+		t.Fatalf("RebuildQueueFSRS: %v", err)
+	}
+	entry := NewReviewEntry("entry-1", "student-1", "iv-1", FSRSPolicyID, FSRSPolicyVersionOptimized, states["iv-1"])
+	if entry.PolicyID != "fsrs" || entry.PolicyVersion != "1.1.0-optimized" {
+		t.Fatalf("策略版本装配错: %s/%s", entry.PolicyID, entry.PolicyVersion)
+	}
+	if entry.Stage != states["iv-1"].Stage {
+		t.Fatalf("stage 装配错")
+	}
+}
