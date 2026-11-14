@@ -1,6 +1,6 @@
 module github.com/Cloudbird-Software/AI_Web_School
 
-go 1.25.0
+go 1.26.0
 
 require (
 	github.com/boundaryml/baml v0.226.1
@@ -21,8 +21,9 @@ require (
 	github.com/kr/text v0.2.0 // indirect
 	github.com/lib/pq v1.12.3 // indirect
 	github.com/rogpeppe/go-internal v1.12.0 // indirect
-	go.opentelemetry.io/otel/metric v1.39.0 // indirect
-	go.opentelemetry.io/otel/trace v1.39.0 // indirect
+	github.com/stretchr/testify v1.12.1 // indirect
+	go.opentelemetry.io/otel/metric v1.47.0 // indirect
+	go.opentelemetry.io/otel/trace v1.47.0 // indirect
 	golang.org/x/mod v0.36.0 // indirect
 	golang.org/x/sys v0.47.0 // indirect
 	golang.org/x/text v0.38.0 // indirect
